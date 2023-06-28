@@ -401,6 +401,29 @@ def getAllParams( sharedParams : dict[str, SharedParameter],
     return orderedParams
 
 
+def getAllValueTables( sharedParams : dict[str, SharedParameter],
+                       sharedTables : dict[str, SharedValueTable],
+                       valueTables : dict[str, ValueTable] ) -> dict[str, str]:
+    orderedTables = ValueTableNames.ALL_VALUE_TABLES
+
+    if not isDeerMeasure( sharedParams ):
+        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedTables ) )
+
+    if not isDeemedDeliveryTypeMeasure( sharedParams ):
+        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEEM', orderedTables ) )
+
+    if not ( isAROrAOEMeasure( sharedParams ) and isNCOrNRMeasure( sharedParams ) ):
+        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'NRNC+ARAOE', orderedTables ) )
+
+    if not isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
+        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'INTER', orderedTables ) )
+
+    if not isFuelSubMeasure( sharedParams ):
+        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'FUEL', orderedTables ) )
+
+    return orderedTables
+
+
 # Parameters:
 #   @sharedTables - a dict mapping all value tables to their respective api_name
 #   @tableNames - a list of table names to check the measures value tables against

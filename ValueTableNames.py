@@ -14,13 +14,12 @@ ALL_VALUE_TABLES = {
 ALL_SHARED_TABLES = {
     'DEERMeasure': 'DEER',
     'EnergyImpactAP': 'DEER',
-    'netToGrossRatio': 'REQ',
-    'GSIA_default': 'REQ',
+    'GSIA': 'GSIA',
+    'GSIA_default': 'NGSIA',
     'EUL': 'REQ',
     'hostEulAndRul': 'ARAOE',
     'netToGrossRatio': 'REQ',
     'netToGrossRatioResidential': 'RES-DEF',
     'waterEnergyIntensity': 'WEN',
     'Null': 'REQ'
-
 }
