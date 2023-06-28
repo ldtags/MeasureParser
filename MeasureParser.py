@@ -3,6 +3,39 @@ import ParameterNames, ValueTableNames
 from MeasureObjects import SharedParameter, ValueTable, SharedValueTable
 
 
+# defines the type of measure that the given measure satisfies
+# returns nothing and does not modify any data, use for debugging
+def defineMeasureTypes( sharedParams : dict[str, SharedParameter],
+                        sharedTables : dict[str, SharedValueTable],
+                        valueTables : dict[str, ValueTable] ) -> None:
+    if isDeerMeasure( sharedParams ):
+        print( 'is DEER measure' )
+
+    if isAROrAOEMeasure( sharedParams ):
+        print( 'MAT = AR and/or AOE' )
+
+    if isNCOrNRMeasure( sharedParams ):
+        print( 'MAT = NC and/or NR' )
+
+    if isDefGSIAMeasure( sharedParams ):
+        print( 'is a default GSIA measure' )
+
+    if isSectorDefaultMeasure( sharedParams ):
+        print( 'is a sector default measure' )
+
+    if isDeemedDeliveryTypeMeasure( sharedParams ):
+        print( 'is a deemed delivery type measure' )
+
+    if isWENMeasure( sharedParams, sharedTables ):
+        print( 'is a WEN measure' )
+
+    if isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
+        print( 'is an interactive measure' )
+
+    if isFuelSubMeasure( sharedParams ):
+        print( 'is fuel substitution measure' )
+
+
 # Parameters:
 #   @param - a JSON object that represents a measure parameter
 #
@@ -311,10 +344,12 @@ def isInteractiveMeasure( params : dict[str, SharedParameter],
     except:
         residentialEffects = None
 
-    if lightingType ^ ( commercialEffects or residentialEffects or interactiveEffctApp ):
-        print( 'Measure is incorrectly formatted, missing required interactive effect data'  )
+    if lightingType and ( commercialEffects or residentialEffects ):
+        return True
+    elif lightingType or ( commercialEffects or residentialEffects ) or interactiveEffctApp:
+        print( 'Measure is incorrectly formatted, missing required interactive effect data' )
 
-    return lightingType and ( commercialEffects or residentialEffects )
+    return False
 
 
 # Parameters:
@@ -341,7 +376,8 @@ def isDeemedDeliveryTypeMeasure( params : dict[str, SharedParameter] ) -> bool:
 #
 # Returns a list of all parameters associated with the measure
 def getAllParams( sharedParams : dict[str, SharedParameter],
-                  sharedTables : dict[str, SharedValueTable] ) -> dict[str, str]:
+                  sharedTables : dict[str, SharedValueTable],
+                  valueTables : dict[str, ValueTable] ) -> dict[str, str]:
     orderedParams = ParameterNames.ALL_PARAMS
 
     if not isDeerMeasure( sharedParams ):
@@ -359,42 +395,10 @@ def getAllParams( sharedParams : dict[str, SharedParameter],
     if not isWENMeasure( sharedParams, sharedTables ):
         orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'WEN', orderedParams ) )
 
-    if not isInteractiveMeasure(  ):
+    if not isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
         orderedParams = list( filter( lambda param : ParameterNames.ALL_PARAMS[param] != 'INTER', orderedParams ) )
 
     return orderedParams
-
-
-# defines the type of measure that the given measure satisfies
-# returns nothing and does not modify any data, use for debugging
-def defineMeasureTypes( sharedParams : dict[str, SharedParameter],
-                        sharedTables : dict[str, SharedValueTable] ) -> None:
-    if isDeerMeasure( sharedParams ):
-        print( 'is DEER measure' )
-
-    if isAROrAOEMeasure( sharedParams ):
-        print( 'MAT = AR and/or AOE' )
-
-    if isNCOrNRMeasure( sharedParams ):
-        print( 'MAT = NC and/or NR' )
-
-    if isDefGSIAMeasure( sharedParams ):
-        print( 'is a default GSIA measure' )
-
-    if isSectorDefaultMeasure( sharedParams ):
-        print( 'is a sector default measure' )
-
-    if isDeemedDeliveryTypeMeasure( sharedParams ):
-        print( 'is a deemed delivery type measure' )
-
-    if isWENMeasure( sharedParams, sharedTables ):
-        print( 'is a WEN measure' )
-
-    if isInteractiveMeasure(  ):
-        print( 'is an interactive measure' )
-
-    if isFuelSubMeasure( sharedParams ):
-        print( 'is fuel substitution measure' )
 
 
 # Parameters:
@@ -433,36 +437,13 @@ def validateParamExistence( sharedParams : dict[str, SharedParameter],
             print( f'MISSING PARAM - {param}' )
 
 
-def removeOrderedSubsets( params : list[SharedParameter],
-                          orderedParams : list[str] ) -> list[SharedParameter]:
-    ordered : list[SharedParameter] = []
-    for i in range( 0, len( params ) - 1 ):
-        nxt = params[i + 1]
-        if nxt.version in orderedParams and orderedParams.index( params[i].version ) + 1 == orderedParams.index( nxt.version ):
-            if params[i] not in ordered:
-                ordered.append( params[i] )
-                ordered.append( nxt )
-
-    for param in ordered:
-        params.remove( param )
-    return params
-
-
-def removeByPlacement( params : list[SharedParameter],
-                       orderedParams : list[str] ) -> list[SharedParameter]:
-    unordered : list[SharedParameter] = []
-    for param in params:
-        if param.version in orderedParams and param.order - len( unordered ) != orderedParams.index( param.version ):
-            unordered.append( param )
-    return unordered
-
-
 def validateParamOrder( sharedParams : dict[str, SharedParameter],
                         orderedParams : list[str] ) -> None:
-    params : list[SharedParameter] = removeOrderedSubsets( list( sharedParams.values() ), orderedParams )
-    params = removeByPlacement( params, orderedParams )
+    params = list( sharedParams.values() )
     for param in params:
-        print( f'PARAMETER OUT OF ORDER - {param.version}' )
+        if param.order != ( orderedParams.index( param.version ) + 1 ):
+            print( 'parameters are out of order' )
+            return None
 
 
 # Parameters:
@@ -475,11 +456,9 @@ def validateParamOrder( sharedParams : dict[str, SharedParameter],
 #   - Correct order of value tables
 def parseMeasure( measure ) -> None:
     sharedParams : dict[str, SharedParameter] = getSharedParameters( measure )
-    orderedParams : dict[str, str] = getAllParams( sharedParams )
     valueTables : dict[str, ValueTable] = getValueTables( measure )
     sharedTables : dict[str, SharedValueTable] = getSharedTables( measure )
-    defineMeasureTypes( sharedParams )
-    print('\n')
+    orderedParams : dict[str, str] = getAllParams( sharedParams, sharedTables, valueTables )
     validateParamExistence( sharedParams, orderedParams )
     validateParamOrder( sharedParams, orderedParams )
 
