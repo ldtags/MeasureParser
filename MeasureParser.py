@@ -10,7 +10,7 @@ except ImportError:
 # defines the type of measure that the given measure satisfies
 # returns nothing and does not modify any data, use for debugging
 def defineMeasureTypes( measure : Measure ) -> None:
-    if measure.isDeerMeasure():
+    if measure.hasDEERVersion():
         print( 'is DEER measure' )
 
     if measure.isAROrAOEMeasure():
@@ -36,41 +36,6 @@ def defineMeasureTypes( measure : Measure ) -> None:
 
     if measure.isInteractiveMeasure():
         print( 'is an interactive measure' )
-
-
-def filterInterParams( params : dict[str, SharedParameter],
-                       orderedParams : dict[str, str] ) -> dict[str, str]:
-    try:
-        params['LightingType']
-    except:
-        del orderedParams['LightingType']
-
-    return orderedParams
-
-
-def filterInterValueTables( tables : dict[str, ValueTable],
-                            orderedTables : dict[str, str] ) -> dict[str, str]:
-    try:
-        tables['IEApplicability']
-    except:
-        del orderedTables['IEApplicability']
-
-    return orderedTables
-
-
-def filterInterSharedTables( tables : dict[str, SharedValueTable],
-                             orderedTables : dict[str, str] ) -> dict[str, str]:
-    try:
-        tables['commercialInteractiveEffects']
-    except:
-        del orderedTables['commercialInteractiveEffects']
-
-    try:
-        tables['residentialInteractiveEffects']
-    except:
-        del orderedTables['residentialInteractiveEffects']
-
-    return orderedTables
 
 
 # Parameters:
@@ -118,20 +83,48 @@ def validateParamOrder( sharedParams : dict[str, SharedParameter],
             return None
 
 
+def filterInterParams( measure : Measure,
+                       orderedParams : list[str] ) -> list[str]:
+    if measure.getParam( 'LightingType' ) == None:
+        orderedParams.remove( 'LightingType' )
+
+    return orderedParams
+
+
+def filterInterValueTables( measure : Measure,
+                            orderedTables : list[str] ) -> list[str]:
+    if measure.getValueTable( 'IEApplicability' ) == None:
+        orderedTables.remove( 'IEApplicability' )
+
+    return orderedTables
+
+
+def filterInterSharedTables( measure : Measure,
+                             orderedTables : list[str] ) -> list[str]:
+    if measure.getSharedTable( 'commercialInteractiveEffects' ) == None:
+        orderedTables.remove( 'commercialInteractiveEffects' )
+
+    if measure.getSharedTable( 'residentialInteractiveEffects' ) == None:
+        orderedTables.remove( 'residentialInteractiveEffects' )
+
+    return orderedTables
+
+
 def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str]]:
     orderedParams = list( ParameterNames.ALL_PARAMS.keys() )
     orderedValTables = list( ValueTableNames.ALL_VALUE_TABLES.keys() )
     orderedShaTables = list( ValueTableNames.ALL_SHARED_TABLES.keys() )
 
-    if not measure.isDeerMeasure():
+    # TODO: add custom exception to measure type checking methods and handle it here
+    if not measure.hasDEERVersion():
         orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams ) )
         orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedValTables ) )
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'DEER', orderedShaTables ) )
 
-    if measure.isDefGSIAMeasure():
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA', orderedParams ) )
+    if not measure.isDefGSIAMeasure():
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'NGSIA', orderedShaTables ) )
     else:
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA', orderedParams ) )
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'GSIA', orderedShaTables ) )
 
     if not measure.isAROrAOEMeasure():
@@ -148,6 +141,9 @@ def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str
 
     if measure.isSectorDefaultMeasure():
         orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NTG', orderedParams ) )
+
+    if measure.isResDefaultMeasure():
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'RES-NDEF', orderedShaTables ) )
     else:
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'RES-DEF', orderedShaTables ) )
 
@@ -162,7 +158,9 @@ def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'INTER', orderedShaTables ) )
         orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'INTER', orderedValTables ) )
     else:
-        orderedParams = filterInterParams(  )
+        orderedParams = filterInterParams( measure, orderedParams )
+        orderedShaTables = filterInterSharedTables( measure, orderedShaTables )
+        orderedValTables = filterInterValueTables( measure, orderedValTables )
 
     return orderedParams, orderedValTables, orderedShaTables
 
@@ -192,7 +190,7 @@ def parseMeasure( measure : Measure ) -> None:
 # Parameters:
 #   @filename - the name of a JSON measure file to be parsed
 def main( filename : str ) -> None:
-    print( f'\nparsing through measure file - {filename}\n' )
+    print( f'\nstarting to parse measure file - {filename}\n' )
     try:
         measureFile = open( filename, 'r' )
     except OSError:
@@ -205,7 +203,7 @@ def main( filename : str ) -> None:
         print( f'ERROR: couldn\'t read file - {filename}' )
     finally:
         measureFile.close()
-    print( f'\nfinished parsing through measure file - {filename}' )
+    print( f'\nfinished parsing measure file - {filename}' )
 
 
 if __name__ == '__main__':

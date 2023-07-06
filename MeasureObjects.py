@@ -1,3 +1,8 @@
+try:
+    from types import SimpleNamespace as Namespace
+except ImportError:
+    from argparse import Namespace
+
 class Version:
     def __init__( self, version_string : str ):
         self.version_string = version_string
@@ -35,9 +40,9 @@ class SharedValueTable:
             print( f'shared value table missing required fields - {err}' )
 
 class Measure:
-    def __init__( self, measure ):
+    def __init__( self, measure : Namespace ):
         try:
-            self.owned_by_user : str = measure.owned_by_user
+            self.owner : str = measure.owned_by_user
             self.params : list[SharedParameter] = list( map( lambda param : SharedParameter( param ), measure.shared_determinant_refs ) )
             self.sharedTables : list[SharedValueTable] = list( map( lambda table : SharedValueTable( table ), measure.shared_lookup_refs ) )
             self.valueTables : list[ValueTable] = list( map( lambda table : ValueTable( table ), measure.value_tables ) )
@@ -80,7 +85,7 @@ class Measure:
     #
     # returns true if the measure is a DEER measure
     #   otherwise returns false
-    def isDeerMeasure( self ) -> bool:
+    def hasDEERVersion( self ) -> bool:
         version = self.getParam( 'version' )
         if version == None:
             print( 'measure is missing the version parameter' )
@@ -157,6 +162,18 @@ class Measure:
                 if sector in id:
                     return True
 
+        return False
+    
+
+    def isResDefaultMeasure( self ) -> bool:
+        ntgId = self.getParam( 'NTGID' )
+        if ntgId == None:
+            print( 'measure is missing the required NTGID parameter' )
+            return False
+        
+        for id in ntgId.labels:
+            if 'Res-Default>2' in id:
+                return True
         return False
     
 
