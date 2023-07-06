@@ -1,425 +1,74 @@
 import json, sys
 import ParameterNames, ValueTableNames
-from MeasureObjects import SharedParameter, ValueTable, SharedValueTable
+from MeasureObjects import SharedParameter, ValueTable, SharedValueTable, Measure
+try:
+    from types import SimpleNamespace as Namespace
+except ImportError:
+    from argparse import Namespace
 
 
 # defines the type of measure that the given measure satisfies
 # returns nothing and does not modify any data, use for debugging
-def defineMeasureTypes( sharedParams : dict[str, SharedParameter],
-                        sharedTables : dict[str, SharedValueTable],
-                        valueTables : dict[str, ValueTable] ) -> None:
-    if isDeerMeasure( sharedParams ):
+def defineMeasureTypes( measure : Measure ) -> None:
+    if measure.isDeerMeasure():
         print( 'is DEER measure' )
 
-    if isAROrAOEMeasure( sharedParams ):
+    if measure.isAROrAOEMeasure():
         print( 'MAT = AR and/or AOE' )
 
-    if isNCOrNRMeasure( sharedParams ):
+    if measure.isNCOrNRMeasure():
         print( 'MAT = NC and/or NR' )
 
-    if isDefGSIAMeasure( sharedParams ):
+    if measure.isDefGSIAMeasure():
         print( 'is a default GSIA measure' )
 
-    if isSectorDefaultMeasure( sharedParams ):
+    if measure.isSectorDefaultMeasure():
         print( 'is a sector default measure' )
 
-    if isDeemedDeliveryTypeMeasure( sharedParams ):
+    if measure.isDeemedDeliveryTypeMeasure():
         print( 'is a deemed delivery type measure' )
 
-    if isWENMeasure( sharedParams, sharedTables ):
+    if measure.isWENMeasure():
         print( 'is a WEN measure' )
 
-    if isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
-        print( 'is an interactive measure' )
-
-    if isFuelSubMeasure( sharedParams ):
+    if measure.isFuelSubMeasure():
         print( 'is fuel substitution measure' )
 
+    if measure.isInteractiveMeasure():
+        print( 'is interactive measure' )
 
-# Parameters:
-#   @param - a JSON object that represents a measure parameter
-#
-# returns a SharedParameter object built from the representation in @param
-#   returns None if any fields are missing or empty
-def buildSharedParameter( param ) -> SharedParameter:
+
+def filterInterParams( params : dict[str, SharedParameter],
+                       orderedParams : dict[str, str] ) -> dict[str, str]:
     try:
-        order = param['order']
-        version = param['version']['version_string']
-        labels = param['active_labels']
+        params['LightingType']
     except:
-        print( f'shared parameter missing required field(s) \n\t {param}' )
-        return None
-    
-    if ( order == None or version == None or labels == None ):
-        print( f'shared parameter missing required data \
-              \n\t order: {order}\n\t version: {version}\n\t active labels: {labels}' )
-        return None
-
-    try:
-        version = version.split('-')[0]
-    except:
-        print( f'version string incorrectly formatted - {version}' )
-        return None
-
-    return SharedParameter( order, version, labels )
-
-
-# Parameters:
-#   @measure - a JSON file that represents a given measure
-#
-# returns a dict mapping all measure params in @measure to their respective name
-#   returns None if there is no 'shared_determinant_refs' field
-#       or if no measure parameters are found
-def getSharedParameters( measure ) -> dict[str, SharedParameter]:
-    try:
-        sharedRefs = measure['shared_determinant_refs']
-    except:
-        print( 'shared_determinant_refs not found' )
-        return None
-
-    if sharedRefs == None:
-        print( 'shared_determinant_refs is empty' )
-        return None
-    
-    paramDict = {}
-    params = list( map( lambda param: buildSharedParameter( param ), sharedRefs ) )
-    for param in params:
-        paramDict[param.version] = param
-    return paramDict
-
-
-# Parameters:
-#   @table - a JSON object that represents a value table
-#
-# returns a ValueTable object built from the representation in @table
-#   returns None if any fields are missing
-def buildValueTable( table ) -> ValueTable:
-    try:
-        name = table['name']
-        apiName = table['api_name']
-        tableType = table['type']
-        description = table['description']
-        order = table['order']
-        determinants = table['determinants']
-        columns = table['columns']
-        values = table['values']
-        refs = table['reference_refs']
-    except:
-        print( 'table is missing required fields' )
-        return None
-
-    if ( name == None or apiName == None or tableType == None
-            or order == None or determinants == None
-            or columns == None or values == None or refs == None ):
-        print( f'value table missing required data \
-               \n\t name: {name}\n\t api name: {apiName}\n\t type: {tableType} \
-               \n\t description: {description}\n\t order: {order} \
-               \n\t determinants: {determinants} \n\t columns: {columns} \
-               \n\t values: {values}\n\t refs: {refs}' )
-        
-    return ValueTable( name, apiName, tableType, description,
-                       order, determinants, columns, values, refs )
-
-
-# Parameters:
-#   @measure - a JSON file that represents a given measure
-#
-# returns a dict mapping all value tables in @measure to their respective api_name
-#   returns None if there is no 'value_tables' field or if no value tables are found
-def getValueTables( measure ) -> dict[str, ValueTable]:
-    try:
-        tables = measure['value_tables']
-    except:
-        print( 'value_tables not found' )
-        return None
-
-    if tables == None:
-        print( 'value_tables is empty' )
-        return None
-    
-    tableDict = {}
-    tables = list( map( lambda table: buildValueTable( table ), tables ) )
-    for table in tables:
-        tableDict[table.apiName] = table
-    return tableDict
-
-
-def buildSharedTable( table ) -> SharedValueTable:
-    try:
-        order = table['order']
-        version = table['version']['version_string']
-    except:
-        print( 'shared table is missing required fields' )
-        return None
-    
-    if ( order == None or version == None ):
-        print( f'shared parameter missing required data \
-              \n\t order: {order}\n\t version: {version}' )
-        return None
-    
-    try:
-        version = version.split('-')[0]
-    except:
-        print( f'version string incorrectly formatted - {version}' )
-        return None
-    
-    return SharedValueTable( order, version )
-
-
-def getSharedTables( measure ) -> dict[str, SharedValueTable]:
-    try:
-        tables = measure['shared_lookup_refs']
-    except:
-        print( 'shared_lookup_refs not found' )
-        return None
-    
-    tableDict = {}
-    tables = list( map( lambda table: buildSharedTable( table ), tables ) )
-    for table in tables:
-        tableDict[table.version] = table
-    return tableDict
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the labels of the version param to determine if the
-#   measure is a DEER measure
-#
-# returns true if the measure is a DEER measure
-#   otherwise returns false
-def isDeerMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        version = params['version']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-
-    for label in version.labels:
-        if 'DEER' in label:
-            return True
-
-    return False
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the labels of the MeasAppType param to determine
-#   if the measure application type is AOE or AR
-#
-# returns true if the measure application type is AOE or AR
-#   otherwise returns false
-def isAROrAOEMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        version = params['MeasAppType']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    for label in version.labels:
-        if 'AOE' in label or 'AR' in label:
-            return True
-
-    return False
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the labels of the MeasAppType param to determine
-#   if the measure application type is NC or NR
-#
-# returns true if the measure application type is NC or NR
-#   otherwise returns false
-def isNCOrNRMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        version = params['MeasAppType']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    for label in version.labels:
-        if 'NC' in label or 'NR' in label:
-            return True
-
-    return False
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the label of the GSIAID param to determine if the measure
-#   is a default GSIA measure
-#
-# returns true if the measure is a default GSIA measure
-#   otherwise returns false
-def isDefGSIAMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        version = params['GSIAID']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    for label in version.labels:
-        if 'Def-GSIA' in label:
-            return True
-
-    return False
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the labels of the NTGID param to determine if the Net to Gross ID
-#   contains the default for each sector
-#
-# returns true if any of the param-specific sector defaults are in the NTGID labels
-#   otherwise returns false
-def isSectorDefaultMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        sectors = list( map( lambda sector : sector + '-Default', params['Sector'].labels ) )
-        ntgIds = params['NTGID'].labels
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    for sector in sectors:
-        for ntgId in ntgIds:
-            if sector in ntgId:
-                return True
-
-    return False
-
-
-def isFuelSubMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        measImpctType = params['MeasImpactType']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    for label in measImpctType.labels:
-        if 'FuelSub' in label:
-            return True
-
-    return False
-
-
-def isWENMeasure( params : dict[str, SharedParameter],
-                  sharedTables : dict[str, SharedValueTable] ) -> bool:
-    try:
-        wenParam = params['waterEnergyIntensity']
-        wenTable = sharedTables['waterEnergyIntensity']
-    except:
-        if wenParam ^ wenTable:
-            print( 'WEN measure detected but required data is missing - ' \
-                + ('Water Energy Intensity Parameter' if wenTable \
-                    else 'Water Energy Intensity Value Table') )
-        return False
-
-    return True
-
-
-def isInteractiveMeasure( params : dict[str, SharedParameter],
-                          tables : dict[str, ValueTable],
-                          sharedTables : dict[str, SharedValueTable] ) -> bool:
-    try:
-        lightingType = params['lightingType']
-    except:
-        lightingType = None
-
-    try:
-        interactiveEffctApp = tables['IEApplicability']
-    except:
-        interactiveEffctApp = None
-
-    try:
-        commercialEffects = sharedTables['commercialInteractiveEffects']
-    except:
-        commercialEffects = None
-
-    try:
-        residentialEffects = sharedTables['residentialInteractiveEffects']
-    except:
-        residentialEffects = None
-
-    if lightingType and ( commercialEffects or residentialEffects ):
-        return True
-    elif lightingType or ( commercialEffects or residentialEffects ) or interactiveEffctApp:
-        print( 'Measure is incorrectly formatted, missing required interactive effect data' )
-
-    return False
-
-
-# Parameters:
-#   @params - a dict mapping all measure parameters to their respective names
-#
-# checks the labels of the DelivType param to determine if either
-#   DnDeemDI is in the labels or DnDeemed and UpDeemed are in the labels
-#
-# returns true if any of the labels are found
-#   otherwise returns false
-def isDeemedDeliveryTypeMeasure( params : dict[str, SharedParameter] ) -> bool:
-    try:
-        deliveryType = params['DelivType']
-    except:
-        print( 'measure is incorrectly formatted' )
-        return False
-    
-    return 'DnDeemDI' in deliveryType.labels \
-        or ( 'DnDeemed' in deliveryType.labels and 'UpDeemed' in deliveryType.labels )
-
-
-# Parameters:
-#   @sharedParams - a dict mapping all measure parameters to their respective names
-#
-# Returns a list of all parameters associated with the measure
-def getAllParams( sharedParams : dict[str, SharedParameter],
-                  sharedTables : dict[str, SharedValueTable],
-                  valueTables : dict[str, ValueTable] ) -> dict[str, str]:
-    orderedParams = ParameterNames.ALL_PARAMS
-
-    if not isDeerMeasure( sharedParams ):
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams ) )
-
-    if not isAROrAOEMeasure( sharedParams ):
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'MAT', orderedParams ) )
-
-    if isDefGSIAMeasure( sharedParams ):
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA', orderedParams ) )
-
-    if isSectorDefaultMeasure( sharedParams ):
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NTG', orderedParams ) )
-
-    if not isWENMeasure( sharedParams, sharedTables ):
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'WEN', orderedParams ) )
-
-    if not isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
-        orderedParams = list( filter( lambda param : ParameterNames.ALL_PARAMS[param] != 'INTER', orderedParams ) )
+        del orderedParams['LightingType']
 
     return orderedParams
 
 
-def getAllValueTables( sharedParams : dict[str, SharedParameter],
-                       sharedTables : dict[str, SharedValueTable],
-                       valueTables : dict[str, ValueTable] ) -> dict[str, str]:
-    orderedTables = ValueTableNames.ALL_VALUE_TABLES
+def filterInterValueTables( tables : dict[str, ValueTable],
+                            orderedTables : dict[str, str] ) -> dict[str, str]:
+    try:
+        tables['IEApplicability']
+    except:
+        del orderedTables['IEApplicability']
 
-    if not isDeerMeasure( sharedParams ):
-        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedTables ) )
+    return orderedTables
 
-    if not isDeemedDeliveryTypeMeasure( sharedParams ):
-        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEEM', orderedTables ) )
 
-    if not ( isAROrAOEMeasure( sharedParams ) and isNCOrNRMeasure( sharedParams ) ):
-        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'NRNC+ARAOE', orderedTables ) )
+def filterInterSharedTables( tables : dict[str, SharedValueTable],
+                             orderedTables : dict[str, str] ) -> dict[str, str]:
+    try:
+        tables['commercialInteractiveEffects']
+    except:
+        del orderedTables['commercialInteractiveEffects']
 
-    if not isInteractiveMeasure( sharedParams, valueTables, sharedTables ):
-        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'INTER', orderedTables ) )
-
-    if not isFuelSubMeasure( sharedParams ):
-        orderedTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'FUEL', orderedTables ) )
+    try:
+        tables['residentialInteractiveEffects']
+    except:
+        del orderedTables['residentialInteractiveEffects']
 
     return orderedTables
 
@@ -469,6 +118,55 @@ def validateParamOrder( sharedParams : dict[str, SharedParameter],
             return None
 
 
+def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str]]:
+    orderedParams = list( ParameterNames.ALL_PARAMS.keys() )
+    orderedValTables = list( ValueTableNames.ALL_VALUE_TABLES.keys() )
+    orderedShaTables = list( ValueTableNames.ALL_SHARED_TABLES.keys() )
+
+    if not measure.isDeerMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams ) )
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedValTables ) )
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'DEER', orderedShaTables ) )
+
+    if measure.isDefGSIAMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA', orderedParams ) )
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'NGSIA', orderedShaTables ) )
+    else:
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'GSIA', orderedShaTables ) )
+
+    if not measure.isAROrAOEMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'MAT', orderedParams ) )
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'ARAOE', orderedShaTables ) )
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'NRNC+ARAOE', orderedValTables ) )
+    
+    if not measure.isNCOrNRMeasure:
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'NRNC+ARAOE', orderedValTables ) )
+
+    if not measure.isWENMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'WEN', orderedParams ) )
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'WEN', orderedShaTables ) )
+
+    if measure.isSectorDefaultMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NTG', orderedParams ) )
+    else:
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'RES-DEF', orderedShaTables ) )
+
+    if not measure.isDeemedDeliveryTypeMeasure():
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEEM', orderedValTables ) )
+
+    if not measure.isFuelSubMeasure():
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'FUEL', orderedValTables ) )
+
+    if not measure.isInteractiveMeasure():
+        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'INTER', orderedParams ) )
+        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'INTER', orderedShaTables ) )
+        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'INTER', orderedValTables ) )
+    else:
+        orderedParams = filterInterParams(  )
+
+    return orderedParams, orderedValTables, orderedShaTables
+
+
 # Parameters:
 #   @measure - a JSON file that represents a given measure
 #
@@ -477,13 +175,18 @@ def validateParamOrder( sharedParams : dict[str, SharedParameter],
 #   - Existence of required parameters and value tables (shared and non-shared)
 #   - Correct order of parameters
 #   - Correct order of value tables
-def parseMeasure( measure ) -> None:
-    sharedParams : dict[str, SharedParameter] = getSharedParameters( measure )
-    valueTables : dict[str, ValueTable] = getValueTables( measure )
-    sharedTables : dict[str, SharedValueTable] = getSharedTables( measure )
-    orderedParams : dict[str, str] = getAllParams( sharedParams, sharedTables, valueTables )
-    validateParamExistence( sharedParams, orderedParams )
-    validateParamOrder( sharedParams, orderedParams )
+def parseMeasure( measure : Measure ) -> None:
+    defineMeasureTypes( measure.params, measure.sharedTables, measure.valueTables )
+    orderedParams, orderedValTables, orderedShaTables = getOrderedLists( measure )
+    print( '\nParams:' )
+    print( orderedParams )
+    print( '\nValue Tables:' )
+    print( orderedValTables )
+    print( '\nShared Tables:' )
+    print( orderedShaTables )
+
+    # validateParamExistence( params, orderedParams )
+    # validateParamOrder( params, orderedParams )
 
 
 # Parameters:
@@ -492,11 +195,17 @@ def main( filename : str ) -> None:
     print( f'\nparsing through measure file - {filename}\n' )
     try:
         measureFile = open( filename, 'r' )
-    except:
+    except OSError:
         print( f'ERROR: couldn\'t open file - {filename}' )
         return None
-    parseMeasure( json.load( measureFile ) )
-    print( f'\nfinished parsing through measure file - {filename}' )
+    
+    try:
+        parseMeasure( Measure( json.loads( measureFile.read(), object_hook=lambda d: Namespace(**d) ) ) )
+    except OSError:
+        print( f'ERROR: couldn\'t read file - {filename}' )
+    finally:
+        measureFile.close()
+        print( f'\nfinished parsing through measure file - {filename}' )
 
 
 if __name__ == '__main__':
