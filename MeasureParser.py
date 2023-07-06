@@ -35,7 +35,7 @@ def defineMeasureTypes( measure : Measure ) -> None:
         print( 'is fuel substitution measure' )
 
     if measure.isInteractiveMeasure():
-        print( 'is interactive measure' )
+        print( 'is an interactive measure' )
 
 
 def filterInterParams( params : dict[str, SharedParameter],
@@ -176,7 +176,7 @@ def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str
 #   - Correct order of parameters
 #   - Correct order of value tables
 def parseMeasure( measure : Measure ) -> None:
-    defineMeasureTypes( measure.params, measure.sharedTables, measure.valueTables )
+    defineMeasureTypes( measure )
     orderedParams, orderedValTables, orderedShaTables = getOrderedLists( measure )
     print( '\nParams:' )
     print( orderedParams )
@@ -205,7 +205,7 @@ def main( filename : str ) -> None:
         print( f'ERROR: couldn\'t read file - {filename}' )
     finally:
         measureFile.close()
-        print( f'\nfinished parsing through measure file - {filename}' )
+    print( f'\nfinished parsing through measure file - {filename}' )
 
 
 if __name__ == '__main__':

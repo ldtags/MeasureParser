@@ -3,38 +3,46 @@ class Version:
         self.version_string = version_string
 
 class SharedParameter:
-    def __init__( self, order : int, version : Version, labels : list[str] ):
-        self.order : int = order
-        self.version : Version = version
-        self.labels : list[str] = labels
+    def __init__( self, param ):
+        try:
+            self.order : int = param.order
+            self.version : Version = param.version
+            self.labels : list[str] = param.active_labels
+        except Exception as err:
+            print( f'parameter missing required fields - {err}' )
 
 class ValueTable:
-    def __init__( self, name : str, apiName : str, type : str, description : str, order : int, determinants : list, columns : list, values : list[str], refs : list ):
-        self.name : str = name
-        self.apiName : str = apiName
-        self.type : str = type
-        self.description : str = description
-        self.order : int = order
-        self.determinants : list = determinants
-        self.columns : list = columns
-        self.values : list[str] = values
-        self.refs : list = refs
+    def __init__( self, valueTable ):
+        try:
+            self.name : str = valueTable.name
+            self.apiName : str = valueTable.api_name
+            self.type : str = valueTable.type
+            self.description : str = valueTable.description
+            self.order : int = valueTable.order
+            self.determinants : list = valueTable.determinants
+            self.columns : list = valueTable.columns
+            self.values : list[str] = valueTable.values
+            self.refs : list = valueTable.reference_refs
+        except Exception as err:
+            print( f'value table missing required fields - {err}' )
 
 class SharedValueTable:
-    def __init__( self, order : int, version : Version ):
-        self.order : int = order
-        self.version : Version = version
+    def __init__( self, sharedTable ):
+        try:
+            self.order : int = sharedTable.order
+            self.version : Version = sharedTable.version
+        except Exception as err:
+            print( f'shared value table missing required fields - {err}' )
 
 class Measure:
     def __init__( self, measure ):
         try:
             self.owned_by_user : str = measure.owned_by_user
-            self.params : list[SharedParameter] = measure.shared_determinant_refs
-            self.sharedTables : list[SharedValueTable] = measure.shared_lookup_refs
-            self.valueTables : list[ValueTable] = measure.value_tables
+            self.params : list[SharedParameter] = list( map( lambda param : SharedParameter( param ), measure.shared_determinant_refs ) )
+            self.sharedTables : list[SharedValueTable] = list( map( lambda table : SharedValueTable( table ), measure.shared_lookup_refs ) )
+            self.valueTables : list[ValueTable] = list( map( lambda table : ValueTable( table ), measure.value_tables ) )
         except Exception as err:
             print( f'measure missing required fields - {err}' )
-            return None
 
     def containsParam( self, paramName : str ) -> bool:
         paramNames = map( lambda param : param.version.version_string.split( '-' )[0], self.params )
@@ -73,9 +81,8 @@ class Measure:
     # returns true if the measure is a DEER measure
     #   otherwise returns false
     def isDeerMeasure( self ) -> bool:
-        try:
-            version = self.getParam( 'version' )
-        except:
+        version = self.getParam( 'version' )
+        if version == None:
             print( 'measure is missing the version parameter' )
             return False
 
@@ -85,21 +92,18 @@ class Measure:
 
         return False
     
+
     def isWENMeasure( self ) -> bool:
-        wenParam = None
-        wenTable = None
-        try:
-            wenParam = self.getParam( 'waterMeasureType' )
-            wenTable = self.getSharedTable( 'waterEnergyIntensity' )
-        except:
+        wenParam = self.getParam( 'waterMeasureType' )
+        wenTable = self.getSharedTable( 'waterEnergyIntensity' )
+        if wenParam == None or wenTable == None:
             if ( wenParam == None ) ^ ( wenTable == None ):
                 print( 'WEN measure detected but required data is missing - ' \
                     + ('Water Energy Intensity Parameter' if wenTable \
                         else 'Water Energy Intensity Value Table') )
             return False
-
         return True
-    
+
 
     # Parameters:
     #   @params - a dict mapping all measure parameters to their respective names
@@ -110,9 +114,8 @@ class Measure:
     # returns true if any of the labels are found
     #   otherwise returns false
     def isDeemedDeliveryTypeMeasure( self ) -> bool:
-        try:
-            deliveryType = self.getParam( 'DelivType' )
-        except:
+        deliveryType = self.getParam( 'DelivType' )
+        if deliveryType == None:
             print( 'measure is incorrectly formatted' )
             return False
 
@@ -121,12 +124,11 @@ class Measure:
     
 
     def isFuelSubMeasure( self ) -> bool:
-        try:
-            measImpctType = self.getParam( 'MeasImpactType' )
-        except:
+        measImpctType = self.getParam( 'MeasImpactType' )
+        if measImpctType == None:
             print( 'measure is missing the MeasImpactType parameter' )
             return False
-
+            
         for label in measImpctType.labels:
             if 'FuelSub' in label:
                 return True
@@ -143,16 +145,16 @@ class Measure:
     # returns true if any of the param-specific sector defaults are in the NTGID labels
     #   otherwise returns false
     def isSectorDefaultMeasure( self ) -> bool:
-        try:
-            sectors = list( map( lambda sector : sector + '-Default', self.getParam( 'Sector' ).labels ) )
-            ntgIds = self.getParam( 'NTGID' ).labels
-        except:
+        sector = self.getParam( 'Sector' )
+        ntgId = self.getParam( 'NTGID' )
+        if sector == None or ntgId == None:
             print( 'measure is missing required parameters' )
             return False
 
+        sectors = list( map( lambda sector : sector + '-Default', sector.labels ) )
         for sector in sectors:
-            for ntgId in ntgIds:
-                if sector in ntgId:
+            for id in ntgId.labels:
+                if sector in id:
                     return True
 
         return False
@@ -167,9 +169,8 @@ class Measure:
     # returns true if the measure is a default GSIA measure
     #   otherwise returns false
     def isDefGSIAMeasure( self ) -> bool:
-        try:
-            version = self.getParam( 'GSIAID' )
-        except:
+        version = self.getParam( 'GSIAID' )
+        if version == None:
             print( 'measure is missing the GSIAID parameter' )
             return False
 
@@ -189,9 +190,8 @@ class Measure:
     # returns true if the measure application type is AOE or AR
     #   otherwise returns false
     def isAROrAOEMeasure( self ) -> bool:
-        try:
-            version = self.getParam( 'MeasAppType' )
-        except:
+        version = self.getParam( 'MeasAppType' )
+        if version == None:
             print( 'measure is missing the MeasAppType parameter' )
             return False
 
@@ -211,9 +211,8 @@ class Measure:
     # returns true if the measure application type is NC or NR
     #   otherwise returns false
     def isNCOrNRMeasure( self ) -> bool:
-        try:
-            version = self.getParam( 'MeasAppType' )
-        except:
+        version = self.getParam( 'MeasAppType' )
+        if version == None:
             print( 'measure is missing the MeasAppType parameter' )
             return False
 
