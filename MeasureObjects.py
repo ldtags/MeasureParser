@@ -4,14 +4,20 @@ except ImportError:
     from argparse import Namespace
 
 class Version:
-    def __init__( self, version_string : str ):
-        self.version_string = version_string
+    def __init__( self, version ):
+        try:
+            if version.version_string.index( '-' ) != -1:
+                self.version_string = version.version_string.split( '-' )[0]
+            else:
+                self.version_string = version.version_string
+        except:
+            print( 'version is formatted incorrectly' )
 
 class SharedParameter:
     def __init__( self, param ):
         try:
             self.order : int = param.order
-            self.version : Version = param.version
+            self.version : Version = Version( param.version )
             self.labels : list[str] = param.active_labels
         except Exception as err:
             print( f'parameter missing required fields - {err}' )
@@ -35,12 +41,12 @@ class SharedValueTable:
     def __init__( self, sharedTable ):
         try:
             self.order : int = sharedTable.order
-            self.version : Version = sharedTable.version
+            self.version : Version = Version( sharedTable.version )
         except Exception as err:
             print( f'shared value table missing required fields - {err}' )
 
 class Measure:
-    def __init__( self, measure : Namespace ):
+    def __init__( self, measure ):
         try:
             self.owner : str = measure.owned_by_user
             self.params : list[SharedParameter] = list( map( lambda param : SharedParameter( param ), measure.shared_determinant_refs ) )
@@ -50,19 +56,32 @@ class Measure:
             print( f'measure missing required fields - {err}' )
 
     def containsParam( self, paramName : str ) -> bool:
-        paramNames = map( lambda param : param.version.version_string.split( '-' )[0], self.params )
+        paramNames = map( lambda param : param.version.version_string, self.params )
         return paramName in paramNames
     
     def getParam( self, paramName : str ) -> SharedParameter:
         for param in self.params:
-            if param.version.version_string.split( '-' )[0] == paramName:
+            if param.version.version_string == paramName:
                 return param
         return None
     
-    def containsTable( self, tableName : str ) -> bool:
-        sharedTables = map( lambda table : table.version.version_string.split( '-' )[0], self.sharedTables )
+    def removeUnknownParams( self, paramNames : list[str] ) -> list[SharedParameter]:
+        unkownParams: list[SharedParameter] = []
+        for param in self.params:
+            if param.version.version_string not in paramNames:
+                unkownParams.append( param )
+
+        for param in unkownParams:
+            self.params.remove( param )
+
+        for i in range( 0, len( self.params ) ):
+            self.params[i].order = i + 1
+
+        return unkownParams
+    
+    def containsValueTable( self, tableName : str ) -> bool:
         valueTables = map( lambda table : table.apiName, self.valueTables )
-        return tableName in sharedTables or tableName in valueTables
+        return tableName in valueTables
     
     def getValueTable( self, tableName : str ) -> ValueTable:
         for table in self.valueTables:
@@ -70,12 +89,43 @@ class Measure:
                 return table
         return None
     
+    def removeUnkownValueTables( self, tableNames : list[str] ) -> list[ValueTable]:
+        unkownTables : list[ValueTable] = []
+        for table in self.valueTables:
+            if table.apiName not in tableNames:
+                unkownTables.append( table )
+
+        for table in unkownTables:
+            self.valueTables.remove( table )
+
+        for i in range( 0, len( self.valueTables ) ):
+            self.valueTables[i].order = i + 1
+
+        return unkownTables
+    
+    def containsSharedTable( self, tableName : str ) -> bool:
+        sharedTables = map( lambda table : table.version.version_string, self.sharedTables )
+        return tableName in sharedTables
+    
     def getSharedTable( self, tableName : str ) -> SharedValueTable:
         for table in self.sharedTables:
-            if table.version.version_string.split( '-' )[0] == tableName:
+            if table.version.version_string == tableName:
                 return table
         return None
     
+    def removeUnkownSharedTables( self, tableNames : list[str] ) -> list[SharedValueTable]:
+        unkownTables : list[SharedValueTable] = []
+        for table in self.sharedTables:
+            if table.version.version_string not in tableNames:
+                unkownTables.append( table )
+
+        for table in unkownTables:
+            self.sharedTables.remove( table )
+
+        for i in range( 0, len( self.sharedTables ) ):
+            self.sharedTables[i].order = i + 1
+
+        return unkownTables
 
     # Parameters:
     #   @params - a dict mapping all measure parameters to their respective names

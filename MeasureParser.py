@@ -1,6 +1,6 @@
 import json, sys
 import ParameterNames, ValueTableNames
-from MeasureObjects import SharedParameter, ValueTable, SharedValueTable, Measure
+from MeasureObjects import Measure, SharedParameter, SharedValueTable, ValueTable
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
@@ -43,10 +43,10 @@ def defineMeasureTypes( measure : Measure ) -> None:
 #   @tableNames - a list of table names to check the measures value tables against
 #
 # validates that all shared value tables represented in @tableNames are found in @sharedTables
-def validateSharedTableExistence( sharedTables : dict[str, SharedValueTable],
+def validateSharedTableExistence( measure : Measure,
                                   tableNames : list[str] ) -> None:
     for table in tableNames:
-        if table not in sharedTables:
+        if not measure.containsSharedTable( table ):
             print( f'MISSING SHARED TABLE - {table}' )
 
 
@@ -55,10 +55,10 @@ def validateSharedTableExistence( sharedTables : dict[str, SharedValueTable],
 #   @tableNames - a list of table names to check the measures value tables against
 #
 # validates that all value tables represented in @tableNames are found in @valueTables
-def validateTableExistence( valueTables : dict[str, ValueTable],
-                            tableNames : list[str] ) -> None:
+def validateValueTableExistence( measure : Measure,
+                                 tableNames : list[str] ) -> None:
     for table in tableNames:
-        if table not in valueTables:
+        if not measure.containsValueTable( table ):
             print( f'MISSING TABLE - {table}' )
 
 
@@ -67,25 +67,51 @@ def validateTableExistence( valueTables : dict[str, ValueTable],
 #   @paramNames - a list of parameter names to check the measure parameters against
 #
 # validates that all parameters represented in @paramNames are found in @sharedParams
-def validateParamExistence( sharedParams : dict[str, SharedParameter],
+def validateParamExistence( measure : Measure,
                             paramNames : list[str] ) -> None:
     for param in paramNames:
-        if param not in sharedParams:
+        if not measure.containsParam( param ):
             print( f'MISSING PARAM - {param}' )
 
 
-def validateParamOrder( sharedParams : dict[str, SharedParameter],
+def validateParamOrder( measure : Measure,
                         orderedParams : list[str] ) -> None:
-    params = list( sharedParams.values() )
-    for param in params:
-        if param.order != ( orderedParams.index( param.version ) + 1 ):
+    for param in measure.params:
+        if param.order != ( orderedParams.index( param.version.version_string ) + 1 ):
             print( 'parameters are out of order' )
             return None
+        
+
+def validateValueTableOrder( measure : Measure,
+                             orderedTables : list[str] ) -> None:
+    for table in measure.valueTables:
+        if table.order != ( orderedTables.index( table.apiName ) + 1 ):
+            print( 'non-shared value tables are out of order' )
+            return None
+        
+
+def validateSharedTableOrder( measure : Measure,
+                              orderedTables : list[str] ) -> None:
+    for table in measure.sharedTables:
+        if table.order != ( orderedTables.index( table.version.version_string ) + 1 ):
+            print( 'shared value tables are out of order' )
+            return None
+        
+
+def checkParams( measure: Measure,
+                 orderedParams: list[str] ) -> list[SharedParameter]:
+    unknown: list[SharedParameter] = []
+    for param in measure.params:
+        if param.version.version_string not in orderedParams:
+            unknown.append( param )
+
+    for param in unknown:
+        measure.params.remove( param )
 
 
 def filterInterParams( measure : Measure,
                        orderedParams : list[str] ) -> list[str]:
-    if measure.getParam( 'LightingType' ) == None:
+    if not measure.containsParam( 'LightingType' ):
         orderedParams.remove( 'LightingType' )
 
     return orderedParams
@@ -93,7 +119,7 @@ def filterInterParams( measure : Measure,
 
 def filterInterValueTables( measure : Measure,
                             orderedTables : list[str] ) -> list[str]:
-    if measure.getValueTable( 'IEApplicability' ) == None:
+    if not measure.containsValueTable( 'IEApplicability' ):
         orderedTables.remove( 'IEApplicability' )
 
     return orderedTables
@@ -101,16 +127,16 @@ def filterInterValueTables( measure : Measure,
 
 def filterInterSharedTables( measure : Measure,
                              orderedTables : list[str] ) -> list[str]:
-    if measure.getSharedTable( 'commercialInteractiveEffects' ) == None:
+    if not measure.containsSharedTable( 'commercialInteractiveEffects' ):
         orderedTables.remove( 'commercialInteractiveEffects' )
 
-    if measure.getSharedTable( 'residentialInteractiveEffects' ) == None:
+    if not measure.containsSharedTable( 'residentialInteractiveEffects' ):
         orderedTables.remove( 'residentialInteractiveEffects' )
 
     return orderedTables
 
 
-def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str]]:
+def getOrderedListTuple( measure : Measure ) -> tuple[list[str], list[str], list[str]]:
     orderedParams = list( ParameterNames.ALL_PARAMS.keys() )
     orderedValTables = list( ValueTableNames.ALL_VALUE_TABLES.keys() )
     orderedShaTables = list( ValueTableNames.ALL_SHARED_TABLES.keys() )
@@ -162,7 +188,7 @@ def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str
         orderedShaTables = filterInterSharedTables( measure, orderedShaTables )
         orderedValTables = filterInterValueTables( measure, orderedValTables )
 
-    return orderedParams, orderedValTables, orderedShaTables
+    return ( orderedParams, orderedValTables, orderedShaTables )
 
 
 # Parameters:
@@ -173,9 +199,10 @@ def getOrderedLists( measure : Measure ) -> tuple[list[str], list[str], list[str
 #   - Existence of required parameters and value tables (shared and non-shared)
 #   - Correct order of parameters
 #   - Correct order of value tables
-def parseMeasure( measure : Measure ) -> None:
+def parseMeasure( measure: Measure ) -> None:
     defineMeasureTypes( measure )
-    orderedParams, orderedValTables, orderedShaTables = getOrderedLists( measure )
+    ( orderedParams, orderedValTables, orderedShaTables ) = getOrderedListTuple( measure )
+
     print( '\nParams:' )
     print( orderedParams )
     print( '\nValue Tables:' )
@@ -183,13 +210,28 @@ def parseMeasure( measure : Measure ) -> None:
     print( '\nShared Tables:' )
     print( orderedShaTables )
 
-    # validateParamExistence( params, orderedParams )
-    # validateParamOrder( params, orderedParams )
+    print( '\nUnknown Parameters/Tables:' )
+    unkownParams = measure.removeUnknownParams( orderedParams )
+    print( '    Params: ', list( map( lambda param: param.version.version_string, unkownParams ) ) )
+    unknownValTables = measure.removeUnkownValueTables( orderedValTables )
+    print( '    Non-Shared Value Tables: ', list( map( lambda table: table.apiName, unknownValTables ) ) )
+    unknownShaTables = measure.removeUnkownSharedTables( orderedShaTables )
+    print( '    Shared Value Tables: ', list( map( lambda table: table.version.version_string, unknownShaTables ) ) )
+
+    print( '\nMissing Parameters/Tables:' )
+    validateParamExistence( measure, orderedParams )
+    validateValueTableExistence( measure, orderedValTables )
+    validateSharedTableExistence( measure, orderedShaTables )
+
+    print( '\nParameter/Table order:' )
+    validateParamOrder( measure, orderedParams )
+    validateValueTableOrder( measure, orderedValTables )
+    validateSharedTableOrder( measure, orderedShaTables )
 
 
 # Parameters:
 #   @filename - the name of a JSON measure file to be parsed
-def main( filename : str ) -> None:
+def main( filename: str ) -> None:
     print( f'\nstarting to parse measure file - {filename}\n' )
     try:
         measureFile = open( filename, 'r' )

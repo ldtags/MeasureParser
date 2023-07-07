@@ -18,6 +18,7 @@ ALL_SHARED_TABLES = {
     'GSIA_default': 'NGSIA',
     'EUL': 'REQ',
     'hostEulAndRul': 'ARAOE',
+    'netToGrossRatio': 'RES',
     'netToGrossRatioNonresidential': 'RES-NDEF',
     'netToGrossRatioResidential': 'RES-DEF',
     'waterEnergyIntensity': 'WEN',
