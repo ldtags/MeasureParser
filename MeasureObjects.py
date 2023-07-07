@@ -1,3 +1,12 @@
+from MeasureExceptions import (
+    RequiredParameterError,
+    VersionFormatError,
+    ParameterFormatError,
+    ValueTableFormatError,
+    SharedTableFormatError,
+    MeasureFormatError
+)
+
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
@@ -11,7 +20,7 @@ class Version:
             else:
                 self.version_string = version.version_string
         except:
-            print( 'version is formatted incorrectly' )
+            raise VersionFormatError()
 
 class SharedParameter:
     def __init__( self, param ):
@@ -138,8 +147,7 @@ class Measure:
     def hasDEERVersion( self ) -> bool:
         version = self.getParam( 'version' )
         if version == None:
-            print( 'measure is missing the version parameter' )
-            return False
+            raise RequiredParameterError( name='Version' )
 
         for label in version.labels:
             if 'DEER' in label:
@@ -153,9 +161,9 @@ class Measure:
         wenTable = self.getSharedTable( 'waterEnergyIntensity' )
         if wenParam == None or wenTable == None:
             if ( wenParam == None ) ^ ( wenTable == None ):
-                print( 'WEN measure detected but required data is missing - ' \
+                raise Exception( 'WEN measure detected but required data is missing - ' \
                     + ('Water Energy Intensity Parameter' if wenTable \
-                        else 'Water Energy Intensity Value Table') )
+                       else 'Water Energy Intensity Value Table') )
             return False
         return True
 
@@ -171,8 +179,7 @@ class Measure:
     def isDeemedDeliveryTypeMeasure( self ) -> bool:
         deliveryType = self.getParam( 'DelivType' )
         if deliveryType == None:
-            print( 'measure is incorrectly formatted' )
-            return False
+            raise RequiredParameterError( name='Delivery Type' )
 
         return 'DnDeemDI' in deliveryType.labels \
             or ( 'DnDeemed' in deliveryType.labels and 'UpDeemed' in deliveryType.labels )
@@ -181,8 +188,7 @@ class Measure:
     def isFuelSubMeasure( self ) -> bool:
         measImpctType = self.getParam( 'MeasImpactType' )
         if measImpctType == None:
-            print( 'measure is missing the MeasImpactType parameter' )
-            return False
+            raise RequiredParameterError( name='Measure Impact Type' )
             
         for label in measImpctType.labels:
             if 'FuelSub' in label:
@@ -201,10 +207,12 @@ class Measure:
     #   otherwise returns false
     def isSectorDefaultMeasure( self ) -> bool:
         sector = self.getParam( 'Sector' )
+        if sector == None:
+            raise RequiredParameterError( name='Sector' )
+
         ntgId = self.getParam( 'NTGID' )
-        if sector == None or ntgId == None:
-            print( 'measure is missing required parameters' )
-            return False
+        if ntgId == None:
+            raise RequiredParameterError( name='Net to Gross Ratio ID' )
 
         sectors = list( map( lambda sector : sector + '-Default', sector.labels ) )
         for sector in sectors:
@@ -218,8 +226,7 @@ class Measure:
     def isResDefaultMeasure( self ) -> bool:
         ntgId = self.getParam( 'NTGID' )
         if ntgId == None:
-            print( 'measure is missing the required NTGID parameter' )
-            return False
+            raise RequiredParameterError( name='Net to Gross Ratio ID' )
         
         for id in ntgId.labels:
             if 'Res-Default>2' in id:
@@ -238,8 +245,7 @@ class Measure:
     def isDefGSIAMeasure( self ) -> bool:
         version = self.getParam( 'GSIAID' )
         if version == None:
-            print( 'measure is missing the GSIAID parameter' )
-            return False
+            raise RequiredParameterError( name='GSIA ID' )
 
         for label in version.labels:
             if 'Def-GSIA' in label:

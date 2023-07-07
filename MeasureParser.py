@@ -143,7 +143,9 @@ def getOrderedListTuple( measure : Measure ) -> tuple[list[str], list[str], list
 
     # TODO: add custom exception to measure type checking methods and handle it here
     if not measure.hasDEERVersion():
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams ) )
+        orderedParams = list( 
+            filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams )
+        )
         orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedValTables ) )
         orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'DEER', orderedShaTables ) )
 
@@ -245,6 +247,8 @@ def main( filename: str ) -> None:
         print( f'ERROR: couldn\'t read file - {filename}' )
     finally:
         measureFile.close()
+        
+    
     print( f'\nfinished parsing measure file - {filename}' )
 
 
