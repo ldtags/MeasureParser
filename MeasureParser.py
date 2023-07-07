@@ -1,5 +1,7 @@
-import json, sys
-import ParameterNames, ValueTableNames
+import sys
+import json
+import ParameterNames
+import ValueTableNames
 from MeasureObjects import Measure, SharedParameter, SharedValueTable, ValueTable
 try:
     from types import SimpleNamespace as Namespace
@@ -135,25 +137,41 @@ def filterInterSharedTables( measure : Measure,
 
     return orderedTables
 
+"""Return a three-tuple containing ordered lists with ty
+        1.  (shared/non-shared)
+        2. 
+docstring
+"""
 
-def getOrderedListTuple( measure : Measure ) -> tuple[list[str], list[str], list[str]]:
-    orderedParams = list( ParameterNames.ALL_PARAMS.keys() )
-    orderedValTables = list( ValueTableNames.ALL_VALUE_TABLES.keys() )
-    orderedShaTables = list( ValueTableNames.ALL_SHARED_TABLES.keys() )
+def filter_list(target_list: list[str], )
+def getOrderedListTuple(measure: Measure) -> tuple[list[str], list[str], list[str]]:
+    orderedParams = list(ParameterNames.ALL_PARAMS.keys())
+    orderedValTables = list(ValueTableNames.ALL_VALUE_TABLES.keys())
+    orderedShaTables = list(ValueTableNames.ALL_SHARED_TABLES.keys())
 
     # TODO: add custom exception to measure type checking methods and handle it here
     if not measure.hasDEERVersion():
-        orderedParams = list( 
-            filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER', orderedParams )
-        )
-        orderedValTables = list( filter( lambda table : ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER', orderedValTables ) )
-        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'DEER', orderedShaTables ) )
+        orderedParams = list(
+            filter(lambda param: ParameterNames.ALL_PARAMS[param] != 'DEER',
+                   orderedParams))
+        orderedValTables = list(
+            filter(lambda table: ValueTableNames.ALL_VALUE_TABLES[table] != 'DEER',
+                   orderedValTables))
+        orderedShaTables = list(
+            filter(lambda table: ValueTableNames.ALL_SHARED_TABLES[table] != 'DEER',
+                   orderedShaTables))
 
     if not measure.isDefGSIAMeasure():
-        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'NGSIA', orderedShaTables ) )
+        orderedShaTables = list(
+            filter(lambda table: ValueTableNames.ALL_SHARED_TABLES[table] != 'NGSIA',
+                   orderedShaTables))
     else:
-        orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA', orderedParams ) )
-        orderedShaTables = list( filter( lambda table : ValueTableNames.ALL_SHARED_TABLES[table] != 'GSIA', orderedShaTables ) )
+        orderedParams = list(
+            filter(lambda param: ParameterNames.ALL_PARAMS[param] != 'NGSIA',
+                   orderedParams))
+        orderedShaTables = list(
+            filter(lambda table: ValueTableNames.ALL_SHARED_TABLES[table] != 'GSIA',
+                   orderedShaTables))
 
     if not measure.isAROrAOEMeasure():
         orderedParams = list( filter( lambda param: ParameterNames.ALL_PARAMS[param] != 'MAT', orderedParams ) )
@@ -248,6 +266,10 @@ def main( filename: str ) -> None:
     finally:
         measureFile.close()
         
+    
+    with open( filename, 'r' ) as measureFile, \
+         open(  )
+    
     
     print( f'\nfinished parsing measure file - {filename}' )
 
