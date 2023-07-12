@@ -26,7 +26,7 @@ class SharedParameter:
     def __init__(self, param):
         try:
             self.order: int = param.order
-            self.version: Version = Version( param.version )
+            self.version: Version = Version(param.version)
             self.labels: list[str] = param.active_labels
         except:
             raise ParameterFormatError()
