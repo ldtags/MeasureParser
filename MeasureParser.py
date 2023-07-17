@@ -28,7 +28,7 @@ def define_measure_types(measure: Measure) -> None:
     if measure.is_def_sector():
         print('is a sector default measure')
 
-    if measure.is_deeemed():
+    if measure.is_deemed():
         print('is a deemed delivery type measure')
 
     if measure.is_WEN():
