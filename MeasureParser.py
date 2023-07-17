@@ -12,32 +12,32 @@ except ImportError:
 
 # defines the type of measure that the given measure satisfies
 # returns nothing and does not modify any data, use for debugging
-def defineMeasureTypes(measure: Measure) -> None:
-    if measure.hasDEERVersion():
+def define_measure_types(measure: Measure) -> None:
+    if measure.is_DEER():
         print('is DEER measure')
 
-    if measure.isAROrAOEMeasure():
+    if measure.is_AR_or_AOE():
         print('MAT = AR and/or AOE')
 
-    if measure.isNCOrNRMeasure():
+    if measure.is_NC_or_NR():
         print('MAT = NC and/or NR')
 
-    if measure.isDefGSIAMeasure():
+    if measure.is_def_GSIA():
         print('is a default GSIA measure')
 
-    if measure.isSectorDefaultMeasure():
+    if measure.is_def_sector():
         print('is a sector default measure')
 
-    if measure.isDeemedDeliveryTypeMeasure():
+    if measure.is_deeemed():
         print('is a deemed delivery type measure')
 
-    if measure.isWENMeasure():
+    if measure.is_WEN():
         print('is a WEN measure')
 
-    if measure.isFuelSubMeasure():
+    if measure.is_fuel_sub():
         print('is fuel substitution measure')
 
-    if measure.isInteractiveMeasure():
+    if measure.is_interactive():
         print('is an interactive measure')
 
 
@@ -46,10 +46,10 @@ def defineMeasureTypes(measure: Measure) -> None:
 #   @tableNames - a list of table names to check the measures value tables against
 #
 # validates that all shared value tables represented in @tableNames are found in @sharedTables
-def validateSharedTableExistence(measure: Measure,
-                                 tableNames: list[str]) -> None:
+def validate_shared_table_existence(measure: Measure,
+                                    tableNames: list[str]) -> None:
     for table in tableNames:
-        if not measure.containsSharedTable(table):
+        if not measure.contains_shared_table(table):
             print(f'MISSING SHARED TABLE - {table}')
 
 
@@ -58,10 +58,10 @@ def validateSharedTableExistence(measure: Measure,
 #   @tableNames - a list of table names to check the measures value tables against
 #
 # validates that all value tables represented in @tableNames are found in @valueTables
-def validateValueTableExistence(measure: Measure,
-                                tableNames: list[str]) -> None:
+def validate_value_table_existence(measure: Measure,
+                                   tableNames: list[str]) -> None:
     for table in tableNames:
-        if not measure.containsValueTable(table):
+        if not measure.contains_value_table(table):
             print(f'MISSING TABLE - {table}')
 
 
@@ -73,185 +73,150 @@ def validateValueTableExistence(measure: Measure,
 #
 # validates that all parameters represented in @paramNames are
 #      found in @sharedParams
-def validateParamExistence(measure: Measure,
-                           paramNames: list[str]) -> None:
+def validate_param_existence(measure: Measure,
+                             paramNames: list[str]) -> None:
     for param in paramNames:
-        if not measure.containsParam(param):
+        if not measure.contains_param(param):
             print(f'MISSING PARAM - {param}')
 
 
-def validateParamOrder(measure: Measure,
-                       orderedParams: list[str]) -> None:
+def validate_param_order(measure: Measure,
+                         ordered_params: list[str]) -> None:
     for param in measure.params:
+        index = ordered_params.index(param.version.version_string)
         if param.order \
-                != (orderedParams.index(param.version.version_string) + 1):
+                != (index + 1):
             print('parameters are out of order')
             return None
         
 
-def validateValueTableOrder(measure: Measure,
-                            orderedTables: list[str]) -> None:
+def validate_value_table_order(measure: Measure,
+                               orderedTables: list[str]) -> None:
     for table in measure.valueTables:
         if table.order != (orderedTables.index(table.apiName) + 1):
             print('non-shared value tables are out of order')
             return None
         
 
-def validateSharedTableOrder(measure: Measure,
-                             orderedTables: list[str] ) -> None:
+def validate_shared_table_order(measure: Measure,
+                                orderedTables: list[str] ) -> None:
     for table in measure.sharedTables:
+        index = orderedTables.index(table.version.version_string)
         if table.order \
-                != (orderedTables.index(table.version.version_string) + 1):
+                != (index + 1):
             print('shared value tables are out of order')
             return None
         
 
-def checkParams(measure: Measure,
-                orderedParams: list[str]) -> list[SharedParameter]:
+def check_params(measure: Measure,
+                 ordered_params: list[str]) -> list[SharedParameter]:
     unknown: list[SharedParameter] = []
     for param in measure.params:
-        if param.version.version_string not in orderedParams:
+        if param.version.version_string not in ordered_params:
             unknown.append(param)
 
     for param in unknown:
         measure.params.remove(param)
 
 
-def filterInterParams(measure: Measure,
-                      orderedParams: list[str]) -> list[str]:
-    if not measure.containsParam('LightingType'):
-        orderedParams.remove('LightingType')
+def filter_inter_params(measure: Measure,
+                        ordered_params: dict[str, str]
+                       ) -> dict[str, str]:
+    if not measure.contains_param('LightingType'):
+        del ordered_params['LightingType']
 
-    return orderedParams
-
-
-def filterInterValueTables(measure: Measure,
-                           orderedTables: list[str]) -> list[str]:
-    if not measure.containsValueTable('IEApplicability'):
-        orderedTables.remove('IEApplicability')
-
-    return orderedTables
+    return ordered_params
 
 
-def filterInterSharedTables(measure: Measure,
-                            orderedTables: list[str]) -> list[str]:
-    if not measure.containsSharedTable('commercialInteractiveEffects'):
-        orderedTables.remove('commercialInteractiveEffects')
-
-    if not measure.containsSharedTable('residentialInteractiveEffects'):
-        orderedTables.remove('residentialInteractiveEffects')
+def filter_inter_value_tables(measure: Measure,
+                              orderedTables: dict[str, str]
+                             ) -> dict[str, str]:
+    if not measure.contains_value_table('IEApplicability'):
+        del orderedTables['IEApplicability']
 
     return orderedTables
 
-def filter_list(ordered_list: list[str],
-                all_items: list[str],
-                flag: str) -> list[str]:
-    return list(filter(lambda item: all_items[item] != flag,
-                       ordered_list))
 
-"""Return a three-tuple containing ordered lists with ty
-        1.  (shared/non-shared)
-        2. 
-docstring
-"""
+def filter_inter_shared_tables(measure: Measure,
+                            orderedTables: dict[str, str]
+                           ) -> dict[str, str]:
+    if not measure.contains_shared_table('commercialInteractiveEffects'):
+        del orderedTables['commercialInteractiveEffects']
+
+    if not measure.contains_shared_table('residentialInteractiveEffects'):
+        del orderedTables['residentialInteractiveEffects']
+
+    return orderedTables
+
+def filter_dict(ordered_list: dict[str, str],
+                flag: str) -> dict[str, str]:
+    return dict(filter(lambda item: ordered_list[item] != flag,
+                       ordered_list.items()))
+
 def get_ordered_list_tuple(measure: Measure
-                       ) -> tuple[list[str], list[str], list[str]]:
-    orderedParams = list(ParameterNames.ALL_PARAMS.keys())
-    orderedValTables = list(ValueTableNames.ALL_VALUE_TABLES.keys())
-    orderedShaTables = list(ValueTableNames.ALL_SHARED_TABLES.keys())
+                          ) -> tuple[list[str], list[str], list[str]]:
+    ordered_params = ParameterNames.ALL_PARAMS
+    ordered_val_tables = ValueTableNames.ALL_VALUE_TABLES
+    ordered_sha_tables = ValueTableNames.ALL_SHARED_TABLES
 
     try:
-        if not measure.hasDEERVersion():
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'DEER')
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'DEER')
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'DEER')
+        if not measure.is_DEER():
+            ordered_params = filter_dict(ordered_params, 'DEER')
+            ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'DEER')
 
-        if not measure.isDefGSIAMeasure():
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'NGSIA')
+        if not measure.is_def_GSIA():
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'NGSIA')
         else:
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'NGSIA')
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'GSIA')
+            ordered_params = filter_dict(ordered_params, 'NGSIA')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'GSIA')
 
-        if not measure.isAROrAOEMeasure():
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'MAT')
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'ARAOE')
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'NRNC+ARAOE')
+        if not measure.is_AR_or_AOE():
+            ordered_params = filter_dict(ordered_params, 'MAT')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'ARAOE')
+            ordered_val_tables \
+                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
-        if not measure.isNCOrNRMeasure():
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'NRNC+ARAOE')
+        if not measure.is_NC_or_NR():
+            ordered_val_tables \
+                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
-        if not measure.isWENMeasure():
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'WEN')
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'WEN')
+        if not measure.is_WEN():
+            ordered_params = filter_dict(ordered_params, 'WEN')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'WEN')
 
-        if measure.isSectorDefaultMeasure():
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'NTG')
+        if measure.is_def_sector():
+            ordered_params = filter_dict(ordered_params, 'NTG')
 
-        if measure.isResDefaultMeasure():
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'RES_NDEF')
+        if measure.is_def_res():
+            ordered_sha_tables \
+                = filter_dict(ordered_sha_tables, 'RES_NDEF')
         else:
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'RES-DEF')
+            ordered_sha_tables \
+                = filter_dict(ordered_sha_tables, 'RES-DEF')
 
-        if not measure.isDeemedDeliveryTypeMeasure():
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'DEEM')
+        if not measure.is_deemed():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
 
-        if not measure.isFuelSubMeasure():
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'FUEL')
+        if not measure.is_fuel_sub():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
 
-        if not measure.isInteractiveMeasure():
-            orderedParams = filter_list(orderedParams,
-                                        ParameterNames.ALL_PARAMS,
-                                        'INTER')
-            orderedShaTables = filter_list(orderedShaTables,
-                                           ValueTableNames.ALL_SHARED_TABLES,
-                                           'INTER')
-            orderedValTables = filter_list(orderedValTables,
-                                           ValueTableNames.ALL_VALUE_TABLES,
-                                           'INTER')
+        if not measure.is_interactive():
+            ordered_params = filter_dict(ordered_params, 'INTER')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'INTER')
+            ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
         else:
-            orderedParams = filterInterParams(measure, orderedParams)
-            orderedShaTables \
-                = filterInterSharedTables(measure, orderedShaTables)
-            orderedValTables \
-                = filterInterValueTables(measure, orderedValTables)
+            ordered_params = filter_inter_params(measure, ordered_params)
+            ordered_sha_tables \
+                = filter_inter_shared_tables(measure, ordered_sha_tables)
+            ordered_val_tables \
+                = filter_inter_value_tables(measure, ordered_val_tables)
     except Exception as err:
         print(err)
 
-    return (orderedParams, orderedValTables, orderedShaTables)
+    return (list(ordered_params.keys()),
+            list(ordered_val_tables.keys()),
+            list(ordered_sha_tables.keys()))
 
 
 # Parameters:
@@ -262,41 +227,41 @@ def get_ordered_list_tuple(measure: Measure
 #   - Existence of required parameters and value tables (shared and non-shared)
 #   - Correct order of parameters
 #   - Correct order of value tables
-def parseMeasure(measure: Measure, out: Optional[TextIO]) -> None:
-    (orderedParams, orderedValTables, orderedShaTables) \
+def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
+    (ordered_params, ordered_val_tables, ordered_sha_tables) \
         = get_ordered_list_tuple(measure)
 
-    defineMeasureTypes(measure)
+    define_measure_types(measure)
     print('\nParams:')
-    print(orderedParams)
+    print(ordered_params)
     print('\nValue Tables:')
-    print(orderedValTables)
+    print(ordered_val_tables)
     print('\nShared Tables:')
-    print(orderedShaTables)
+    print(ordered_sha_tables)
 
     print('\nUnknown Parameters/Tables:', file=out)
     print('    Params: ', list(
         map(lambda param: param.version.version_string,
-            measure.removeUnknownParams(orderedParams))),
+            measure.remove_unknown_params(ordered_params))),
         file=out)
     print('    Non-Shared Value Tables: ', list(
         map(lambda table: table.apiName,
-            measure.removeUnkownValueTables(orderedValTables))),
+            measure.remove_unknown_value_tables(ordered_val_tables))),
         file=out)
     print('    Shared Value Tables: ', list(
         map(lambda table: table.version.version_string,
-            measure.removeUnkownSharedTables(orderedShaTables))),
+            measure.remove_unknown_shared_tables(ordered_sha_tables))),
         file=out)
 
     print('\nMissing Parameters/Tables:')
-    validateParamExistence(measure, orderedParams)
-    validateValueTableExistence(measure, orderedValTables)
-    validateSharedTableExistence(measure, orderedShaTables)
+    validate_param_existence(measure, ordered_params)
+    validate_value_table_existence(measure, ordered_val_tables)
+    validate_shared_table_existence(measure, ordered_sha_tables)
 
     print('\nParameter/Table order:')
-    validateParamOrder(measure, orderedParams)
-    validateValueTableOrder(measure, orderedValTables)
-    validateSharedTableOrder(measure, orderedShaTables)
+    validate_param_order(measure, ordered_params)
+    validate_value_table_order(measure, ordered_val_tables)
+    validate_shared_table_order(measure, ordered_sha_tables)
 
 
 # Parameters:
@@ -309,7 +274,7 @@ def main(filename: str) -> None:
         measure: Measure = Measure(
             json.loads(measureFile.read(),
                        object_hook=lambda d: Namespace(**d)))
-        parseMeasure(measure, out)
+        parse_measure(measure, out)
 
     print(f'\nfinished parsing measure file - {filename}')
 

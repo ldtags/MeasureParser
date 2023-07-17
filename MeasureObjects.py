@@ -16,7 +16,8 @@ class Version:
     def __init__(self, version):
         try:
             if version.version_string.index('-') != -1:
-                self.version_string = version.version_string.split('-')[0]
+                self.version_string \
+                    = version.version_string.split('-')[0]
             else:
                 self.version_string = version.version_string
         except:
@@ -70,18 +71,18 @@ class Measure:
         except:
             raise MeasureFormatError()
 
-    def containsParam(self, paramName: str) -> bool:
+    def contains_param(self, paramName: str) -> bool:
         paramNames = map(lambda param: param.version.version_string,
                          self.params)
         return paramName in paramNames
     
-    def getParam(self, paramName : str) -> SharedParameter:
+    def get_param(self, paramName : str) -> SharedParameter:
         for param in self.params:
             if param.version.version_string == paramName:
                 return param
         return None
     
-    def removeUnknownParams(self,
+    def remove_unknown_params(self,
                             paramNames : list[str]
                            ) -> list[SharedParameter]:
         unkownParams: list[SharedParameter] = []
@@ -97,17 +98,17 @@ class Measure:
 
         return unkownParams
     
-    def containsValueTable(self, tableName: str) -> bool:
+    def contains_value_table(self, tableName: str) -> bool:
         valueTables = map(lambda table: table.apiName, self.valueTables)
         return tableName in valueTables
     
-    def getValueTable(self, tableName: str) -> ValueTable:
+    def get_value_table(self, tableName: str) -> ValueTable:
         for table in self.valueTables:
             if table.apiName == tableName:
                 return table
         return None
     
-    def removeUnkownValueTables(self,
+    def remove_unknown_value_tables(self,
                                 tableNames : list[str]
                                ) -> list[ValueTable]:
         unkownTables : list[ValueTable] = []
@@ -123,20 +124,20 @@ class Measure:
 
         return unkownTables
     
-    def containsSharedTable(self, tableName : str) -> bool:
+    def contains_shared_table(self, tableName : str) -> bool:
         sharedTables = map(lambda table: table.version.version_string,
                            self.sharedTables)
         return tableName in sharedTables
     
-    def getSharedTable(self, tableName : str) -> SharedValueTable:
+    def get_shared_table(self, tableName : str) -> SharedValueTable:
         for table in self.sharedTables:
             if table.version.version_string == tableName:
                 return table
         return None
     
-    def removeUnkownSharedTables(self,
-                                 tableNames : list[str]
-                                ) -> list[SharedValueTable]:
+    def remove_unknown_shared_tables(self,
+                                    tableNames : list[str]
+                                   ) -> list[SharedValueTable]:
         unkownTables: list[SharedValueTable] = []
         for table in self.sharedTables:
             if table.version.version_string not in tableNames:
@@ -159,8 +160,8 @@ class Measure:
     #
     # returns true if the measure is a DEER measure
     #   otherwise returns false
-    def hasDEERVersion(self) -> bool:
-        version = self.getParam('version')
+    def is_DEER(self) -> bool:
+        version = self.get_param('version')
         if version == None:
             raise RequiredParameterError(name='Version')
 
@@ -171,9 +172,9 @@ class Measure:
         return False
     
 
-    def isWENMeasure(self) -> bool:
-        wenParam = self.getParam('waterMeasureType')
-        wenTable = self.getSharedTable('waterEnergyIntensity')
+    def is_WEN(self) -> bool:
+        wenParam = self.get_param('waterMeasureType')
+        wenTable = self.get_shared_table('waterEnergyIntensity')
         if wenParam == None or wenTable == None:
             if (wenParam == None) ^ (wenTable == None):
                 raise Exception(
@@ -194,8 +195,8 @@ class Measure:
     #
     # returns true if any of the labels are found
     #   otherwise returns false
-    def isDeemedDeliveryTypeMeasure(self) -> bool:
-        deliveryType = self.getParam('DelivType')
+    def is_deemed(self) -> bool:
+        deliveryType = self.get_param('DelivType')
         if deliveryType == None:
             raise RequiredParameterError(name='Delivery Type')
 
@@ -204,8 +205,8 @@ class Measure:
                 and 'UpDeemed' in deliveryType.labels)
     
 
-    def isFuelSubMeasure(self) -> bool:
-        measImpctType = self.getParam('MeasImpactType')
+    def is_fuel_sub(self) -> bool:
+        measImpctType = self.get_param('MeasImpactType')
         if measImpctType == None:
             raise RequiredParameterError(name='Measure Impact Type')
             
@@ -225,12 +226,12 @@ class Measure:
     #
     # returns true if any of the param-specific sector defaults are
     #   in the NTGID labels, otherwise returns false
-    def isSectorDefaultMeasure(self) -> bool:
-        sector = self.getParam('Sector')
+    def is_def_sector(self) -> bool:
+        sector = self.get_param('Sector')
         if sector == None:
             raise RequiredParameterError(name='Sector')
 
-        ntgId = self.getParam('NTGID')
+        ntgId = self.get_param('NTGID')
         if ntgId == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
@@ -244,8 +245,8 @@ class Measure:
         return False
     
 
-    def isResDefaultMeasure(self) -> bool:
-        ntgId = self.getParam('NTGID')
+    def is_def_res(self) -> bool:
+        ntgId = self.get_param('NTGID')
         if ntgId == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
         
@@ -264,8 +265,8 @@ class Measure:
     #
     # returns true if the measure is a default GSIA measure
     #   otherwise returns false
-    def isDefGSIAMeasure(self) -> bool:
-        version = self.getParam('GSIAID')
+    def is_def_GSIA(self) -> bool:
+        version = self.get_param('GSIAID')
         if version == None:
             raise RequiredParameterError(name='GSIA ID')
 
@@ -285,8 +286,8 @@ class Measure:
     #
     # returns true if the measure application type is AOE or AR
     #   otherwise returns false
-    def isAROrAOEMeasure(self) -> bool:
-        version = self.getParam('MeasAppType')
+    def is_AR_or_AOE(self) -> bool:
+        version = self.get_param('MeasAppType')
         if version == None:
             raise RequiredParameterError(name='Measure Application Type')
 
@@ -306,8 +307,8 @@ class Measure:
     #
     # returns true if the measure application type is NC or NR
     #   otherwise returns false
-    def isNCOrNRMeasure(self) -> bool:
-        version = self.getParam('MeasAppType')
+    def is_NC_or_NR(self) -> bool:
+        version = self.get_param('MeasAppType')
         if version == None:
             raise RequiredParameterError(name='Measure Application Type')
 
@@ -318,12 +319,12 @@ class Measure:
         return False
     
 
-    def isInteractiveMeasure(self) -> bool:
-        lightingType = self.getParam('LightingType')
-        interactiveEffctApp = self.getValueTable('IEApplicability')
-        commercialEffects = self.getSharedTable(
+    def is_interactive(self) -> bool:
+        lightingType = self.get_param('LightingType')
+        interactiveEffctApp = self.get_value_table('IEApplicability')
+        commercialEffects = self.get_shared_table(
             'commercialInteractiveEffects')
-        residentialEffects = self.getSharedTable(
+        residentialEffects = self.get_shared_table(
             'residentialInteractiveEffects')
 
         if lightingType and (commercialEffects or residentialEffects):
