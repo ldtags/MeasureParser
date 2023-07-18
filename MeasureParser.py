@@ -2,7 +2,7 @@ import sys
 import json
 import ParameterNames
 import ValueTableNames
-from MeasureObjects import Measure, SharedParameter, SharedValueTable, ValueTable
+from MeasureObjects import Measure, SharedParameter
 from typing import Optional, TextIO
 try:
     from types import SimpleNamespace as Namespace
@@ -96,7 +96,7 @@ def validate_value_table_order(measure: Measure,
         if table.order != (ordered_tables.index(table.api_name) + 1):
             print('non-shared value tables are out of order')
             return None
-        
+
 
 def validate_shared_table_order(measure: Measure,
                                 ordered_tables: list[str] ) -> None:
@@ -150,8 +150,7 @@ def filter_inter_shared_tables(measure: Measure,
 
 def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
-    return dict(filter(lambda item: ordered_list[item] != flag,
-                       ordered_list.items()))
+    return {key:val for (key, val) in ordered_list.items() if flag}
 
 def get_ordered_list_tuple(measure: Measure
                           ) -> tuple[list[str], list[str], list[str]]:
@@ -212,7 +211,8 @@ def get_ordered_list_tuple(measure: Measure
             ordered_val_tables \
                 = filter_inter_value_tables(measure, ordered_val_tables)
     except Exception as err:
-        print(err)
+        print('ERR: ', err)
+        return None
 
     return (list(ordered_params.keys()),
             list(ordered_val_tables.keys()),
@@ -253,24 +253,29 @@ def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
             measure.remove_unknown_shared_tables(ordered_sha_tables))),
         file=out)
 
-    print('\nMissing Parameters/Tables:')
-    validate_param_existence(measure, ordered_params)
-    validate_value_table_existence(measure, ordered_val_tables)
-    validate_shared_table_existence(measure, ordered_sha_tables)
+    # print('\nMissing Parameters/Tables:')
+    # validate_param_existence(measure, ordered_params)
+    # validate_value_table_existence(measure, ordered_val_tables)
+    # validate_shared_table_existence(measure, ordered_sha_tables)
 
-    print('\nParameter/Table order:')
-    validate_param_order(measure, ordered_params)
-    validate_value_table_order(measure, ordered_val_tables)
-    validate_shared_table_order(measure, ordered_sha_tables)
+    # print('\nParameter/Table order:')
+    # validate_param_order(measure, ordered_params)
+    # validate_value_table_order(measure, ordered_val_tables)
+    # validate_shared_table_order(measure, ordered_sha_tables)
 
 
 # Parameters:
 #   @filename - the name of a JSON measure file to be parsed
-def main(filename: str) -> None:
+def main(args: list[str]) -> None:
+    flags = list(filter(lambda arg: arg[0] == '-', args))
+    args.remove(flags)
+    filename = args[1]
+
     print(f'\nstarting to parse measure file - {filename}\n')
-    
-    with open(filename, 'r') as measureFile, \
-         open('out.txt', 'w+') as out:
+
+    with open(filename, 'r') as measureFile:
+        if '-console' not in flags: 
+            out = open('out.txt', 'w+')
         measure: Measure = Measure(
             json.loads(measureFile.read(),
                        object_hook=lambda d: Namespace(**d)))
@@ -280,4 +285,4 @@ def main(filename: str) -> None:
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv)
