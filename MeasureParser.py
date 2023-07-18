@@ -54,10 +54,10 @@ def validate_shared_table_existence(measure: Measure,
 
 
 # Parameters:
-#   @valueTables - a dict mapping all value tables to their respective api_name
+#   @value_tables - a dict mapping all value tables to their respective api_name
 #   @tableNames - a list of table names to check the measures value tables against
 #
-# validates that all value tables represented in @tableNames are found in @valueTables
+# validates that all value tables represented in @tableNames are found in @value_tables
 def validate_value_table_existence(measure: Measure,
                                    tableNames: list[str]) -> None:
     for table in tableNames:
@@ -88,25 +88,25 @@ def validate_param_order(measure: Measure,
                 != (index + 1):
             print('parameters are out of order')
             return None
-        
+
 
 def validate_value_table_order(measure: Measure,
-                               orderedTables: list[str]) -> None:
-    for table in measure.valueTables:
-        if table.order != (orderedTables.index(table.apiName) + 1):
+                               ordered_tables: list[str]) -> None:
+    for table in measure.value_tables:
+        if table.order != (ordered_tables.index(table.api_name) + 1):
             print('non-shared value tables are out of order')
             return None
         
 
 def validate_shared_table_order(measure: Measure,
-                                orderedTables: list[str] ) -> None:
-    for table in measure.sharedTables:
-        index = orderedTables.index(table.version.version_string)
+                                ordered_tables: list[str] ) -> None:
+    for table in measure.shared_tables:
+        index = ordered_tables.index(table.version.version_string)
         if table.order \
                 != (index + 1):
             print('shared value tables are out of order')
             return None
-        
+
 
 def check_params(measure: Measure,
                  ordered_params: list[str]) -> list[SharedParameter]:
@@ -129,24 +129,24 @@ def filter_inter_params(measure: Measure,
 
 
 def filter_inter_value_tables(measure: Measure,
-                              orderedTables: dict[str, str]
+                              ordered_tables: dict[str, str]
                              ) -> dict[str, str]:
     if not measure.contains_value_table('IEApplicability'):
-        del orderedTables['IEApplicability']
+        del ordered_tables['IEApplicability']
 
-    return orderedTables
+    return ordered_tables
 
 
 def filter_inter_shared_tables(measure: Measure,
-                            orderedTables: dict[str, str]
-                           ) -> dict[str, str]:
+                               ordered_tables: dict[str, str]
+                              ) -> dict[str, str]:
     if not measure.contains_shared_table('commercialInteractiveEffects'):
-        del orderedTables['commercialInteractiveEffects']
+        del ordered_tables['commercialInteractiveEffects']
 
     if not measure.contains_shared_table('residentialInteractiveEffects'):
-        del orderedTables['residentialInteractiveEffects']
+        del ordered_tables['residentialInteractiveEffects']
 
-    return orderedTables
+    return ordered_tables
 
 def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
@@ -245,7 +245,7 @@ def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
             measure.remove_unknown_params(ordered_params))),
         file=out)
     print('    Non-Shared Value Tables: ', list(
-        map(lambda table: table.apiName,
+        map(lambda table: table.api_name,
             measure.remove_unknown_value_tables(ordered_val_tables))),
         file=out)
     print('    Shared Value Tables: ', list(
