@@ -12,6 +12,16 @@ try:
 except ImportError:
     from argparse import Namespace
 
+class Column:
+    def __init__(self, column):
+        try:
+            self.name: str = column.name
+            self.api_name: str = column.api_name
+            self.unit: str = column.unit
+            self.reference_refs: list = column.reference_refs
+        except:
+            raise Exception()
+
 class Version:
     def __init__(self, version):
         try:
@@ -40,7 +50,9 @@ class ValueTable:
             self.description: str = valueTable.description
             self.order: int = valueTable.order
             self.determinants: list = valueTable.determinants
-            self.columns: list = valueTable.columns
+            self.columns: list[Column] = list(
+                map(lambda column: Column(column),
+                    valueTable.columns))
             self.values: list[str] = valueTable.values
             self.refs: list = valueTable.reference_refs
         except:

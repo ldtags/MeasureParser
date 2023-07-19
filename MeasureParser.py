@@ -41,16 +41,28 @@ def define_measure_types(measure: Measure) -> None:
         print('is an interactive measure')
 
 
+def print_value_tables(measure: Measure, out: Optional[TextIO]) -> None:
+    for table in measure.value_tables:
+        print(f'\tTable Name - {table.name}', file=out)
+        print(f'\tAPI Name - {table.api_name}', file=out)
+        print('\tColumns:', file=out)
+        for column in table.columns:
+            print(f'\t\tColumn Name - {column.name}', file=out)
+            print(f'\t\t\tAPI Name - {column.api_name}', file=out)
+        print(file=out)
+            
+
 # Parameters:
 #   @sharedTables - a dict mapping all value tables to their respective api_name
 #   @tableNames - a list of table names to check the measures value tables against
 #
 # validates that all shared value tables represented in @tableNames are found in @sharedTables
 def validate_shared_table_existence(measure: Measure,
-                                    tableNames: list[str]) -> None:
+                                    tableNames: list[str],
+                                    out: Optional[TextIO]) -> None:
     for table in tableNames:
         if not measure.contains_shared_table(table):
-            print(f'MISSING SHARED TABLE - {table}')
+            print(f'\tMISSING SHARED TABLE - {table}', file=out)
 
 
 # Parameters:
@@ -59,10 +71,11 @@ def validate_shared_table_existence(measure: Measure,
 #
 # validates that all value tables represented in @tableNames are found in @value_tables
 def validate_value_table_existence(measure: Measure,
-                                   tableNames: list[str]) -> None:
+                                   tableNames: list[str],
+                                   out: Optional[TextIO]) -> None:
     for table in tableNames:
         if not measure.contains_value_table(table):
-            print(f'MISSING TABLE - {table}')
+            print(f'\tMISSING TABLE - {table}', file=out)
 
 
 # Parameters:
@@ -74,37 +87,41 @@ def validate_value_table_existence(measure: Measure,
 # validates that all parameters represented in @paramNames are
 #      found in @sharedParams
 def validate_param_existence(measure: Measure,
-                             paramNames: list[str]) -> None:
+                             paramNames: list[str],
+                             out: Optional[TextIO]) -> None:
     for param in paramNames:
         if not measure.contains_param(param):
-            print(f'MISSING PARAM - {param}')
+            print(f'\tMISSING PARAM - {param}', file=out)
 
 
 def validate_param_order(measure: Measure,
-                         ordered_params: list[str]) -> None:
+                         ordered_params: list[str],
+                         out: Optional[TextIO]) -> None:
     for param in measure.params:
         index = ordered_params.index(param.version.version_string)
         if param.order \
                 != (index + 1):
-            print('parameters are out of order')
+            print('\tparameters are out of order', file=out)
             return None
 
 
 def validate_value_table_order(measure: Measure,
-                               ordered_tables: list[str]) -> None:
+                               ordered_tables: list[str],
+                               out: Optional[TextIO]) -> None:
     for table in measure.value_tables:
         if table.order != (ordered_tables.index(table.api_name) + 1):
-            print('non-shared value tables are out of order')
+            print('\tnon-shared value tables are out of order', file=out)
             return None
 
 
 def validate_shared_table_order(measure: Measure,
-                                ordered_tables: list[str] ) -> None:
+                                ordered_tables: list[str],
+                                out: Optional[TextIO]) -> None:
     for table in measure.shared_tables:
         index = ordered_tables.index(table.version.version_string)
         if table.order \
                 != (index + 1):
-            print('shared value tables are out of order')
+            print('\tshared value tables are out of order', file=out)
             return None
 
 
@@ -150,7 +167,7 @@ def filter_inter_shared_tables(measure: Measure,
 
 def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
-    return {key:val for (key, val) in ordered_list.items() if flag}
+    return {key:val for (key, val) in ordered_list.items() if val != flag}
 
 def get_ordered_list_tuple(measure: Measure
                           ) -> tuple[list[str], list[str], list[str]]:
@@ -189,8 +206,15 @@ def get_ordered_list_tuple(measure: Measure
 
         if measure.is_def_res():
             ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'RES_NDEF')
+                = filter_dict(ordered_sha_tables, 'RES-DEF')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
+        elif measure.is_def_sector():
+            ordered_sha_tables \
+                = filter_dict(ordered_sha_tables, 'RES-NDEF')
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
         else:
+            ordered_sha_tables \
+                = filter_dict(ordered_sha_tables, 'RES-NDEF')
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-DEF')
 
@@ -253,28 +277,33 @@ def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
             measure.remove_unknown_shared_tables(ordered_sha_tables))),
         file=out)
 
-    # print('\nMissing Parameters/Tables:')
-    # validate_param_existence(measure, ordered_params)
-    # validate_value_table_existence(measure, ordered_val_tables)
-    # validate_shared_table_existence(measure, ordered_sha_tables)
+    print('\nMissing Parameters/Tables:', file=out)
+    validate_param_existence(measure, ordered_params, out)
+    validate_value_table_existence(measure, ordered_val_tables, out)
+    validate_shared_table_existence(measure, ordered_sha_tables, out)
 
-    # print('\nParameter/Table order:')
-    # validate_param_order(measure, ordered_params)
-    # validate_value_table_order(measure, ordered_val_tables)
-    # validate_shared_table_order(measure, ordered_sha_tables)
+    print('\nParameter/Table order:', file=out)
+    validate_param_order(measure, ordered_params, out)
+    validate_value_table_order(measure, ordered_val_tables, out)
+    validate_shared_table_order(measure, ordered_sha_tables, out)
+    
+    print('\nAll Value Tables:', file=out)
+    print_value_tables(measure, out)
 
 
 # Parameters:
 #   @filename - the name of a JSON measure file to be parsed
 def main(args: list[str]) -> None:
     flags = list(filter(lambda arg: arg[0] == '-', args))
-    args.remove(flags)
+    for flag in flags:
+        args.remove(flag)
     filename = args[1]
 
     print(f'\nstarting to parse measure file - {filename}\n')
 
     with open(filename, 'r') as measureFile:
-        if '-console' not in flags: 
+        out = None
+        if '-file' in flags: 
             out = open('out.txt', 'w+')
         measure: Measure = Measure(
             json.loads(measureFile.read(),
