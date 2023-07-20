@@ -13,7 +13,7 @@ except ImportError:
     from argparse import Namespace
 
 class Column:
-    def __init__(self, column):
+    def __init__(self, column: Namespace):
         try:
             self.name: str = column.name
             self.api_name: str = column.api_name
@@ -23,7 +23,7 @@ class Column:
             raise Exception()
 
 class Version:
-    def __init__(self, version):
+    def __init__(self, version: Namespace):
         try:
             if version.version_string.index('-') != -1:
                 self.version_string = version.version_string.split('-')[0]
@@ -32,8 +32,21 @@ class Version:
         except:
             raise VersionFormatError()
 
+class Calculation:
+    def __init__(self, calculation: Namespace):
+        try:
+            self.name: str = calculation.name
+            self.api_name: str = calculation.api_name
+            self.order: int = calculation.order
+            self.unit: str = calculation.unit
+            self.determinants: list[str] = calculation.determinants
+            self.values: list[list[str]] = calculation.values
+            self.reference_refs: list = calculation.reference_refs
+        except Exception as err:
+            raise err
+
 class SharedParameter:
-    def __init__(self, param):
+    def __init__(self, param: Namespace):
         try:
             self.order: int = param.order
             self.version: Version = Version(param.version)
@@ -42,7 +55,7 @@ class SharedParameter:
             raise ParameterFormatError()
 
 class ValueTable:
-    def __init__(self, valueTable):
+    def __init__(self, valueTable: Namespace):
         try:
             self.name: str = valueTable.name
             self.api_name: str = valueTable.api_name
@@ -59,7 +72,7 @@ class ValueTable:
             raise ValueTableFormatError()
 
 class SharedValueTable:
-    def __init__(self, shared_table):
+    def __init__(self, shared_table: Namespace):
         try:
             self.order: int = shared_table.order
             self.version: Version = Version(shared_table.version)
@@ -67,7 +80,7 @@ class SharedValueTable:
             raise SharedTableFormatError()
 
 class Measure:
-    def __init__(self, measure):
+    def __init__(self, measure: Namespace):
         try:
             self.owner: str = measure.owned_by_user
             self.params: list[SharedParameter] = list(
@@ -79,20 +92,104 @@ class Measure:
             self.value_tables: list[ValueTable] = list(
                 map(lambda table: ValueTable(table),
                     measure.value_tables))
+            self.calculations: list[Calculation] = list(
+                map(lambda calc: Calculation(calc),
+                    measure.calculations))
         except:
             raise MeasureFormatError()
 
+    # Checks if the measure contains a parameter associated with
+    # @param_name
+    #
+    # Parameters:
+    #   param_name (str): name of desired parameter
+    #
+    # Returns:
+    #   bool: True if the measure contains a parameter associated
+    #         with @param_name
     def contains_param(self, param_name: str) -> bool:
         param_names = map(lambda param: param.version.version_string,
                           self.params)
         return param_name in param_names
+    
+    # Checks if the measure contains a non-shared value table associated
+    # with @table_name
+    #
+    # Parameters:
+    #   table_name (str): the name of the desired value table
+    #
+    # Returns:
+    #   bool: True if the measure contains a non-shared value table
+    #         associated with @table_name
+    def contains_value_table(self, table_name: str) -> bool:
+        value_tables \
+            = map(lambda table: table.api_name, self.value_tables)
+        return table_name in value_tables
+    
+    # Checks if the measure contains a shared value table associated with
+    # @table_name
+    #
+    # Parameters:
+    #   table_name (str): the name of the desired value table
+    #
+    # Returns:
+    #   bool: True if the measure contains a shared value table associated
+    #         with @table_name
+    def contains_shared_table(self, table_name : str) -> bool:
+        shared_tables = map(lambda table: table.version.version_string,
+                            self.shared_tables)
+        return table_name in shared_tables
 
+    # Returns the parameter associated with @param_name
+    #
+    # Parameters:
+    #   param_name (str): name of desired parameter
+    #
+    # Returns:
+    #   SharedParameter: The desired parameter
+    #   None: If no parameter with a name matching @param_name exists 
     def get_param(self, param_name: str) -> SharedParameter:
         for param in self.params:
             if param.version.version_string == param_name:
                 return param
         return None
+    
+    # Returns the non-shared value table associated with @table_name
+    #
+    # Parameters:
+    #   table_name (str): name of desired value table
+    #
+    # Returns:
+    #   ValueTable: The desired non-shared value table
+    #   None: If no value table with a name matching @table_name exists
+    def get_value_table(self, table_name: str) -> ValueTable:
+        for table in self.value_tables:
+            if table.api_name == table_name:
+                return table
+        return None
+    
+    # Returns the shared value table associated with @table_name
+    #
+    # Parameters:
+    #   table_name (str): name of desired value table
+    #
+    # Returns:
+    #   SharedValueTable: The desired shared value table
+    #   None: If no value table with a name matching @table_name exists
+    def get_shared_table(self, table_name : str) -> SharedValueTable:
+        for table in self.shared_tables:
+            if table.version.version_string == table_name:
+                return table
+        return None
 
+    # Removes all parameters whose names don't appear in @param_names
+    #    
+    # Parameters:
+    #   param_names (list[str]): a list of valid parameter names
+    #        
+    # Returns:
+    #   list[SharedParameter]: the list of parameters not in
+    #   @param_names
     def remove_unknown_params(self,
                               param_names: list[str]
                              ) -> list[SharedParameter]:
@@ -109,17 +206,16 @@ class Measure:
 
         return unknown_params
 
-    def contains_value_table(self, table_name: str) -> bool:
-        value_tables \
-            = map(lambda table: table.api_name, self.value_tables)
-        return table_name in value_tables
-
-    def get_value_table(self, table_name: str) -> ValueTable:
-        for table in self.value_tables:
-            if table.api_name == table_name:
-                return table
-        return None
-
+    # Removes all non-shared value tables whose names don't appear in
+    # @table_names
+    #    
+    # Parameters:
+    #   table_names (list[str]): a list of valid non-shared value table
+    #                            names
+    #        
+    # Returns:
+    #   list[ValueTable]: the list of non-shared value tables not in
+    #   @table_names
     def remove_unknown_value_tables(self,
                                     table_names : list[str]
                                    ) -> list[ValueTable]:
@@ -136,17 +232,15 @@ class Measure:
 
         return unknown_tables
 
-    def contains_shared_table(self, table_name : str) -> bool:
-        shared_tables = map(lambda table: table.version.version_string,
-                            self.shared_tables)
-        return table_name in shared_tables
-
-    def get_shared_table(self, table_name : str) -> SharedValueTable:
-        for table in self.shared_tables:
-            if table.version.version_string == table_name:
-                return table
-        return None
-
+    # Removes all shared value tables whose names don't appear in
+    # @table_names
+    #    
+    # Parameters:
+    #   table_names (list[str]): a list of valid shared value table names
+    #        
+    # Returns:
+    #   list[SharedValueTable]: the list of shared value tables not in
+    #   @table_names
     def remove_unknown_shared_tables(self,
                                      table_names : list[str]
                                     ) -> list[SharedValueTable]:
@@ -163,15 +257,15 @@ class Measure:
 
         return unknown_tables
 
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks the labels of the version param to determine if the measure
+    # is a DEER measure
     #
-    # checks the labels of the version param to determine if the
-    #   measure is a DEER measure
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'version' parameter isn't
+    #                           present
     #
-    # returns true if the measure is a DEER measure
-    #   otherwise returns false
+    # Returns:
+    #   bool: True if the measure is a DEER measure
     def is_DEER(self) -> bool:
         version = self.get_param('version')
         if version == None:
@@ -183,7 +277,14 @@ class Measure:
 
         return False
 
-
+    # Checks that either all WEN requirements are met, denoting a WEN
+    # measure
+    #
+    # Exceptions:
+    #   Exception: raised if only part of the required WEN data is present
+    #
+    # Returns:
+    #   bool: True if the measure is a WEN measure
     def is_WEN(self) -> bool:
         wen_param = self.get_param('waterMeasureType')
         wen_table = self.get_shared_table('waterEnergyIntensity')
@@ -196,17 +297,15 @@ class Measure:
             return False
         return True
 
-
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks if the Delivery Type of the measure is either DnDeemDI
+    # or DnDeemed and UpDeemed
     #
-    # checks the labels of the DelivType param to determine if either
-    #   DnDeemDI is in the labels or DnDeemed and UpDeemed are in the
-    #   labels
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'Delivery Type' parameter is
+    #                           missing
     #
-    # returns true if any of the labels are found
-    #   otherwise returns false
+    # Returns:
+    #   bool: True if the measure is deemed
     def is_deemed(self) -> bool:
         delivery_table = self.get_param('DelivType')
         if delivery_table == None:
@@ -216,7 +315,14 @@ class Measure:
             or ('DnDeemed' in delivery_table.labels
                 and 'UpDeemed' in delivery_table.labels)
 
-
+    # Checks if the Measure Impact Type of the measure is FuelSub
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'Measure Impact Type'
+    #                           parameter is missing
+    #
+    # Returns:
+    #   bool: True if the measure is a Fuel Substitution measure
     def is_fuel_sub(self) -> bool:
         meas_impact_type = self.get_param('MeasImpactType')
         if meas_impact_type == None:
@@ -228,16 +334,14 @@ class Measure:
 
         return False
 
-
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks if the NTGID contains a sector default
     #
-    # checks the labels of the NTGID param to determine if the Net
-    #   to Gross ID contains the default for each sector
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'NTGID' or 'Sector'
+    #                           parameters are missing
     #
-    # returns true if any of the param-specific sector defaults are
-    #   in the NTGID labels, otherwise returns false
+    # Returns:
+    #   bool: True if the NTGID parameter contains a sector default
     def is_def_sector(self) -> bool:
         sector = self.get_param('Sector')
         if sector == None:
@@ -256,7 +360,13 @@ class Measure:
 
         return False
 
-
+    # Checks if the NTGID contains the residential default
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'NTGID' parameter is missing
+    #
+    # Returns:
+    #   bool: True if the NTGID parameter contains the residential default
     def is_def_res(self) -> bool:
         ntg_id = self.get_param('NTGID')
         if ntg_id == None:
@@ -267,16 +377,14 @@ class Measure:
                 return True
         return False
 
-
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks if the GSIAID contains the GSIA default
     #
-    # checks the label of the GSIAID param to determine if the measure
-    #   is a default GSIA measure
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'GSIAID' parameter is
+    #                           missing
     #
-    # returns true if the measure is a default GSIA measure
-    #   otherwise returns false
+    # Returns:
+    #   bool: True if the GSIAID parameter contains the GSIA default
     def is_def_GSIA(self) -> bool:
         version = self.get_param('GSIAID')
         if version == None:
@@ -288,16 +396,16 @@ class Measure:
 
         return False
 
-
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks if the Measure Application Type parameter contains either
+    # the AOE or AR label
     #
-    # checks the labels of the MeasAppType param to determine
-    #   if the measure application type is AOE or AR
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'Measure Application Type'
+    #                           parameter is missing
     #
-    # returns true if the measure application type is AOE or AR
-    #   otherwise returns false
+    # Returns:
+    #   bool: True if the Measure Application Type parameter contains
+    #         either the AOE or AR label
     def is_AR_or_AOE(self) -> bool:
         version = self.get_param('MeasAppType')
         if version == None:
@@ -310,15 +418,16 @@ class Measure:
         return False
 
 
-    # Parameters:
-    #   @params - a dict mapping all measure parameters to their
-    #       respective names
+    # Checks if the Measure Application Type parameter contains either
+    # the NR or NC label
     #
-    # checks the labels of the MeasAppType param to determine
-    #   if the measure application type is NC or NR
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'Measure Application Type'
+    #                           parameter is missing
     #
-    # returns true if the measure application type is NC or NR
-    #   otherwise returns false
+    # Returns:
+    #   bool: True if the Measure Application Type parameter contains
+    #         either the NR or NC label
     def is_NC_or_NR(self) -> bool:
         version = self.get_param('MeasAppType')
         if version == None:
@@ -330,7 +439,14 @@ class Measure:
 
         return False
 
-
+    # Checks if the measure is an interactive measure
+    #
+    # Exceptions:
+    #   MeasureFormatError: raised if only some of the required
+    #                       interactive fields are present
+    #
+    # Returns:
+    #   bool: True if the measure is an interactive measure
     def is_interactive(self) -> bool:
         lighting_type = self.get_param('LightingType')
         interactive_effect_app = self.get_value_table('IEApplicability')

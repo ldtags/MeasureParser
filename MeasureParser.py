@@ -2,7 +2,7 @@ import sys
 import json
 import ParameterNames
 import ValueTableNames
-from MeasureObjects import Measure, SharedParameter
+from MeasureObjects import Measure, SharedParameter, ValueTable, Calculation
 from typing import Optional, TextIO
 try:
     from types import SimpleNamespace as Namespace
@@ -41,8 +41,9 @@ def define_measure_types(measure: Measure) -> None:
         print('is an interactive measure')
 
 
-def print_value_tables(measure: Measure, out: Optional[TextIO]) -> None:
-    for table in measure.value_tables:
+def print_value_tables(tables: list[ValueTable],
+                       out: Optional[TextIO]) -> None:
+    for table in tables:
         print(f'\tTable Name - {table.name}', file=out)
         print(f'\tAPI Name - {table.api_name}', file=out)
         print('\tColumns:', file=out)
@@ -51,6 +52,13 @@ def print_value_tables(measure: Measure, out: Optional[TextIO]) -> None:
             print(f'\t\t\tAPI Name - {column.api_name}', file=out)
         print(file=out)
             
+
+def print_calculations(calculations: list[Calculation],
+                       out: Optional[TextIO]) -> None:
+    for calculation in calculations:
+        print(f'\tCalculation Name - {calculation.name}', file=out)
+        print(f'\t\tAPI Name - {calculation.api_name}', file=out)
+
 
 # Parameters:
 #   @sharedTables - a dict mapping all value tables to their respective api_name
@@ -288,7 +296,10 @@ def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
     validate_shared_table_order(measure, ordered_sha_tables, out)
     
     print('\nAll Value Tables:', file=out)
-    print_value_tables(measure, out)
+    print_value_tables(measure.value_tables, out)
+    
+    print('\nAll Calculations:', file=out)
+    print_calculations(measure.calculations, out)
 
 
 # Parameters:
@@ -303,7 +314,7 @@ def main(args: list[str]) -> None:
 
     with open(filename, 'r') as measureFile:
         out = None
-        if '-file' in flags: 
+        if '-console' not in flags: 
             out = open('out.txt', 'w+')
         measure: Measure = Measure(
             json.loads(measureFile.read(),
