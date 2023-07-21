@@ -27,10 +27,24 @@ class VersionFormatError(Exception):
         self.message = message
         super().__init__(self.message)
         
+
+class PermutationFormatError(Exception):
+    def __init__(self, message='permutation is missing required information'):
+        self.message = message
+        super().__init__(self.message)
+        
         
 class RequiredParameterError(Exception):
     def __init__(self, message, name):
         self.message = message if message != None \
             else 'measure is missing a required parameter' \
-                + f' - {name}' if name != None else ''
+                + (f' - {name}' if name != None else '')
+        super().__init__(self.message)
+
+
+class RequiredPermutationError(Exception):
+    def __init__(self, message, name):
+        self.message = message if message != None \
+            else 'measure is missing a required permutation' \
+                + (f' - {name}' if name != None else '')
         super().__init__(self.message)

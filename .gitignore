@@ -1,4 +1,9 @@
+# Environments
 /.vscode
-/measures
 /__pycache__
+
+# Output
 out.txt
+
+# Testing Items
+/measures

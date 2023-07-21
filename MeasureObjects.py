@@ -1,16 +1,29 @@
+from typing import Optional
+from Permutations import ALL_PERMUTATIONS
 from MeasureExceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
     ValueTableFormatError,
     SharedTableFormatError,
-    MeasureFormatError
+    MeasureFormatError,
+    PermutationFormatError,
+    RequiredPermutationError
 )
 
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
+
+class Permutation:
+    def __init__(self,
+                 reporting_name: str,
+                 verbose_name: str,
+                 derivation: str = 'mapped'):
+        self.reporting_name: str = reporting_name
+        self.verbose_name: str = verbose_name
+        self.derivation: str = derivation
 
 class Column:
     def __init__(self, column: Namespace):
@@ -48,11 +61,14 @@ class Calculation:
 class SharedParameter:
     def __init__(self, param: Namespace):
         try:
-            self.order: int = param.order
+            self.order: int = getattr(param, 'order')
             self.version: Version = Version(param.version)
             self.labels: list[str] = param.active_labels
-        except:
+        except AttributeError:
             raise ParameterFormatError()
+        except:
+            raise Exception(
+                '')
 
 class ValueTable:
     def __init__(self, valueTable: Namespace):
@@ -95,8 +111,34 @@ class Measure:
             self.calculations: list[Calculation] = list(
                 map(lambda calc: Calculation(calc),
                     measure.calculations))
+            self.permutations: list[Permutation] \
+                = self.get_permutations(measure)
+        except RequiredPermutationError as err:
+            raise err
+        except PermutationFormatError as err:
+            raise err
         except:
             raise MeasureFormatError()
+
+    def get_permutations(self, measure: Namespace) -> list[Permutation]:
+        permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
+        perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
+        perm_list: list[Permutation] = []
+        for perm_name in perm_names:
+            permutation = getattr(permutations, perm_name, None)
+            if permutation == None:
+                raise RequiredPermutationError()
+            verbose_name = getattr(measure, perm_name, None)
+            if verbose_name == None:
+                raise PermutationFormatError()
+            perm_list.append(
+                Permutation(
+                    perm_name,
+                    verbose_name
+                )
+            )
+        return perm_list
+        
 
     # Checks if the measure contains a parameter associated with
     # @param_name
@@ -256,6 +298,28 @@ class Measure:
             self.shared_tables[i].order = i + 1
 
         return unknown_tables
+    
+    # Checks if the Measure Application Type parameter contains @label
+    #
+    # Parameters:
+    #   labels (str): MAT label(s) being searched for
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'Measure Application Type'
+    #                           parameter is missing
+    #
+    # Returns:
+    #   bool: True if the Measure Application Type parameter contains
+    #         all provided labels
+    def contains_MAT_label(self, *labels: str) -> bool:
+        version = self.get_param('MeasAppType')
+        if version == None:
+            raise RequiredParameterError(name='Measure Application Type')
+        
+        for label in labels:
+            if label not in version.labels:
+                return False
+        return True
 
     # Checks the labels of the version param to determine if the measure
     # is a DEER measure
@@ -342,7 +406,7 @@ class Measure:
     #
     # Returns:
     #   bool: True if the NTGID parameter contains a sector default
-    def is_def_sector(self) -> bool:
+    def is_sector_default(self) -> bool:
         sector = self.get_param('Sector')
         if sector == None:
             raise RequiredParameterError(name='Sector')
@@ -367,13 +431,13 @@ class Measure:
     #
     # Returns:
     #   bool: True if the NTGID parameter contains the residential default
-    def is_def_res(self) -> bool:
+    def is_residential_default(self) -> bool:
         ntg_id = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
-        for id in ntg_id.labels:
-            if 'Res-Default>2' in id:
+        for label in ntg_id.labels:
+            if 'Res-Default' in label:
                 return True
         return False
 
@@ -385,56 +449,13 @@ class Measure:
     #
     # Returns:
     #   bool: True if the GSIAID parameter contains the GSIA default
-    def is_def_GSIA(self) -> bool:
+    def is_GSIA_default(self) -> bool:
         version = self.get_param('GSIAID')
         if version == None:
             raise RequiredParameterError(name='GSIA ID')
 
         for label in version.labels:
             if 'Def-GSIA' in label:
-                return True
-
-        return False
-
-    # Checks if the Measure Application Type parameter contains either
-    # the AOE or AR label
-    #
-    # Exceptions:
-    #   RequiredParameterError: raised if the 'Measure Application Type'
-    #                           parameter is missing
-    #
-    # Returns:
-    #   bool: True if the Measure Application Type parameter contains
-    #         either the AOE or AR label
-    def is_AR_or_AOE(self) -> bool:
-        version = self.get_param('MeasAppType')
-        if version == None:
-            raise RequiredParameterError(name='Measure Application Type')
-
-        for label in version.labels:
-            if 'AOE' in label or 'AR' in label:
-                return True
-
-        return False
-
-
-    # Checks if the Measure Application Type parameter contains either
-    # the NR or NC label
-    #
-    # Exceptions:
-    #   RequiredParameterError: raised if the 'Measure Application Type'
-    #                           parameter is missing
-    #
-    # Returns:
-    #   bool: True if the Measure Application Type parameter contains
-    #         either the NR or NC label
-    def is_NC_or_NR(self) -> bool:
-        version = self.get_param('MeasAppType')
-        if version == None:
-            raise RequiredParameterError(name='Measure Application Type')
-
-        for label in version.labels:
-            if 'NC' in label or 'NR' in label:
                 return True
 
         return False

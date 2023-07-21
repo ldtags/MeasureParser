@@ -1,14 +1,23 @@
 import sys
 import json
-import ParameterNames
-import ValueTableNames
-from MeasureObjects import Measure, SharedParameter, ValueTable, Calculation
+from Parameters import ALL_PARAMS
+from ValueTables import ALL_VALUE_TABLES, ALL_SHARED_TABLES
+from Permutations import ALL_PERMUTATIONS
 from typing import Optional, TextIO
+from MeasureObjects import (
+    Measure,
+    SharedParameter,
+    ValueTable,
+    Calculation
+)
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
 
+
+# Global Variables
+out: Optional[TextIO] = None
 
 # defines the type of measure that the given measure satisfies
 # returns nothing and does not modify any data, use for debugging
@@ -16,17 +25,17 @@ def define_measure_types(measure: Measure) -> None:
     if measure.is_DEER():
         print('is DEER measure')
 
-    if measure.is_AR_or_AOE():
-        print('MAT = AR and/or AOE')
+    # if measure.is_AR_or_AOE():
+    #     print('MAT = AR and/or AOE')
 
-    if measure.is_NC_or_NR():
-        print('MAT = NC and/or NR')
+    # if measure.is_NC_or_NR():
+    #     print('MAT = NC and/or NR')
 
-    if measure.is_def_GSIA():
-        print('is a default GSIA measure')
+    # if measure.is_def_GSIA():
+    #     print('is a default GSIA measure')
 
-    if measure.is_def_sector():
-        print('is a sector default measure')
+    # if measure.is_def_sector():
+    #     print('is a sector default measure')
 
     if measure.is_deemed():
         print('is a deemed delivery type measure')
@@ -177,46 +186,86 @@ def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
     return {key:val for (key, val) in ordered_list.items() if val != flag}
 
-def get_ordered_list_tuple(measure: Measure
-                          ) -> tuple[list[str], list[str], list[str]]:
-    ordered_params = ParameterNames.ALL_PARAMS
-    ordered_val_tables = ValueTableNames.ALL_VALUE_TABLES
-    ordered_sha_tables = ValueTableNames.ALL_SHARED_TABLES
+def get_ordered_params(measure: Measure) -> list[str]:
+    ordered_params = ALL_PARAMS
+
+    if not measure.is_DEER():
+        ordered_params = filter_dict(ordered_params, 'DEER')
+        
+    if measure.is_GSIA_default():
+        ordered_params = filter_dict(ordered_params, 'NGSIA')
+
+    if not (measure.contains_MAT_label('AR')
+            or measure.contains_MAT_label('AOE')):
+        ordered_params = filter_dict(ordered_params, 'MAT')
+        
+    if not measure.is_WEN():
+        ordered_params = filter_dict(ordered_params, 'WEN')
+        
+    if measure.is_sector_default():
+        ordered_params = filter_dict(ordered_params, 'NTG')
+        
+    if not measure.is_interactive():
+        ordered_params = filter_dict(ordered_params, 'INTER')
+    else:
+        ordered_params = filter_inter_params(measure, ordered_params)
+    
+    return list(ordered_params.keys())
+
+
+def get_ordered_value_tables(measure: Measure) -> list[str]:
+    ordered_val_tables = ALL_VALUE_TABLES
+
+    if not measure.is_DEER():
+        ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
+
+    if not (measure.contains_MAT_label('AR')
+            or measure.contains_MAT_label('AOE')):
+        ordered_val_tables = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
+
+    if not (measure.contains_MAT_label('NR')
+            or measure.contains_MAT_label('NC')):
+        ordered_val_tables = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
+
+    if not measure.is_deemed():
+        ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
+        
+    if not measure.is_fuel_sub():
+        ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
+        
+    if not measure.is_interactive():
+        ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
+    else:
+        ordered_val_tables \
+                = filter_inter_value_tables(measure, ordered_val_tables)
+
+    return list(ordered_val_tables.keys())
+
+
+def get_ordered_shared_tables(measure: Measure) -> list[str]:
+    ordered_sha_tables = ALL_SHARED_TABLES
 
     try:
         if not measure.is_DEER():
-            ordered_params = filter_dict(ordered_params, 'DEER')
-            ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'DEER')
 
-        if not measure.is_def_GSIA():
+        if not measure.is_GSIA_default():
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'NGSIA')
         else:
-            ordered_params = filter_dict(ordered_params, 'NGSIA')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'GSIA')
 
-        if not measure.is_AR_or_AOE():
-            ordered_params = filter_dict(ordered_params, 'MAT')
+        if not (measure.contains_MAT_label('AR')
+                or measure.contains_MAT_label('AOE')):
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'ARAOE')
-            ordered_val_tables \
-                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
-
-        if not measure.is_NC_or_NR():
-            ordered_val_tables \
-                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
         if not measure.is_WEN():
-            ordered_params = filter_dict(ordered_params, 'WEN')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'WEN')
 
-        if measure.is_def_sector():
-            ordered_params = filter_dict(ordered_params, 'NTG')
-
-        if measure.is_def_res():
+        if measure.is_residential_default():
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-DEF')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
-        elif measure.is_def_sector():
+        elif measure.is_sector_default():
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-NDEF')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
@@ -225,30 +274,16 @@ def get_ordered_list_tuple(measure: Measure
                 = filter_dict(ordered_sha_tables, 'RES-NDEF')
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-DEF')
-
-        if not measure.is_deemed():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
-
-        if not measure.is_fuel_sub():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
 
         if not measure.is_interactive():
-            ordered_params = filter_dict(ordered_params, 'INTER')
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'INTER')
-            ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
         else:
-            ordered_params = filter_inter_params(measure, ordered_params)
             ordered_sha_tables \
                 = filter_inter_shared_tables(measure, ordered_sha_tables)
-            ordered_val_tables \
-                = filter_inter_value_tables(measure, ordered_val_tables)
     except Exception as err:
-        print('ERR: ', err)
-        return None
+        raise err
 
-    return (list(ordered_params.keys()),
-            list(ordered_val_tables.keys()),
-            list(ordered_sha_tables.keys()))
+    return list(ordered_sha_tables.keys())
 
 
 # Parameters:
@@ -260,8 +295,9 @@ def get_ordered_list_tuple(measure: Measure
 #   - Correct order of parameters
 #   - Correct order of value tables
 def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
-    (ordered_params, ordered_val_tables, ordered_sha_tables) \
-        = get_ordered_list_tuple(measure)
+    ordered_params = get_ordered_params(measure)
+    ordered_val_tables = get_ordered_value_tables(measure)
+    ordered_sha_tables = get_ordered_shared_tables(measure)
 
     define_measure_types(measure)
     print('\nParams:')
@@ -305,17 +341,18 @@ def parse_measure(measure: Measure, out: Optional[TextIO]) -> None:
 # Parameters:
 #   @filename - the name of a JSON measure file to be parsed
 def main(args: list[str]) -> None:
-    flags = list(filter(lambda arg: arg[0] == '-', args))
+    flags: list[str] = list(filter(lambda arg: arg[0] == '-', args))
     for flag in flags:
         args.remove(flag)
-    filename = args[1]
+    filename: str = args[1]
 
     print(f'\nstarting to parse measure file - {filename}\n')
 
     with open(filename, 'r') as measureFile:
-        out = None
+        out: Optional[TextIO] = None
         if '-console' not in flags: 
             out = open('out.txt', 'w+')
+
         measure: Measure = Measure(
             json.loads(measureFile.read(),
                        object_hook=lambda d: Namespace(**d)))
