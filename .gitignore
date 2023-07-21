@@ -1,9 +1,10 @@
 # Environments
-/.vscode
-/__pycache__
+/.vscode/
+/src/measure_parser/__pycache__/
+/src/measure_parser/data/__pycache__/
 
 # Output
 out.txt
 
 # Testing Items
-/measures
+/measures/

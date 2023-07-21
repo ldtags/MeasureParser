@@ -1,5 +1,5 @@
 from data.permutations import ALL_PERMUTATIONS
-from src.measure_parser.exceptions import (
+from exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,

@@ -4,7 +4,7 @@ from data.parameters import ALL_PARAMS
 from data.valuetables import ALL_VALUE_TABLES, ALL_SHARED_TABLES
 from data.permutations import ALL_PERMUTATIONS
 from typing import Optional, TextIO
-from measure_parser.objects import (
+from objects import (
     Measure,
     SharedParameter,
     ValueTable,
@@ -91,6 +91,26 @@ def parse(measure: Measure) -> None:
     
     print('\nAll Calculations:', file=out)
     print_calculations(measure.calculations)
+    
+    print('\nValidating Permutations:', file=out)
+    validate_permutations(measure)
+    
+    
+def validate_permutations(measure: Measure) -> None:
+    for permutation in measure.permutations:
+        perm_name = permutation.reporting_name
+        perm_data = getattr(ALL_PERMUTATIONS, perm_name, None)
+        if perm_data != None:
+            print(f'Unknown Permutation - {perm_name}', file=out)
+            continue
+
+        valid_name = getattr(perm_data, 'validity', None)
+        if valid_name == None or perm_name == valid_name:
+            continue
+
+        print('Incorrect Permutation',
+              f' - {perm_name} should be {valid_name}',
+              file=out)
 
 
 def get_ordered_params(measure: Measure) -> list[str]:
