@@ -1,6 +1,5 @@
-from typing import Optional
-from Permutations import ALL_PERMUTATIONS
-from MeasureExceptions import (
+from data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
@@ -10,7 +9,6 @@ from MeasureExceptions import (
     PermutationFormatError,
     RequiredPermutationError
 )
-
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
