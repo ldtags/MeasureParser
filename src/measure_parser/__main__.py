@@ -20,8 +20,6 @@ except ImportError:
 out: Optional[TextIO] = None
 
 
-# Parameters:
-#   @filename - the name of a JSON measure file to be parsed
 def main(args: list[str]) -> None:
     flags: list[str] = list(filter(lambda arg: arg[0] == '-', args))
     for flag in flags:
@@ -32,8 +30,8 @@ def main(args: list[str]) -> None:
 
     with open(filename, 'r') as measureFile:
         if '-console' not in flags: 
+            global out
             out = open('out.txt', 'w+')
-
         measure: Measure = Measure(
             json.loads(measureFile.read(),
                        object_hook=lambda d: Namespace(**d)))

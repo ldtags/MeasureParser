@@ -419,7 +419,6 @@ class Measure:
             for id in ntg_id.labels:
                 if sector in id:
                     return True
-
         return False
 
     # Checks if the NTGID contains the residential default
