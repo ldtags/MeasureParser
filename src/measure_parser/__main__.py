@@ -26,8 +26,6 @@ def main(args: list[str]) -> None:
         args.remove(flag)
     filename: str = args[1]
 
-    print(f'\nstarting to parse measure file - {filename}\n')
-
     with open(filename, 'r') as measureFile:
         if '-console' not in flags: 
             global out
@@ -35,9 +33,12 @@ def main(args: list[str]) -> None:
         measure: Measure = Measure(
             json.loads(measureFile.read(),
                        object_hook=lambda d: Namespace(**d)))
+        print(f'\nstarting to parse measure file - {filename}\n')
         parse(measure)
-
-    print(f'\nfinished parsing measure file - {filename}')
+        print(f'\nfinished parsing measure file - {filename}')
+        
+        if out != None:
+            out.close()
 
 
 # Parameters:
