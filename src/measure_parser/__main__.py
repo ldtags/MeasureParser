@@ -41,15 +41,10 @@ def main(args: list[str]) -> None:
         if out != None:
             out.close()
 
-
-# Parameters:
-#   @measure - a JSON file that represents a given measure
+# Parses a Measure object that is built from a given JSON file
 #
-# Parses a given JSON file that outlines a given measure
-# Parsing Specifications:
-#   - Existence of required parameters and value tables (shared and non-shared)
-#   - Correct order of parameters
-#   - Correct order of value tables
+# Parameters:
+#   measure (Measure): the Measure object that will be parsed
 def parse(measure: Measure) -> None:
     try:
         ordered_params = get_ordered_params(measure)
@@ -104,7 +99,13 @@ def parse(measure: Measure) -> None:
     print('\nValidating Permutations:', file=out)
     validate_permutations(measure.permutations)
 
-
+# returns the ordered list of all parameters to check for
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#
+# Returns:
+#   list[str]: a list of parameter names
 def get_ordered_params(measure: Measure) -> list[str]:
     ordered_params = ALL_PARAMS
 
@@ -135,7 +136,13 @@ def get_ordered_params(measure: Measure) -> list[str]:
 
     return list(ordered_params.keys())
 
-
+# returns the ordered list of all non-shared value tables to check for
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#
+# Returns:
+#   list[str]: a list of non-shared value table names
 def get_ordered_value_tables(measure: Measure) -> list[str]:
     ordered_val_tables = ALL_VALUE_TABLES
 
@@ -170,7 +177,13 @@ def get_ordered_value_tables(measure: Measure) -> list[str]:
 
     return list(ordered_val_tables.keys())
 
-
+# returns the ordered list of all shared value tables to check for
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#
+# Returns:
+#   list[str]: a list of shared value table names
 def get_ordered_shared_tables(measure: Measure) -> list[str]:
     ordered_sha_tables = ALL_SHARED_TABLES
 
@@ -214,7 +227,14 @@ def get_ordered_shared_tables(measure: Measure) -> list[str]:
 
     return list(ordered_sha_tables.keys())
 
-
+# returns the provided dict excluding any item whose value matches @flag
+#
+# Parameters:
+#   ordered_list (dict[str, str]): the dict being filtered
+#   flag (str): the flag to filter the dict for
+#
+# Returns:
+#   dict[str, str]: the filtered dict
 def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
     return {key:val for (key, val) in ordered_list.items() if val != flag}
