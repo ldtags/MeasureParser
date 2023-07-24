@@ -4,6 +4,7 @@ from data.parameters import ALL_PARAMS
 from data.valuetables import ALL_VALUE_TABLES, ALL_SHARED_TABLES
 from data.permutations import ALL_PERMUTATIONS
 from typing import Optional, TextIO
+from measure_parser.exceptions import MeasureFormatError, RequiredParameterError
 from objects import (
     Measure,
     SharedParameter,
@@ -25,18 +26,17 @@ def main(args: list[str]) -> None:
     flags: list[str] = list(filter(lambda arg: arg[0] == '-', args))
     for flag in flags:
         args.remove(flag)
-    filename: str = args[1]
 
-    with open(filename, 'r') as measureFile:
+    with open(args[1], 'r') as measure_file:
         if '-console' not in flags: 
             global out
             out = open('out.txt', 'w+')
         measure: Measure = Measure(
-            json.loads(measureFile.read(),
+            json.loads(measure_file.read(),
                        object_hook=lambda d: Namespace(**d)))
-        print(f'\nstarting to parse measure file - {filename}\n')
+        print(f'\nstarting to parse measure file - {measure_file.name}\n')
         parse(measure)
-        print(f'\nfinished parsing measure file - {filename}')
+        print(f'\nfinished parsing measure file - {measure_file.name}')
 
         if out != None:
             out.close()
@@ -118,26 +118,30 @@ def validate_permutations(permutations: list[Permutation]) -> None:
 def get_ordered_params(measure: Measure) -> list[str]:
     ordered_params = ALL_PARAMS
 
-    if not measure.is_DEER():
-        ordered_params = filter_dict(ordered_params, 'DEER')
+    try:
+        if not measure.is_DEER():
+            ordered_params = filter_dict(ordered_params, 'DEER')
 
-    if measure.is_GSIA_default():
-        ordered_params = filter_dict(ordered_params, 'NGSIA')
+        if measure.is_GSIA_default():
+            ordered_params = filter_dict(ordered_params, 'NGSIA')
 
-    if not (measure.contains_MAT_label('AR')
-            or measure.contains_MAT_label('AOE')):
-        ordered_params = filter_dict(ordered_params, 'MAT')
+        if not (measure.contains_MAT_label('AR')
+                or measure.contains_MAT_label('AOE')):
+            ordered_params = filter_dict(ordered_params, 'MAT')
 
-    if not measure.is_WEN():
-        ordered_params = filter_dict(ordered_params, 'WEN')
+        if not measure.is_WEN():
+            ordered_params = filter_dict(ordered_params, 'WEN')
 
-    if measure.is_sector_default():
-        ordered_params = filter_dict(ordered_params, 'NTG')
+        if measure.is_sector_default():
+            ordered_params = filter_dict(ordered_params, 'NTG')
 
-    if not measure.is_interactive():
-        ordered_params = filter_dict(ordered_params, 'INTER')
-    else:
-        ordered_params = filter_inter_params(measure, ordered_params)
+        if not measure.is_interactive():
+            ordered_params = filter_dict(ordered_params, 'INTER')
+        else:
+            ordered_params = filter_inter_params(measure,
+                                                 ordered_params)
+    except Exception as err:
+        raise err
 
     return list(ordered_params.keys())
 
@@ -145,28 +149,34 @@ def get_ordered_params(measure: Measure) -> list[str]:
 def get_ordered_value_tables(measure: Measure) -> list[str]:
     ordered_val_tables = ALL_VALUE_TABLES
 
-    if not measure.is_DEER():
-        ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
+    try:
+        if not measure.is_DEER():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
 
-    if not (measure.contains_MAT_label('AR')
-            or measure.contains_MAT_label('AOE')):
-        ordered_val_tables = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
+        if not (measure.contains_MAT_label('AR')
+                or measure.contains_MAT_label('AOE')):
+            ordered_val_tables \
+                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
-    if not (measure.contains_MAT_label('NR')
-            or measure.contains_MAT_label('NC')):
-        ordered_val_tables = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
+        if not (measure.contains_MAT_label('NR')
+                or measure.contains_MAT_label('NC')):
+            ordered_val_tables \
+                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
-    if not measure.is_deemed():
-        ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
+        if not measure.is_deemed():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
 
-    if not measure.is_fuel_sub():
-        ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
+        if not measure.is_fuel_sub():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
 
-    if not measure.is_interactive():
-        ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
-    else:
-        ordered_val_tables \
-                = filter_inter_value_tables(measure, ordered_val_tables)
+        if not measure.is_interactive():
+            ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
+        else:
+            ordered_val_tables \
+                    = filter_inter_value_tables(measure,
+                                                ordered_val_tables)
+    except Exception as err:
+        raise err
 
     return list(ordered_val_tables.keys())
 
