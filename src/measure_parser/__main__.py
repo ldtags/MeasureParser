@@ -36,7 +36,7 @@ def main(args: list[str]) -> None:
         print(f'\nstarting to parse measure file - {filename}\n')
         parse(measure)
         print(f'\nfinished parsing measure file - {filename}')
-        
+
         if out != None:
             out.close()
 
@@ -85,13 +85,13 @@ def parse(measure: Measure) -> None:
     validate_param_order(measure, ordered_params)
     validate_value_table_order(measure, ordered_val_tables)
     validate_shared_table_order(measure, ordered_sha_tables)
-    
+
     print('\nAll Value Tables:', file=out)
     print_value_tables(measure.value_tables)
-    
+
     print('\nAll Calculations:', file=out)
     print_calculations(measure.calculations)
-    
+
     print('\nValidating Permutations:', file=out)
     validate_permutations(measure)
 
@@ -119,25 +119,25 @@ def get_ordered_params(measure: Measure) -> list[str]:
 
     if not measure.is_DEER():
         ordered_params = filter_dict(ordered_params, 'DEER')
-    
+
     if measure.is_GSIA_default():
         ordered_params = filter_dict(ordered_params, 'NGSIA')
 
     if not (measure.contains_MAT_label('AR')
             or measure.contains_MAT_label('AOE')):
         ordered_params = filter_dict(ordered_params, 'MAT')
-        
+
     if not measure.is_WEN():
         ordered_params = filter_dict(ordered_params, 'WEN')
-        
+
     if measure.is_sector_default():
         ordered_params = filter_dict(ordered_params, 'NTG')
-        
+
     if not measure.is_interactive():
         ordered_params = filter_dict(ordered_params, 'INTER')
     else:
         ordered_params = filter_inter_params(measure, ordered_params)
-    
+
     return list(ordered_params.keys())
 
 
@@ -157,10 +157,10 @@ def get_ordered_value_tables(measure: Measure) -> list[str]:
 
     if not measure.is_deemed():
         ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
-        
+
     if not measure.is_fuel_sub():
         ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
-        
+
     if not measure.is_interactive():
         ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
     else:
@@ -292,8 +292,7 @@ def validate_param_order(measure: Measure,
                          ordered_params: list[str]) -> None:
     for param in measure.params:
         index = ordered_params.index(param.version.version_string)
-        if param.order \
-                != (index + 1):
+        if param.order != (index + 1):
             print('\tparameters are out of order', file=out)
             return None
 
@@ -310,8 +309,7 @@ def validate_shared_table_order(measure: Measure,
                                 ordered_tables: list[str]) -> None:
     for table in measure.shared_tables:
         index = ordered_tables.index(table.version.version_string)
-        if table.order \
-                != (index + 1):
+        if table.order != (index + 1):
             print('\tshared value tables are out of order', file=out)
             return None
 
