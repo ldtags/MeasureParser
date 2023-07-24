@@ -4,7 +4,7 @@ from data.parameters import ALL_PARAMS
 from data.valuetables import ALL_VALUE_TABLES, ALL_SHARED_TABLES
 from data.permutations import ALL_PERMUTATIONS
 from typing import Optional, TextIO
-from measure_parser.exceptions import MeasureFormatError, RequiredParameterError
+from exceptions import MeasureFormatError, RequiredParameterError
 from objects import (
     Measure,
     SharedParameter,
@@ -51,28 +51,36 @@ def main(args: list[str]) -> None:
 #   - Correct order of parameters
 #   - Correct order of value tables
 def parse(measure: Measure) -> None:
-    ordered_params = get_ordered_params(measure)
-    ordered_val_tables = get_ordered_value_tables(measure)
-    ordered_sha_tables = get_ordered_shared_tables(measure)
+    try:
+        ordered_params = get_ordered_params(measure)
+        ordered_val_tables = get_ordered_value_tables(measure)
+        ordered_sha_tables = get_ordered_shared_tables(measure)
+    except RequiredParameterError as err:
+        print('ERROR - the measure is missing required information\n',
+              err)
+        return None
+    except MeasureFormatError as err:
+        print('ERROR - the measure is incorrectly formatted\n', err)
+        return None
+    except Exception as err:
+        print('ERROR - something went wrong\n', err)
+        return None
 
     define_measure_types(measure)
-    print('\nParams:')
-    print(ordered_params)
-    print('\nValue Tables:')
-    print(ordered_val_tables)
-    print('\nShared Tables:')
-    print(ordered_sha_tables)
+    print('\nParams:\n', ordered_params)
+    print('\nValue Tables:\n', ordered_val_tables)
+    print('\nShared Tables:\n', ordered_sha_tables)
 
     print('\nUnknown Parameters/Tables:', file=out)
-    print('    Params: ', list(
+    print('\tParams: ', list(
         map(lambda param: param.version.version_string,
             measure.remove_unknown_params(ordered_params))),
         file=out)
-    print('    Non-Shared Value Tables: ', list(
+    print('\tNon-Shared Value Tables: ', list(
         map(lambda table: table.api_name,
             measure.remove_unknown_value_tables(ordered_val_tables))),
         file=out)
-    print('    Shared Value Tables: ', list(
+    print('\tShared Value Tables: ', list(
         map(lambda table: table.version.version_string,
             measure.remove_unknown_shared_tables(ordered_sha_tables))),
         file=out)
@@ -95,24 +103,6 @@ def parse(measure: Measure) -> None:
 
     print('\nValidating Permutations:', file=out)
     validate_permutations(measure.permutations)
-
-
-def validate_permutations(permutations: list[Permutation]) -> None:
-    for permutation in permutations:
-        perm_name = permutation.reporting_name
-        perm_data = ALL_PERMUTATIONS[perm_name]
-        if perm_data == None:
-            print(f'Unknown Permutation - {perm_name}', file=out)
-            continue
-
-        verbose_name = permutation.valid_name
-        valid_name = getattr(perm_data, 'validity', None)
-        if verbose_name == valid_name:
-            continue
-
-        print('Incorrect Permutation',
-              f' - {verbose_name} should be {valid_name}',
-              file=out)
 
 
 def get_ordered_params(measure: Measure) -> list[str]:
@@ -323,6 +313,29 @@ def validate_shared_table_order(measure: Measure,
         if table.order != (index + 1):
             print('\tshared value tables are out of order', file=out)
             return None
+
+
+def validate_permutations(permutations: list[Permutation]) -> None:
+    for permutation in permutations:
+        perm_name = permutation.reporting_name
+        perm_data = ALL_PERMUTATIONS[perm_name]
+        if perm_data == None:
+            print(f'Unknown Permutation - {perm_name}', file=out)
+            continue
+
+        valid_name: Optional[str] = None
+        try:
+            valid_name = perm_data['validity']
+        except:
+            continue
+
+        verbose_name = permutation.valid_name
+        if verbose_name == valid_name:
+            continue
+
+        print('Incorrect Permutation',
+              f' - {verbose_name} should be {valid_name}',
+              file=out)
 
 
 def check_params(measure: Measure,
