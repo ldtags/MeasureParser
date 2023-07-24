@@ -8,7 +8,8 @@ from objects import (
     Measure,
     SharedParameter,
     ValueTable,
-    Calculation
+    Calculation,
+    Permutation
 )
 try:
     from types import SimpleNamespace as Namespace
@@ -93,11 +94,11 @@ def parse(measure: Measure) -> None:
     print_calculations(measure.calculations)
 
     print('\nValidating Permutations:', file=out)
-    validate_permutations(measure)
+    validate_permutations(measure.permutations)
 
 
-def validate_permutations(measure: Measure) -> None:
-    for permutation in measure.permutations:
+def validate_permutations(permutations: list[Permutation]) -> None:
+    for permutation in permutations:
         perm_name = permutation.reporting_name
         perm_data = ALL_PERMUTATIONS[perm_name]
         if perm_data == None:
@@ -255,8 +256,8 @@ def filter_inter_shared_tables(measure: Measure,
 #
 # validates that all shared value tables represented in @tableNames are found in @sharedTables
 def validate_shared_table_existence(measure: Measure,
-                                    tableNames: list[str]) -> None:
-    for table in tableNames:
+                                    table_names: list[str]) -> None:
+    for table in table_names:
         if not measure.contains_shared_table(table):
             print(f'\tMISSING SHARED TABLE - {table}', file=out)
 
@@ -267,8 +268,8 @@ def validate_shared_table_existence(measure: Measure,
 #
 # validates that all value tables represented in @tableNames are found in @value_tables
 def validate_value_table_existence(measure: Measure,
-                                   tableNames: list[str]) -> None:
-    for table in tableNames:
+                                   table_names: list[str]) -> None:
+    for table in table_names:
         if not measure.contains_value_table(table):
             print(f'\tMISSING TABLE - {table}', file=out)
 
@@ -282,8 +283,8 @@ def validate_value_table_existence(measure: Measure,
 # validates that all parameters represented in @paramNames are
 #      found in @sharedParams
 def validate_param_existence(measure: Measure,
-                             paramNames: list[str]) -> None:
-    for param in paramNames:
+                             param_names: list[str]) -> None:
+    for param in param_names:
         if not measure.contains_param(param):
             print(f'\tMISSING PARAM - {param}', file=out)
 
