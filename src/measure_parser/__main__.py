@@ -94,22 +94,23 @@ def parse(measure: Measure) -> None:
     
     print('\nValidating Permutations:', file=out)
     validate_permutations(measure)
-    
-    
+
+
 def validate_permutations(measure: Measure) -> None:
     for permutation in measure.permutations:
         perm_name = permutation.reporting_name
-        perm_data = getattr(ALL_PERMUTATIONS, perm_name, None)
-        if perm_data != None:
+        perm_data = ALL_PERMUTATIONS[perm_name]
+        if perm_data == None:
             print(f'Unknown Permutation - {perm_name}', file=out)
             continue
 
+        verbose_name = permutation.valid_name
         valid_name = getattr(perm_data, 'validity', None)
-        if valid_name == None or perm_name == valid_name:
+        if verbose_name == valid_name:
             continue
 
         print('Incorrect Permutation',
-              f' - {perm_name} should be {valid_name}',
+              f' - {verbose_name} should be {valid_name}',
               file=out)
 
 
@@ -118,7 +119,7 @@ def get_ordered_params(measure: Measure) -> list[str]:
 
     if not measure.is_DEER():
         ordered_params = filter_dict(ordered_params, 'DEER')
-        
+    
     if measure.is_GSIA_default():
         ordered_params = filter_dict(ordered_params, 'NGSIA')
 

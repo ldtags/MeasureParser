@@ -1,3 +1,4 @@
+from typing import Optional
 from data.permutations import ALL_PERMUTATIONS
 from exceptions import (
     RequiredParameterError,
@@ -17,10 +18,10 @@ except ImportError:
 class Permutation:
     def __init__(self,
                  reporting_name: str,
-                 verbose_name: str,
+                 valid_name: Optional[str],
                  derivation: str = 'mapped'):
         self.reporting_name: str = reporting_name
-        self.verbose_name: str = verbose_name
+        self.valid_name: str = valid_name
         self.derivation: str = derivation
 
 class Column:
@@ -113,8 +114,6 @@ class Measure:
                 = self.get_permutations(measure)
         except RequiredPermutationError as err:
             raise err
-        except PermutationFormatError as err:
-            raise err
         except:
             raise MeasureFormatError()
 
@@ -127,8 +126,6 @@ class Measure:
             if permutation == None:
                 raise RequiredPermutationError()
             verbose_name = getattr(measure, perm_name, None)
-            if verbose_name == None:
-                raise PermutationFormatError()
             perm_list.append(
                 Permutation(
                     perm_name,
