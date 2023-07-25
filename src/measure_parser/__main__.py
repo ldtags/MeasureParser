@@ -90,14 +90,17 @@ def parse(measure: Measure) -> None:
     validate_value_table_order(measure, ordered_val_tables)
     validate_shared_table_order(measure, ordered_sha_tables)
 
+    print('\nValidating Permutations:', file=out)
+    validate_permutations(measure.permutations)
+
     print('\nAll Value Tables:', file=out)
     print_value_tables(measure.value_tables)
 
     print('\nAll Calculations:', file=out)
     print_calculations(measure.calculations)
-
-    print('\nValidating Permutations:', file=out)
-    validate_permutations(measure.permutations)
+    
+    print('\nAll Permutations:', file=out)
+    print_permutations(measure.permutations)
 
 # returns the ordered list of all parameters to check for
 #
@@ -239,7 +242,15 @@ def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
     return {key:val for (key, val) in ordered_list.items() if val != flag}
 
-
+# filters the provided list in accordance to the interactive measure specs
+#
+# Parameters:
+#   measure (Measure):  the measure object being parsed
+#   ordered_params (dict[str, str]): an ordered dict of parameter names
+#
+# Returns:
+#   dict[str, str]: the dict filtered in accordance to the interactive
+#   measure specs
 def filter_inter_params(measure: Measure,
                         ordered_params: dict[str, str]
                        ) -> dict[str, str]:
@@ -248,7 +259,16 @@ def filter_inter_params(measure: Measure,
 
     return ordered_params
 
-
+# filters the provided list in accordance to the interactive measure specs
+#
+# Parameters:
+#   measure (Measure):  the measure object being parsed
+#   ordered_tables (dict[str, str]): an ordered dict of non-shared table
+#                                    names
+#
+# Returns:
+#   dict[str, str]: the dict filtered in accordance to the interactive
+#   measure specs
 def filter_inter_value_tables(measure: Measure,
                               ordered_tables: dict[str, str]
                              ) -> dict[str, str]:
@@ -257,7 +277,15 @@ def filter_inter_value_tables(measure: Measure,
 
     return ordered_tables
 
-
+# filters the provided list in accordance to the interactive measure specs
+#
+# Parameters:
+#   measure (Measure):  the measure object being parsed
+#   ordered_tables (dict[str, str]): an ordered dict of shared table names
+#
+# Returns:
+#   dict[str, str]: the dict filtered in accordance to the interactive
+#   measure specs
 def filter_inter_shared_tables(measure: Measure,
                                ordered_tables: dict[str, str]
                               ) -> dict[str, str]:
@@ -337,11 +365,12 @@ def validate_shared_table_order(measure: Measure,
 
 def validate_permutations(permutations: list[Permutation]) -> None:
     for permutation in permutations:
-        perm_name = permutation.reporting_name
-        perm_data = ALL_PERMUTATIONS[perm_name]
-        if perm_data == None:
-            print(f'Unknown Permutation - {perm_name}', file=out)
-            continue
+        perm_name: str = permutation.reporting_name
+        perm_data: dict[str, str] = None
+        try:
+            perm_data = ALL_PERMUTATIONS[perm_name]
+        except:
+            print(f'UNKNOWN PERMUTATION - {perm_name}')
 
         valid_name: Optional[str] = None
         try:
@@ -353,8 +382,8 @@ def validate_permutations(permutations: list[Permutation]) -> None:
         if verbose_name == valid_name:
             continue
 
-        print('Incorrect Permutation',
-              f' - {verbose_name} should be {valid_name}',
+        print('\tIncorrect Permutation',
+              f' -  {verbose_name} should be {valid_name}',
               file=out)
 
 
@@ -383,8 +412,24 @@ def print_value_tables(tables: list[ValueTable]) -> None:
 def print_calculations(calculations: list[Calculation]) -> None:
     for calculation in calculations:
         print(f'\tCalculation Name - {calculation.name}', file=out)
-        print(f'\t\tAPI Name - {calculation.api_name}', file=out)
+        print(f'\t\tAPI Name - {calculation.api_name}\n', file=out)
 
+
+def print_permutations(permutations: list[Permutation]) -> None:
+    for permutation in permutations:
+        try:
+            perm_data = ALL_PERMUTATIONS[permutation.reporting_name]
+        except:
+            raise MeasureFormatError()
+
+        try:
+            verbose_name = perm_data['verbose']
+            print(f'\t{permutation.reporting_name}:',
+                  f'\n\t\tVerbose Name - {verbose_name}',
+                  f'\n\t\tMapped Field - {permutation.valid_name}\n',
+                  file=out)
+        except:
+            continue
 
 # defines the type of measure that the given measure satisfies
 # returns nothing and does not modify any data, use for debugging

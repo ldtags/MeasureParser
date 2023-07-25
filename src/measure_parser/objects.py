@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Iterable, Optional
 from data.permutations import ALL_PERMUTATIONS
 from exceptions import (
     RequiredParameterError,
@@ -254,7 +254,7 @@ class Measure:
     #   list[ValueTable]: the list of non-shared value tables not in
     #   @table_names
     def remove_unknown_value_tables(self,
-                                    table_names : list[str]
+                                    table_names: list[str]
                                    ) -> list[ValueTable]:
         unknown_tables : list[ValueTable] = []
         for table in self.value_tables:
@@ -279,8 +279,8 @@ class Measure:
     #   list[SharedValueTable]: the list of shared value tables not in
     #   @table_names
     def remove_unknown_shared_tables(self,
-                                     table_names : list[str]
-                                    ) -> list[SharedValueTable]:
+                                     table_names: list[str]
+                                     ) -> list[SharedValueTable]:
         unknown_tables: list[SharedValueTable] = []
         for table in self.shared_tables:
             if table.version.version_string not in table_names:
