@@ -378,12 +378,11 @@ def validate_permutations(permutations: list[Permutation]) -> None:
         except:
             continue
 
-        verbose_name = permutation.valid_name
-        if verbose_name == valid_name:
+        if permutation.valid_name == valid_name:
             continue
 
         print('\tIncorrect Permutation',
-              f' -  {verbose_name} should be {valid_name}',
+              f' -  {permutation.valid_name} should be {valid_name}',
               file=out)
 
 
