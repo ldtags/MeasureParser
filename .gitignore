@@ -2,6 +2,15 @@
 /.vscode/
 /src/measure_parser/__pycache__/
 /src/measure_parser/data/__pycache__/
+/Include/
+/Lib/
+/Scripts/
+/pyvenv.cfg
+
+# pyinstaller
+/build/
+/dist/
+/__main__.spec
 
 # Output
 out.txt
