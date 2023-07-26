@@ -1,6 +1,6 @@
 from typing import Iterable, Optional
-from data.permutations import ALL_PERMUTATIONS
-from exceptions import (
+from src.measure_parser.data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,

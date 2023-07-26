@@ -1,11 +1,17 @@
 import sys
 import json
-from data.parameters import ALL_PARAMS
-from data.valuetables import ALL_VALUE_TABLES, ALL_SHARED_TABLES
-from data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.data.parameters import ALL_PARAMS
+from src.measure_parser.data.valuetables import (
+    ALL_VALUE_TABLES,
+    ALL_SHARED_TABLES
+)
+from src.measure_parser.data.permutations import ALL_PERMUTATIONS
 from typing import Optional, TextIO
-from exceptions import MeasureFormatError, RequiredParameterError
-from objects import (
+from src.measure_parser.exceptions import (
+    MeasureFormatError,
+    RequiredParameterError
+)
+from src.measure_parser.objects import (
     Measure,
     SharedParameter,
     ValueTable,
@@ -26,8 +32,17 @@ def main(args: list[str]) -> None:
     flags: list[str] = list(filter(lambda arg: arg[0] == '-', args))
     for flag in flags:
         args.remove(flag)
+    filename: str = None
+    try:
+        filename = args[1]
+    except IndexError:
+        print('filename missing')
+        return None
+    except Exception as err:
+        print(f'something happened:\n{err}')
+        return None
 
-    with open(args[1], 'r') as measure_file:
+    with open(filename, 'r') as measure_file:
         if '-console' not in flags: 
             global out
             out = open('out.txt', 'w+')
