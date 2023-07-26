@@ -1,17 +1,18 @@
 import sys
 import json
-from src.measure_parser.data.parameters import ALL_PARAMS
-from src.measure_parser.data.valuetables import (
+from typing import Optional, TextIO
+from data.parameters import ALL_PARAMS
+from data.valuetables import (
     ALL_VALUE_TABLES,
     ALL_SHARED_TABLES
 )
-from src.measure_parser.data.permutations import ALL_PERMUTATIONS
-from typing import Optional, TextIO
-from src.measure_parser.exceptions import (
+from data.permutations import ALL_PERMUTATIONS
+from exceptions import (
     MeasureFormatError,
-    RequiredParameterError
+    RequiredParameterError,
+    PermutationFormatError
 )
-from src.measure_parser.objects import (
+from objects import (
     Measure,
     SharedParameter,
     ValueTable,
@@ -27,7 +28,10 @@ except ImportError:
 # Global Variables
 out: Optional[TextIO] = None
 
-
+# controls the flow of processes when parsing the measure
+#
+# Parameters:
+#   args (list[str]): measure parsing arguments, including flags
 def main(args: list[str]) -> None:
     flags: list[str] = list(filter(lambda arg: arg[0] == '-', args))
     for flag in flags:
@@ -36,10 +40,10 @@ def main(args: list[str]) -> None:
     try:
         filename = args[1]
     except IndexError:
-        print('filename missing')
+        print('ERROR - filename missing')
         return None
     except Exception as err:
-        print(f'something happened:\n{err}')
+        print(f'ERROR - something went wrong when parsing args:\n{err}')
         return None
 
     with open(filename, 'r') as measure_file:
@@ -70,10 +74,10 @@ def parse(measure: Measure) -> None:
               err)
         return None
     except MeasureFormatError as err:
-        print('ERROR - the measure is incorrectly formatted\n', err)
+        print(f'ERROR - the measure is incorrectly formatted:\n{err}')
         return None
     except Exception as err:
-        print('ERROR - something went wrong\n', err)
+        print(f'ERROR - something went wrong:\n{err}')
         return None
 
     define_measure_types(measure)
@@ -399,7 +403,7 @@ def validate_shared_table_order(measure: Measure,
 def validate_permutations(measure: Measure) -> None:
     for permutation in measure.permutations:
         perm_name: str = permutation.reporting_name
-        perm_data: dict[str, str] = None
+        perm_data: dict[str, str] = {}
         try:
             perm_data = ALL_PERMUTATIONS[perm_name]
         except:
@@ -411,12 +415,41 @@ def validate_permutations(measure: Measure) -> None:
         except:
             continue
 
-        if permutation.valid_name == valid_name:
+        if permutation.valid_name == valid_name or valid_name == None:
             continue
 
-        print('\tIncorrect Permutation',
-              f' -  {permutation.valid_name} should be {valid_name}',
-              file=out)
+        cond_names: list[str] = []
+        try:
+            cond_names = perm_data['conditional']
+        except:
+            flag_permutation(permutation.valid_name, valid_name)
+            continue
+        
+        if perm_name == 'BaseCase2nd' \
+                and 'AR' in measure.get_param('MeasAppType').labels:
+            valid_name = cond_names[0]
+        elif perm_name == 'Upstream_Flag' \
+                and 'UpDeemed' in measure.get_param('DelivType').labels:
+            valid_name = cond_names[0]
+        elif perm_name == 'WaterUse' \
+                and measure.get_param('waterMeasureType') != None:
+            valid_name = cond_names[0]
+        elif perm_name == 'ETP_Flag' \
+                and measure.get_value_table('emergingTech') != None:
+            valid_name = cond_names[0]
+        elif perm_name == 'ETP_YearFirstIntroducedToPrograms' \
+                and measure.get_value_table('emergingTech') != None:
+            valid_name = cond_names[0]
+            
+        if permutation.valid_name == valid_name:
+            continue
+        
+        flag_permutation(permutation.valid_name, valid_name)
+
+def flag_permutation(perm_name: str, valid_name: str) -> None:
+    print('\tIncorrect Permutation',
+          f'- {perm_name} should be {valid_name}',
+          file=out)
 
 # validates that all parameters that appear in @measure are represented
 # in @ordered_params
