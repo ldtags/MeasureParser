@@ -7,12 +7,15 @@ from src.measure_parser.exceptions import (
     ValueTableFormatError,
     SharedTableFormatError,
     MeasureFormatError,
-    RequiredPermutationError
+    RequiredPermutationError,
+    ColumnFormatError,
+    CalculationFormatError
 )
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
+
 
 class Permutation:
     def __init__(self,
@@ -26,33 +29,42 @@ class Permutation:
 class Column:
     def __init__(self, column: Namespace):
         try:
-            self.name: str = column.name
-            self.api_name: str = column.api_name
-            self.unit: str = column.unit
-            self.reference_refs: list = column.reference_refs
-        except:
-            raise Exception()
+            self.name: str = getattr(column, 'name')
+            self.api_name: str = getattr(column, 'api_name')
+            self.unit: str = getattr(column, 'unit')
+            self.reference_refs: list = getattr(column, 'reference_refs')
+        except AttributeError:
+            raise ColumnFormatError()
+        except Exception as err:
+            raise err
 
 class Version:
     def __init__(self, version: Namespace):
         try:
-            if version.version_string.index('-') != -1:
-                self.version_string = version.version_string.split('-')[0]
+            version_string: str = getattr(version, 'version_string')
+            if version_string.index('-') != -1:
+                self.version_string = version_string.split('-')[0]
             else:
-                self.version_string = version.version_string
-        except:
+                self.version_string = version_string
+        except AttributeError:
             raise VersionFormatError()
+        except Exception as err:
+            raise err
 
 class Calculation:
     def __init__(self, calculation: Namespace):
         try:
-            self.name: str = calculation.name
-            self.api_name: str = calculation.api_name
-            self.order: int = calculation.order
-            self.unit: str = calculation.unit
-            self.determinants: list[str] = calculation.determinants
-            self.values: list[list[str]] = calculation.values
-            self.reference_refs: list = calculation.reference_refs
+            self.name: str = getattr(calculation, 'name')
+            self.api_name: str = getattr(calculation, 'api_name')
+            self.order: int = getattr(calculation, 'order')
+            self.unit: str = getattr(calculation, 'unit')
+            self.determinants: list[str] \
+                = getattr(calculation, 'determinants')
+            self.values: list[list[str]] = getattr(calculation, 'values')
+            self.reference_refs: list \
+                = getattr(calculation, 'reference_refs')
+        except AttributeError:
+            raise CalculationFormatError()
         except Exception as err:
             raise err
 
@@ -60,61 +72,67 @@ class SharedParameter:
     def __init__(self, param: Namespace):
         try:
             self.order: int = getattr(param, 'order')
-            self.version: Version = Version(param.version)
-            self.labels: list[str] = param.active_labels
+            version: Namespace = getattr(param, 'version')
+            self.version: Version = Version(version)
+            self.labels: list[str] = getattr(param, 'active_labels')
         except AttributeError:
             raise ParameterFormatError()
-        except:
-            raise Exception(
-                '')
+        except Exception as err:
+            raise err
 
 class ValueTable:
-    def __init__(self, valueTable: Namespace):
+    def __init__(self, value_table: Namespace):
         try:
-            self.name: str = valueTable.name
-            self.api_name: str = valueTable.api_name
-            self.type: str = valueTable.type
-            self.description: str = valueTable.description
-            self.order: int = valueTable.order
-            self.determinants: list = valueTable.determinants
+            self.name: str = getattr(value_table, 'name')
+            self.api_name: str = getattr(value_table, 'api_name')
+            self.type: str = getattr(value_table, 'type')
+            self.description: str = getattr(value_table, 'description')
+            self.order: int = getattr(value_table, 'order')
+            self.determinants: list = getattr(value_table, 'determinants')
             self.columns: list[Column] = list(
                 map(lambda column: Column(column),
-                    valueTable.columns))
-            self.values: list[str] = valueTable.values
-            self.refs: list = valueTable.reference_refs
-        except:
+                    getattr(value_table, 'columns')))
+            self.values: list[str] = getattr(value_table, 'values')
+            self.reference_refs: list \
+                = getattr(value_table, 'reference_refs')
+        except AttributeError:
             raise ValueTableFormatError()
+        except Exception as err:
+            raise err
 
 class SharedValueTable:
     def __init__(self, shared_table: Namespace):
         try:
-            self.order: int = shared_table.order
-            self.version: Version = Version(shared_table.version)
-        except:
+            self.order: int = getattr(shared_table, 'order')
+            version: Namespace = getattr(shared_table, 'version')
+            self.version: Version = Version(version)
+        except AttributeError:
             raise SharedTableFormatError()
+        except Exception as err:
+            raise err
 
 class Measure:
     def __init__(self, measure: Namespace):
         try:
-            self.owner: str = measure.owned_by_user
+            self.owner: str = getattr(measure, 'owned_by_user')
             self.params: list[SharedParameter] = list(
                 map(lambda param: SharedParameter(param),
-                    measure.shared_determinant_refs))
+                    getattr(measure, 'shared_determinant_refs')))
             self.shared_tables: list[SharedValueTable] = list(
                 map(lambda table: SharedValueTable(table),
-                    measure.shared_lookup_refs))
+                    getattr(measure, 'shared_lookup_refs')))
             self.value_tables: list[ValueTable] = list(
                 map(lambda table: ValueTable(table),
-                    measure.value_tables))
+                    getattr(measure, 'value_tables')))
             self.calculations: list[Calculation] = list(
                 map(lambda calc: Calculation(calc),
-                    measure.calculations))
+                    getattr(measure, 'calculations')))
             self.permutations: list[Permutation] \
                 = self.get_permutations(measure)
-        except RequiredPermutationError as err:
-            raise err
-        except:
+        except AttributeError:
             raise MeasureFormatError()
+        except Exception as err:
+            raise err
 
     def get_permutations(self, measure: Namespace) -> list[Permutation]:
         permutations: Namespace = Namespace(**ALL_PERMUTATIONS)

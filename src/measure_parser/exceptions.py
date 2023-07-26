@@ -33,7 +33,16 @@ class PermutationFormatError(Exception):
         self.message = message
         super().__init__(self.message)
         
+class ColumnFormatError(Exception):
+    def __init__(self, message='column is missing required information'):
+        self.message = message
+        super().__init__(self.message)
         
+class CalculationFormatError(Exception):
+    def __init__(self, message='calculation is missing required information'):
+        self.message = message
+        super().__init__(self.message)
+
 class RequiredParameterError(Exception):
     def __init__(self, message, name):
         self.message = message if message != None \
