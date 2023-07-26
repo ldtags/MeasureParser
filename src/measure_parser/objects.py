@@ -143,12 +143,7 @@ class Measure:
             if permutation == None:
                 raise RequiredPermutationError()
             verbose_name = getattr(measure, perm_name, None)
-            perm_list.append(
-                Permutation(
-                    perm_name,
-                    verbose_name
-                )
-            )
+            perm_list.append(Permutation(perm_name, verbose_name))
         return perm_list
         
 
