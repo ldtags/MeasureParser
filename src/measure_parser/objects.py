@@ -1,4 +1,4 @@
-from typing import Iterable, Optional
+from typing import Optional
 from src.measure_parser.data.permutations import ALL_PERMUTATIONS
 from src.measure_parser.exceptions import (
     RequiredParameterError,
@@ -7,7 +7,6 @@ from src.measure_parser.exceptions import (
     ValueTableFormatError,
     SharedTableFormatError,
     MeasureFormatError,
-    PermutationFormatError,
     RequiredPermutationError
 )
 try:
