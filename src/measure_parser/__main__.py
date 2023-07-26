@@ -106,14 +106,14 @@ def parse(measure: Measure) -> None:
     validate_shared_table_order(measure, ordered_sha_tables)
 
     print('\nValidating Permutations:', file=out)
-    validate_permutations(measure.permutations)
+    validate_permutations(measure)
 
     print('\nAll Value Tables:', file=out)
     print_value_tables(measure.value_tables)
 
     print('\nAll Calculations:', file=out)
     print_calculations(measure.calculations)
-    
+
     print('\nAll Permutations:', file=out)
     print_permutations(measure.permutations)
 
@@ -313,45 +313,48 @@ def filter_inter_shared_tables(measure: Measure,
     return ordered_tables
 
 
-# Parameters:
-#   @sharedTables - a dict mapping all value tables to their respective api_name
-#   @tableNames - a list of table names to check the measures value tables against
+# validates that all shared value tables represented in @table_names are
+# found in @measure
 #
-# validates that all shared value tables represented in @tableNames are found in @sharedTables
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   table_names (list[str]): the list of all valid shared table names
 def validate_shared_table_existence(measure: Measure,
                                     table_names: list[str]) -> None:
     for table in table_names:
         if not measure.contains_shared_table(table):
             print(f'\tMISSING SHARED TABLE - {table}', file=out)
 
-
-# Parameters:
-#   @value_tables - a dict mapping all value tables to their respective api_name
-#   @tableNames - a list of table names to check the measures value tables against
+# validates that all non-shared value tables represented in @table_names
+# are found in @measure
 #
-# validates that all value tables represented in @tableNames are found in @value_tables
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   table_names (list[str]): the list of all valid non-shared table names
 def validate_value_table_existence(measure: Measure,
                                    table_names: list[str]) -> None:
     for table in table_names:
         if not measure.contains_value_table(table):
             print(f'\tMISSING TABLE - {table}', file=out)
 
-
-# Parameters:
-#   @sharedParams - a dict mapping all measure parameters to their
-#                       respective names
-#   @paramNames - a list of parameter names to check the measure
-#                     parameters against
+# validates that all parameters represented in @param_names are found
+# in @measure
 #
-# validates that all parameters represented in @paramNames are
-#      found in @sharedParams
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   param_names (list[str]): the list of all valid parameter names
 def validate_param_existence(measure: Measure,
                              param_names: list[str]) -> None:
     for param in param_names:
         if not measure.contains_param(param):
             print(f'\tMISSING PARAM - {param}', file=out)
 
-
+# validates that all parameters in @measure are in the same order as the
+# parameters represented by @ordered_params
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   ordered_params (list[str]): the list of all valid parameter names
 def validate_param_order(measure: Measure,
                          ordered_params: list[str]) -> None:
     for param in measure.params:
@@ -360,7 +363,13 @@ def validate_param_order(measure: Measure,
             print('\tparameters are out of order', file=out)
             return None
 
-
+# validates that all non-shared value tables in @measure are in the same
+# order as the non-shared value tables represented by @ordered_tables
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   ordered_tables (list[str]): the list of all valid non-shared value
+#                               table names
 def validate_value_table_order(measure: Measure,
                                ordered_tables: list[str]) -> None:
     for table in measure.value_tables:
@@ -368,7 +377,13 @@ def validate_value_table_order(measure: Measure,
             print('\tnon-shared value tables are out of order', file=out)
             return None
 
-
+# validates that all shared value tables in @measure are in the same
+# order as the non-shared value tables represented by @ordered_tables
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   ordered_tables (list[str]): the list of all valid shared value
+#                               table names
 def validate_shared_table_order(measure: Measure,
                                 ordered_tables: list[str]) -> None:
     for table in measure.shared_tables:
@@ -377,9 +392,12 @@ def validate_shared_table_order(measure: Measure,
             print('\tshared value tables are out of order', file=out)
             return None
 
-
-def validate_permutations(permutations: list[Permutation]) -> None:
-    for permutation in permutations:
+# validates that all permutations have the correct mapped name
+#
+# Parameters:
+#   measure (Measure): the measure being parsed
+def validate_permutations(measure: Measure) -> None:
+    for permutation in measure.permutations:
         perm_name: str = permutation.reporting_name
         perm_data: dict[str, str] = None
         try:
@@ -400,7 +418,16 @@ def validate_permutations(permutations: list[Permutation]) -> None:
               f' -  {permutation.valid_name} should be {valid_name}',
               file=out)
 
-
+# validates that all parameters that appear in @measure are represented
+# in @ordered_params
+#
+# Parameters:
+#   measure (Measure): the measure object being parsed
+#   ordered_params (list[str]): a list of valid parameter names
+#
+# Returns:
+#   list[SharedParameter]: the list of parameters not represented
+#                          in @ordered_params
 def check_params(measure: Measure,
                  ordered_params: list[str]) -> list[SharedParameter]:
     unknown: list[SharedParameter] = []
@@ -410,8 +437,12 @@ def check_params(measure: Measure,
 
     for param in unknown:
         measure.params.remove(param)
+    return unknown
 
-
+# prints a representation of every non-shared value table in @tables
+#
+# Parameters:
+# tables (list[ValueTable]): a list of non-shared value tables
 def print_value_tables(tables: list[ValueTable]) -> None:
     for table in tables:
         print(f'\tTable Name - {table.name}', file=out)
@@ -422,13 +453,20 @@ def print_value_tables(tables: list[ValueTable]) -> None:
             print(f'\t\t\tAPI Name - {column.api_name}', file=out)
         print(file=out)
             
-
+# prints out every calculation in @calculations' name and API name
+#
+# Parameters:
+#   calculations (list[Calculation]): a list of calculations
 def print_calculations(calculations: list[Calculation]) -> None:
     for calculation in calculations:
         print(f'\tCalculation Name - {calculation.name}', file=out)
         print(f'\t\tAPI Name - {calculation.api_name}\n', file=out)
 
-
+# prints out every permutation in @permutations' reporting name,
+# verbose name, and mapped field
+#
+# Parameters:
+#   permutations (list[Calculation]): a list of permutations
 def print_permutations(permutations: list[Permutation]) -> None:
     for permutation in permutations:
         try:
