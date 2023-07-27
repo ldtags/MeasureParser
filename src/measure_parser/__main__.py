@@ -1,6 +1,10 @@
 import sys
 import json
 from typing import Optional, TextIO
+try:
+    from types import SimpleNamespace as Namespace
+except ImportError:
+    from argparse import Namespace
 from data.parameters import ALL_PARAMS
 from data.valuetables import (
     ALL_VALUE_TABLES,
@@ -19,10 +23,6 @@ from objects import (
     Calculation,
     Permutation
 )
-try:
-    from types import SimpleNamespace as Namespace
-except ImportError:
-    from argparse import Namespace
 
 
 # Global Variables
