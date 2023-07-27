@@ -1,6 +1,7 @@
 import sys
 import json
 from typing import Optional, TextIO
+from spellchecker import SpellChecker
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
