@@ -1,5 +1,6 @@
 from typing import Optional
 from data.permutations import ALL_PERMUTATIONS
+from data.characterizations import ALL_CHARACTERIZATIONS
 from exceptions import (
     RequiredParameterError,
     VersionFormatError,
@@ -9,21 +10,27 @@ from exceptions import (
     MeasureFormatError,
     RequiredPermutationError,
     ColumnFormatError,
-    CalculationFormatError
+    CalculationFormatError,
+    RequiredCharacterizationError,
+    UnknownPermutationError
 )
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
 
+class Characterization:
+    def __init__(self, name: str, content: str):
+        self.name: str = name
+        self.content: str = content
 
 class Permutation:
     def __init__(self,
                  reporting_name: str,
-                 valid_name: Optional[str],
+                 mapped_name: Optional[str],
                  derivation: str = 'mapped'):
         self.reporting_name: str = reporting_name
-        self.valid_name: str = valid_name
+        self.mapped_name: str = mapped_name
         self.derivation: str = derivation
 
 class Column:
@@ -128,24 +135,36 @@ class Measure:
                 map(lambda calc: Calculation(calc),
                     getattr(measure, 'calculations')))
             self.permutations: list[Permutation] \
-                = self.get_permutations(measure)
+                = self.__get_permutations(measure)
+            self.characterizations: list[Characterization] \
+                = self.__get_characterizations(measure)
         except AttributeError:
             raise MeasureFormatError()
         except Exception as err:
             raise err
+        
+    def __get_characterizations(self, measure: Namespace
+                                ) -> list[Characterization]:
+        char_list: list[Characterization] = []
+        for char_name in ALL_CHARACTERIZATIONS:
+            content: str = getattr(measure, char_name, None)
+            if content == None:
+                raise RequiredCharacterizationError(name=char_name)
+            char_list.append(Characterization(char_name, content))
+        return char_list
 
-    def get_permutations(self, measure: Namespace) -> list[Permutation]:
+    def __get_permutations(self, measure: Namespace) -> list[Permutation]:
         permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
         perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
         perm_list: list[Permutation] = []
         for perm_name in perm_names:
             permutation = getattr(permutations, perm_name, None)
             if permutation == None:
-                raise RequiredPermutationError()
+                raise RequiredPermutationError(name=perm_name)
             verbose_name = getattr(measure, perm_name, None)
             perm_list.append(Permutation(perm_name, verbose_name))
         return perm_list
-        
+
 
     # Checks if the measure contains a parameter associated with
     # @param_name
@@ -171,8 +190,8 @@ class Measure:
     #   bool: True if the measure contains a non-shared value table
     #         associated with @table_name
     def contains_value_table(self, table_name: str) -> bool:
-        value_tables \
-            = map(lambda table: table.api_name, self.value_tables)
+        value_tables = map(lambda table: table.api_name,
+                           self.value_tables)
         return table_name in value_tables
     
     # Checks if the measure contains a shared value table associated with
@@ -184,10 +203,24 @@ class Measure:
     # Returns:
     #   bool: True if the measure contains a shared value table associated
     #         with @table_name
-    def contains_shared_table(self, table_name : str) -> bool:
-        shared_tables = map(lambda table: table.version.version_string,
+    def contains_shared_table(self, table_name: str) -> bool:
+        table_names = map(lambda table: table.version.version_string,
                             self.shared_tables)
-        return table_name in shared_tables
+        return table_name in table_names
+
+    # Checks if the measure contains a permutation associated with
+    # @perm_name
+    #
+    # Parameters:
+    #   perm_name (str): the name of the desired permutation
+    #
+    # Returns:
+    #   bool: True if the measure contains a permutation associated
+    #         with @perm_name
+    def contains_permutation(self, perm_name: str) -> bool:
+        perm_names = map(lambda perm: perm.reporting_name,
+                         self.permutations)
+        return perm_name in perm_names
 
     # Returns the parameter associated with @param_name
     #
@@ -197,12 +230,12 @@ class Measure:
     # Returns:
     #   SharedParameter: The desired parameter
     #   None: If no parameter with a name matching @param_name exists 
-    def get_param(self, param_name: str) -> SharedParameter:
+    def get_param(self, param_name: str) -> Optional[SharedParameter]:
         for param in self.params:
             if param.version.version_string == param_name:
                 return param
         return None
-    
+
     # Returns the non-shared value table associated with @table_name
     #
     # Parameters:
@@ -211,12 +244,12 @@ class Measure:
     # Returns:
     #   ValueTable: The desired non-shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_value_table(self, table_name: str) -> ValueTable:
+    def get_value_table(self, table_name: str) -> Optional[ValueTable]:
         for table in self.value_tables:
             if table.api_name == table_name:
                 return table
         return None
-    
+
     # Returns the shared value table associated with @table_name
     #
     # Parameters:
@@ -225,10 +258,25 @@ class Measure:
     # Returns:
     #   SharedValueTable: The desired shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_shared_table(self, table_name : str) -> SharedValueTable:
+    def get_shared_table(self,
+                         table_name: str) -> Optional[SharedValueTable]:
         for table in self.shared_tables:
             if table.version.version_string == table_name:
                 return table
+        return None
+
+    # Returns the permutation associated with @perm_name
+    #
+    # Parameters:
+    #   perm_name (str): name of desired permutation
+    #
+    # Returns:
+    #   SharedValueTable: The desired permutation
+    #   None: If no permutation with a name matching @perm_name exists
+    def get_permutation(self, perm_name: str) -> Optional[Permutation]:
+        for permutation in self.permutations:
+            if permutation.reporting_name == perm_name:
+                return permutation
         return None
 
     # Removes all parameters whose names don't appear in @param_names

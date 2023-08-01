@@ -1,5 +1,5 @@
 import json
-from objects import Measure
+from objects import Measure, Permutation
 from typing import Optional, TextIO
 try:
     from types import SimpleNamespace as Namespace
@@ -13,7 +13,8 @@ from data.valuetables import (
 )
 from exceptions import (
     RequiredParameterError,
-    MeasureFormatError
+    MeasureFormatError,
+    UnknownPermutationError
 )
 
 
@@ -180,63 +181,60 @@ class MeasureParser:
     def validate_permutations(self) -> None:
         print('\nValidating Permutations:', file=self.out)
         for permutation in self.measure.permutations:
-            perm_name: str = permutation.reporting_name
-            perm_data: dict[str, str] = {}
             try:
-                perm_data = ALL_PERMUTATIONS[perm_name]
-            except:
-                print(f'UNKNOWN PERMUTATION - {perm_name}')
+                valid_name: str = self.__get_valid_perm_name(permutation)
+                mapped_name: str = permutation.mapped_name
+                if mapped_name != valid_name:
+                    print('\tIncorrect Permutation',
+                          f'- {mapped_name} should be {valid_name}',
+                          file=self.out)
+            except UnknownPermutationError as err:
+                print(f'UNKNOWN PERMUTATION - {err.name}', file=self.out)
 
-            valid_name: Optional[str] = None
-            try:
-                valid_name = perm_data['validity']
-            except:
-                continue
-
-            if permutation.valid_name == valid_name or valid_name == None:
-                continue
-
-            cond_names: list[str] = []
-            try:
-                cond_names = perm_data['conditional']
-            except:
-                self.__flag_permutation(permutation.valid_name,
-                                        valid_name)
-                continue
-
-            get_param = self.measure.get_param
-            get_value_table = self.measure.get_value_table
-            if perm_name == 'BaseCase2nd' \
-                    and 'AR' in get_param('MeasAppType').labels:
-                valid_name = cond_names[0]
-            elif perm_name == 'Upstream_Flag' \
-                    and 'UpDeemed' in get_param('DelivType').labels:
-                valid_name = cond_names[0]
-            elif perm_name == 'WaterUse' \
-                    and get_param('waterMeasureType') != None:
-                valid_name = cond_names[0]
-            elif perm_name == 'ETP_Flag' \
-                    and get_value_table('emergingTech') != None:
-                valid_name = cond_names[0]
-            elif perm_name == 'ETP_YearFirstIntroducedToPrograms' \
-                    and get_value_table('emergingTech') != None:
-                valid_name = cond_names[0]
-
-            if permutation.valid_name == valid_name:
-                continue
-            
-            self.__flag_permutation(permutation.valid_name, valid_name)
-
-
-    def __flag_permutation(self, perm_name: str, valid_name: str) -> None:
-        print('\tIncorrect Permutation',
-              f'- {perm_name} should be {valid_name}',
-              file=self.out)
-        
-    # prints a representation of every non-shared value table in @tables
+    # returns the valid name for @permutation
     #
-    # Parameters:
-    # tables (list[ValueTable]): a list of non-shared value tables
+    # Paramters:
+    #   permutation (Permutation): the permutation being validated
+    #
+    # Returns:
+    #   str: the valid name of @permutation
+    def __get_valid_perm_name(self,
+                              permutation: Permutation) -> str:
+        name: str = permutation.reporting_name
+        data: dict[str, str] = ALL_PERMUTATIONS.get(name, None)
+        if data == None:
+            raise UnknownPermutationError(name=name)
+
+        mapped_name: str = permutation.mapped_name
+        valid_name: Optional[str] = data.get('validity', None)
+        if valid_name == None:
+            return mapped_name
+
+        cond_names: list[str] = data.get('conditional', [])
+        if len(cond_names) == 0:
+            return valid_name
+
+        get_param: function = self.measure.get_param
+        get_value_table: function = self.measure.get_value_table
+        if name == 'BaseCase2nd' \
+                and 'AR' in get_param('MeasAppType').labels:
+            valid_name = cond_names[0]
+        elif name == 'Upstream_Flag' \
+                and 'UpDeemed' in get_param('DelivType').labels:
+            valid_name = cond_names[0]
+        elif name == 'WaterUse' \
+                and get_param('waterMeasureType') != None:
+            valid_name = cond_names[0]
+        elif name == 'ETP_Flag' \
+                and get_value_table('emergingTech') != None:
+            valid_name = cond_names[0]
+        elif name == 'ETP_YearFirstIntroducedToPrograms' \
+                and get_value_table('emergingTech') != None:
+            valid_name = cond_names[0]
+
+        return valid_name
+
+    # prints a representation of every non-shared value table in @measure
     def print_value_tables(self) -> None:
         print('\nAll Value Tables:', file=self.out)
         for table in self.measure.value_tables:
@@ -248,10 +246,7 @@ class MeasureParser:
                 print(f'\t\t\tAPI Name - {column.api_name}', file=self.out)
             print(file=self.out)
 
-    # prints out every calculation in @calculations' name and API name
-    #
-    # Parameters:
-    #   calculations (list[Calculation]): a list of calculations
+    # prints out every calculation in @measure' name and API name
     def print_calculations(self) -> None:
         print('\nAll Calculations:', file=self.out)
         for calculation in self.measure.calculations:
@@ -260,11 +255,8 @@ class MeasureParser:
             print(f'\t\tAPI Name - {calculation.api_name}\n',
                   file=self.out)
 
-    # prints out every permutation in @permutations' reporting name,
+    # prints out every permutation in @measure's reporting name,
     # verbose name, and mapped field
-    #
-    # Parameters:
-    #   permutations (list[Calculation]): a list of permutations
     def print_permutations(self) -> None:
         print('\nAll Permutations:', file=self.out)
         for permutation in self.measure.permutations:
