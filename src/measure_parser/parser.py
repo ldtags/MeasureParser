@@ -5,6 +5,7 @@ try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
+from htmlparser import CharacterizationParser
 from data.parameters import ALL_PARAMS
 from data.permutations import ALL_PERMUTATIONS
 from data.valuetables import (
@@ -56,10 +57,26 @@ class MeasureParser:
             return None
 
     def parse(self) -> None:
+        print('removing unknowns')
         self.remove_unknowns()
+        print('finished removing unknowns\n')
+        
+        print('validating existence')
         self.validate_existence()
+        print('finished validating existence\n')
+        
+        print('validating order')
         self.validate_order()
+        print('finished validating order\n')
+        
+        print('validating permutations')
         self.validate_permutations()
+        print('finished validating permutations\n')
+        
+        print('parsing characterizations')
+        self.parse_characterizations()
+        print('finished parsing characterizations\n')
+
         self.print_value_tables()
         self.print_calculations()
         self.print_permutations()
@@ -185,7 +202,7 @@ class MeasureParser:
                 valid_name: str = self.__get_valid_perm_name(permutation)
                 mapped_name: str = permutation.mapped_name
                 if mapped_name != valid_name:
-                    print('\tIncorrect Permutation',
+                    print(f'\tIncorrect Permutation ({permutation.reporting_name})',
                           f'- {mapped_name} should be {valid_name}',
                           file=self.out)
             except UnknownPermutationError as err:
@@ -198,8 +215,7 @@ class MeasureParser:
     #
     # Returns:
     #   str: the valid name of @permutation
-    def __get_valid_perm_name(self,
-                              permutation: Permutation) -> str:
+    def __get_valid_perm_name(self, permutation: Permutation) -> str:
         name: str = permutation.reporting_name
         data: dict[str, str] = ALL_PERMUTATIONS.get(name, None)
         if data == None:
@@ -234,6 +250,14 @@ class MeasureParser:
 
         return valid_name
 
+    def parse_characterizations(self) -> None:
+        parser: CharacterizationParser \
+            = CharacterizationParser(out=self.out)
+        print('\nParsing Characterizations:', file=self.out)
+        for characterization in self.measure.characterizations:
+            print(f'parsing {characterization.name}')
+            parser.parse(characterization)
+
     # prints a representation of every non-shared value table in @measure
     def print_value_tables(self) -> None:
         print('\nAll Value Tables:', file=self.out)
@@ -267,9 +291,9 @@ class MeasureParser:
 
             try:
                 verbose_name = perm_data['verbose']
-                print(f'\t{permutation.reporting_name}:',
+                print(f'\t{permutation.reporting_name}:'
                       f'\n\t\tVerbose Name - {verbose_name}',
-                      f'\n\t\tMapped Field - {permutation.valid_name}\n',
+                      f'\n\t\tMapped Field - {permutation.mapped_name}\n',
                       file=self.out)
             except:
                 continue
@@ -385,19 +409,17 @@ def get_ordered_shared_tables(measure: Measure) -> list[str]:
         if not measure.is_WEN():
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'WEN')
 
-        if measure.is_residential_default():
+        if not measure.is_res_default():
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-DEF')
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
-        elif measure.is_sector_default():
-            ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'RES-NDEF')
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
         else:
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
+
+        if not measure.is_sector_default(): # needs to be changed to nonres default check
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-NDEF')
-            ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'RES-DEF')
+        else:
+            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
 
         if not measure.is_interactive():
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'INTER')

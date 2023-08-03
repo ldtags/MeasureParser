@@ -2,10 +2,6 @@ import sys
 from typing import Optional, TextIO
 from parser import MeasureParser
 
-
-# Global Variables
-out: Optional[TextIO] = None
-
 # controls the flow of processes when parsing the measure
 #
 # Parameters:
@@ -25,8 +21,8 @@ def main(args: list[str]) -> None:
         return None
 
     with open(filename, 'r') as measure_file:
+        out: Optional[TextIO] = None
         if '-console' not in flags: 
-            global out
             out = open('out.txt', 'w+')
 
         print(f'\nstarting to parse measure file - {measure_file.name}')

@@ -430,9 +430,9 @@ class Measure:
         if delivery_table == None:
             raise RequiredParameterError(name='Delivery Type')
 
-        return 'DnDeemDI' in delivery_table.labels \
-            or ('DnDeemed' in delivery_table.labels
-                and 'UpDeemed' in delivery_table.labels)
+        return 'UpDeemed' in delivery_table.labels \
+            and ('DnDeemed' in delivery_table.labels
+                 or 'DnDeemDI' in delivery_table.labels)
 
     # Checks if the Measure Impact Type of the measure is FuelSub
     #
@@ -485,7 +485,7 @@ class Measure:
     #
     # Returns:
     #   bool: True if the NTGID parameter contains the residential default
-    def is_residential_default(self) -> bool:
+    def is_res_default(self) -> bool:
         ntg_id = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
