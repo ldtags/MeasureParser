@@ -8,6 +8,17 @@ import re
 spell = SpellChecker()
 
 class CharacterizationParser(HTMLParser):
+    """The parser for measure characterization HTML
+    
+    Attributes:
+        characterization (Optional[Characterization]): an object
+            containing the name and HTML of a characterization
+        out (Optional[TextIO]): a file stream for the log file
+        tabs (str): the amount of tabs that will precede any log output
+        __prev_tag (str): the HTML tag that was previously encountered
+        __prev_data (str): the data that was previously encountered
+    """
+
     def __init__(self,
                  characterization: Optional[Characterization] = None,
                  out: Optional[TextIO] = None,
@@ -20,23 +31,31 @@ class CharacterizationParser(HTMLParser):
         self.__prev_data: str = ''
         super().__init__()
 
-
+    # sets the objects @characterization to the input @characterization
+    #
+    # Parameters:
+    #   characterization (Characterization): characterization to be parsed
     def set_characterization(self,
                              characterization: Characterization) -> None:
         self.characterization = characterization
 
-
+    # parses the objects @characterization
     def parse(self) -> None:
         if self.characterization != None:
             self.feed(self.characterization.content)
-        
-        
+
+    # parses the input @characterization
+    #
+    # Parameters:
+    #   characterization (Characterization): characterization to be parsed
     def parse(self,
               characterization: Characterization) -> None:
-        self.characterization = characterization
-        self.feed(self.characterization.content)
+        self.feed(characterization.content)
 
-
+    # determines how any data found in the HTML will be handled
+    #
+    # Parameters:
+    #   data (str): the text contained by the tags
     def handle_data(self, data: str) -> None:
         if data == '\n':
             return
@@ -44,7 +63,10 @@ class CharacterizationParser(HTMLParser):
         self.__prev_data = data
         self.validate_punctuation_spacing(data)
 
-
+    # checks the spaces that occur after a sentence
+    #
+    # Parameters:
+    #   data (str): the text to be validated
     def validate_punctuation_spacing(self, data: str) -> None:
         sentences: list[str] = data.split('.')
         if len(sentences) <= 1:
@@ -59,7 +81,13 @@ class CharacterizationParser(HTMLParser):
                       f'{extra_spaces - 1}',
                       file=self.out)
 
-
+    # determines how many spaces occur at the beginning of @data
+    #
+    # Parameters:
+    #   data (str): the string getting checked for spaces
+    #
+    # Returns:
+    #   int: the amount of spaces that occur at the beginning of @data
     def __get_start_spaces(self, data: str) -> int:
         count: int = 0
         while len(data) > 0 and data[0] == ' ':
@@ -80,7 +108,11 @@ class CharacterizationParser(HTMLParser):
                         + f'misspelled word - {word} should be {correct}',
                       file=self.out)
 
-
+    # determines what happens when a starting tag is detected
+    #
+    # Parameters:
+    #   tag (str): the type of tag encountered
+    #   attrs (list[tuple[str, str | None]]): the list of tag attributes
     def handle_starttag(self,
                         tag: str,
                         attrs: list[tuple[str, str | None]]) -> None:
@@ -89,7 +121,10 @@ class CharacterizationParser(HTMLParser):
 
         self.check_ref_spacing(attrs)
 
-
+    # validates that all references have only one space before them
+    #
+    # Parameters:
+    #   attrs (list[tuple[str, str | None]]): the list of tag attributes
     def check_ref_spacing(self,
                           attrs: list[tuple[str, str | None]]) -> None:
         for attr, value in attrs:
@@ -102,7 +137,13 @@ class CharacterizationParser(HTMLParser):
                       f'in {self.characterization.name} - {extra_spaces}',
                       file=self.out)
 
-
+    # determines how many spaces occur at the end of @data
+    #
+    # Parameters:
+    #   data (str): the string getting checked for spaces
+    #
+    # Returns:
+    #   int: the amount of spaces that occur at the end of @data
     def __get_end_spaces(self, data: str) -> int:
         count: int = 0
         while data.endswith(' '):
@@ -110,7 +151,13 @@ class CharacterizationParser(HTMLParser):
             count += 1
         return count
 
-
+    # validates that @tag follows the h3 -> h4 -> h5 header precedence
+    #
+    # Parameters:
+    #   tag (str): the header that was detected
+    #
+    # Returns:
+    #   bool: True if the header is valid, False otherwise
     def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
             print(self.tabs + 'invalid header in',
@@ -143,5 +190,9 @@ class CharacterizationParser(HTMLParser):
               file=self.out)
         return False
 
+    # determines what happens when an end tag is detected
+    #
+    # Parameters:
+    #   tag (str): the type of tag encountered
     def handle_endtag(self, tag: str) -> None:
         pass

@@ -56,6 +56,7 @@ class MeasureParser:
             print(f'ERROR - something went wrong:\n{err}')
             return None
 
+    # defines the control flow for the generic parsing of @measure
     def parse(self) -> None:
         print('removing unknowns')
         self.remove_unknowns()
@@ -81,6 +82,8 @@ class MeasureParser:
         self.print_calculations()
         self.print_permutations()
 
+    # logs the results from removing unknown or invalid tables and
+    # parameters from @measure
     def remove_unknowns(self) -> None:
         print('\nUnknown or Invalid Parameters/Tables:',
               file=self.out)
@@ -253,6 +256,8 @@ class MeasureParser:
 
         return valid_name
 
+    # calls the characterization parser to parse each characterization
+    # in @measure
     def parse_characterizations(self) -> None:
         parser: CharacterizationParser \
             = CharacterizationParser(out=self.out, tabs=1)
