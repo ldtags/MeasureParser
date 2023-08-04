@@ -82,7 +82,8 @@ class MeasureParser:
         self.print_permutations()
 
     def remove_unknowns(self) -> None:
-        print('\nUnknown Parameters/Tables:', file=self.out)
+        print('\nUnknown or Invalid Parameters/Tables:',
+              file=self.out)
         print('\tParams: ', list(
             map(lambda param: param.version.version_string,
                 self.measure.remove_unknown_params(
@@ -107,8 +108,8 @@ class MeasureParser:
         val_tables: bool = self.validate_value_table_existence()
         sha_tables: bool = self.validate_shared_table_existence()
         if params and val_tables and sha_tables:
-            print('\tAll required parameters and shared/non-shared value \
-                tables exist')
+            print('\tAll required parameters and shared/non-shared',
+                  'value tables exist')
         
     # validates that all shared value tables names in @ordered_sha_tables
     # correlate to a shared value table in @measure
@@ -116,7 +117,8 @@ class MeasureParser:
         is_valid: bool = True
         for table in self.ordered_sha_tables:
             if not self.measure.contains_shared_table(table):
-                print(f'\tMISSING SHARED TABLE - {table}', file=self.out)
+                print(f'\tMISSING SHARED TABLE - {table}',
+                      file=self.out)
                 is_valid = False
         return is_valid
 
@@ -127,7 +129,8 @@ class MeasureParser:
         is_valid: bool = True
         for table in self.ordered_val_tables:
             if not self.measure.contains_value_table(table):
-                print(f'\tMISSING TABLE - {table}', file=self.out)
+                print(f'\tMISSING NON-SHARED TABLE - {table}',
+                      file=self.out)
                 is_valid = False
         return is_valid
 
@@ -263,12 +266,12 @@ class MeasureParser:
         print('\nAll Value Tables:', file=self.out)
         for table in self.measure.value_tables:
             print(f'\tTable Name - {table.name}', file=self.out)
-            print(f'\tAPI Name - {table.api_name}', file=self.out)
-            print('\tColumns:', file=self.out)
+            print(f'\t\tAPI Name - {table.api_name}', file=self.out)
+            print('\t\tColumns:', file=self.out)
             for column in table.columns:
-                print(f'\t\tColumn Name - {column.name}',
+                print(f'\t\t\tColumn Name - {column.name}',
                       file=self.out)
-                print(f'\t\t\tAPI Name - {column.api_name}',
+                print(f'\t\t\t\tAPI Name - {column.api_name}',
                       file=self.out)
             print(file=self.out)
 
