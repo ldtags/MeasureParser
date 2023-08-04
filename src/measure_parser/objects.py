@@ -142,7 +142,15 @@ class Measure:
             raise MeasureFormatError()
         except Exception as err:
             raise err
-        
+
+    # returns a list of all characterizations found in @measure
+    #
+    # Parameters:
+    #   measure (Namespace): the namespace representation of a measure
+    #
+    # Returns:
+    #   list[Characterization]: the list of characterizations found in
+    #                           @measure
     def __get_characterizations(self, measure: Namespace
                                 ) -> list[Characterization]:
         char_list: list[Characterization] = []
@@ -153,6 +161,13 @@ class Measure:
             char_list.append(Characterization(char_name, content))
         return char_list
 
+    # returns a list of all permutations found in @measure
+    #
+    # Parameters:
+    #   measure (Namespace): the namespace representation of a measure
+    #
+    # Returns:
+    #   list[Permutation]: the list of permutations found in @measure
     def __get_permutations(self, measure: Namespace) -> list[Permutation]:
         permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
         perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
@@ -164,7 +179,6 @@ class Measure:
             verbose_name = getattr(measure, perm_name, None)
             perm_list.append(Permutation(perm_name, verbose_name))
         return perm_list
-
 
     # Checks if the measure contains a parameter associated with
     # @param_name
