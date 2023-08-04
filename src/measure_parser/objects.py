@@ -494,6 +494,18 @@ class Measure:
             if 'Res-Default' in label:
                 return True
         return False
+    
+    def is_nonres_default(self) -> bool:
+        ntg_id = self.get_param('NTGID')
+        if ntg_id == None:
+            raise RequiredParameterError(name='Net to Gross Ratio ID')
+        
+        for label in ntg_id.labels:
+            if 'Agric-Default' in label \
+                    or 'Com-Default' in label \
+                    or 'Ind-Default' in label:
+                return True
+        return False
 
     # Checks if the GSIAID contains the GSIA default
     #

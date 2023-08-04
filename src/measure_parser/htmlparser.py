@@ -4,19 +4,22 @@ from spellchecker import SpellChecker
 from objects import Characterization
 import re
 
+# Global Variables
 spell = SpellChecker()
 
 class CharacterizationParser(HTMLParser):
     def __init__(self,
-                 characterization: Optional[Characterization]=None,
-                 out: Optional[TextIO]=None):
+                 characterization: Optional[Characterization] = None,
+                 out: Optional[TextIO] = None,
+                 tabs: int = 0):
         self.characterization: Optional[Characterization] \
             = characterization
         self.out: Optional[TextIO] = out
-        self.header_stack: list[str] = []
+        self.tabs: str = '\t' * tabs
+        self.__prev_tag: str = ''
         super().__init__()
-        
-        
+
+
     def set_characterization(self,
                              characterization: Characterization) -> None:
         self.characterization = characterization
@@ -45,41 +48,49 @@ class CharacterizationParser(HTMLParser):
         for word in words:
             correct: str = spell.correction(word)
             if correct != None:
-                print(f'misspelled word - {word} should be {correct}',
+                print(self.tabs
+                        + f'misspelled word - {word} should be {correct}',
                       file=self.out)
 
 
     def handle_starttag(self,
                         tag: str,
                         attrs: list[tuple[str, str | None]]) -> None:
+        if not re.fullmatch('h[0-9]$', tag) == None:
+            self.validate_header(tag)
+
+
+    def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
-            return None
+            print(self.tabs + 'invalid header in',
+                  f'{self.characterization.name} - {tag}',
+                  file=self.out)
+            return False
 
-        num_re: re.Pattern = re.compile('[^0-9]')
-        h_level: int = int(num_re.sub('', tag))
-        prev_level: int = 2
-        if len(self.header_stack) != 0:
-            prev_level = int(num_re.sub('', self.header_stack[-1]))
+        if tag == 'h3':
+            self.__prev_tag = tag
+            return True
 
-        if h_level - prev_level != 1:
-            err_msg: str = '\tincorrect header '
-            if self.characterization != None:
-                err_msg += f'detected in {self.characterization.name} '
-            err_msg += f'- expected h{prev_level + 1} but found h{h_level}'
-            print(err_msg, file=self.out)
+        if self.__prev_tag == '':
+            print(self.tabs + 'incorrect initial header in',
+                  f'{self.characterization.name} -',
+                  f'expected h3, but detected {tag}',
+                  file=self.out)
+            return False
 
-        self.header_stack.append(tag)
+        level_re: re.Pattern = re.compile('[^3-5]')
+        prev_level: int = int(level_re.sub('', self.__prev_tag))
+        cur_level: int = int(level_re.sub('', tag))
+        if (cur_level - prev_level) in [0, 1]:
+            self.__prev_tag = tag
+            return True
 
+        print(self.tabs + 'incorrect header in',
+              f'{self.characterization.name} -',
+              f'expected h{prev_level} or h{prev_level + 1},',
+              f'but detected {tag}',
+              file=self.out)
+        return False
 
     def handle_endtag(self, tag: str) -> None:
-        if re.fullmatch('^h[3-5]$', tag) == None:
-            return None
-
-        stack_tag: str = self.header_stack.pop()
-        if stack_tag != tag:
-            err_msg: str = '\tbad HTML formatting '
-            if self.characterization != None:
-                err_msg += f'detected in {self.characterization.name} '
-            err_msg += f'- expected {stack_tag}, but found {tag}'
-            print(err_msg, file=self.out)
-            return None
+        pass

@@ -252,7 +252,7 @@ class MeasureParser:
 
     def parse_characterizations(self) -> None:
         parser: CharacterizationParser \
-            = CharacterizationParser(out=self.out)
+            = CharacterizationParser(out=self.out, tabs=1)
         print('\nParsing Characterizations:', file=self.out)
         for characterization in self.measure.characterizations:
             print(f'parsing {characterization.name}')
@@ -266,8 +266,10 @@ class MeasureParser:
             print(f'\tAPI Name - {table.api_name}', file=self.out)
             print('\tColumns:', file=self.out)
             for column in table.columns:
-                print(f'\t\tColumn Name - {column.name}', file=self.out)
-                print(f'\t\t\tAPI Name - {column.api_name}', file=self.out)
+                print(f'\t\tColumn Name - {column.name}',
+                      file=self.out)
+                print(f'\t\t\tAPI Name - {column.api_name}',
+                      file=self.out)
             print(file=self.out)
 
     # prints out every calculation in @measure' name and API name
