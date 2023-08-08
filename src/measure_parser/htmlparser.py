@@ -97,7 +97,7 @@ class CharacterizationParser(HTMLParser):
 
 
     def spell_check(self, words: list[str]) -> None:
-        # regex: re.Pattern = re.compile('[^a-zA-Z]')
+        regex: re.Pattern = re.compile('[^a-zA-Z]')
         spell.word_frequency.load_words(
             ['IWF', 'IMEF', 'kWh', 'MEF', 'high-efficiency']
         )
@@ -160,9 +160,10 @@ class CharacterizationParser(HTMLParser):
     #   bool: True if the header is valid, False otherwise
     def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
-            print(self.tabs + 'invalid header in',
-                  f'{self.characterization.name} - {tag}',
-                  file=self.out)
+            if self.characterization != None:
+                print(self.tabs + 'invalid header in',
+                      f'{self.characterization.name} - {tag}',
+                      file=self.out)
             return False
 
         if tag == 'h3':

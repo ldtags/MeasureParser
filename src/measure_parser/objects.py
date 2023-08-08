@@ -135,50 +135,13 @@ class Measure:
                 map(lambda calc: Calculation(calc),
                     getattr(measure, 'calculations')))
             self.permutations: list[Permutation] \
-                = self.__get_permutations(measure)
+                = get_permutations(measure)
             self.characterizations: list[Characterization] \
-                = self.__get_characterizations(measure)
+                = get_characterizations(measure)
         except AttributeError:
             raise MeasureFormatError()
         except Exception as err:
             raise err
-
-    # returns a list of all characterizations found in @measure
-    #
-    # Parameters:
-    #   measure (Namespace): the namespace representation of a measure
-    #
-    # Returns:
-    #   list[Characterization]: the list of characterizations found in
-    #                           @measure
-    def __get_characterizations(self, measure: Namespace
-                                ) -> list[Characterization]:
-        char_list: list[Characterization] = []
-        for char_name in ALL_CHARACTERIZATIONS:
-            content: str = getattr(measure, char_name, None)
-            if content == None:
-                raise RequiredCharacterizationError(name=char_name)
-            char_list.append(Characterization(char_name, content))
-        return char_list
-
-    # returns a list of all permutations found in @measure
-    #
-    # Parameters:
-    #   measure (Namespace): the namespace representation of a measure
-    #
-    # Returns:
-    #   list[Permutation]: the list of permutations found in @measure
-    def __get_permutations(self, measure: Namespace) -> list[Permutation]:
-        permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
-        perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
-        perm_list: list[Permutation] = []
-        for perm_name in perm_names:
-            permutation = getattr(permutations, perm_name, None)
-            if permutation == None:
-                raise RequiredPermutationError(name=perm_name)
-            verbose_name = getattr(measure, perm_name, None)
-            perm_list.append(Permutation(perm_name, verbose_name))
-        return perm_list
 
     # Checks if the measure contains a parameter associated with
     # @param_name
@@ -424,8 +387,8 @@ class Measure:
         if wen_param == None or wen_table == None:
             if (wen_param == None) ^ (wen_table == None):
                 raise Exception(
-                    'WEN measure detected but required data is missing - ' \
-                    + ('Water Energy Intensity Parameter' if wen_table \
+                    'WEN measure detected but required data is missing - '
+                    + ('Water Energy Intensity Parameter' if wen_table
                        else 'Water Energy Intensity Value Table'))
             return False
         return True
@@ -444,9 +407,9 @@ class Measure:
         if delivery_table == None:
             raise RequiredParameterError(name='Delivery Type')
 
-        return 'UpDeemed' in delivery_table.labels \
-            and ('DnDeemed' in delivery_table.labels
-                 or 'DnDeemDI' in delivery_table.labels)
+        return ('DnDeemDI' in delivery_table.labels
+                or ('DnDeemed' in delivery_table.labels
+                    and 'UpDeemed' in delivery_table.labels))
 
     # Checks if the Measure Impact Type of the measure is FuelSub
     #
@@ -491,6 +454,24 @@ class Measure:
                 if sector in id:
                     return True
         return False
+    
+    def is_sector_nondef(self) -> bool:
+        sector = self.get_param('Sector')
+        if sector == None:
+            raise RequiredParameterError(name='Sector')
+
+        ntg_id = self.get_param('NTGID')
+        if ntg_id == None:
+            raise RequiredParameterError(name='Net to Gross Ratio ID')
+
+        sectors = list(map(lambda sector: sector + '-Default',
+                           sector.labels))
+
+        for sector in sectors:
+            for id in ntg_id.labels:
+                if sector not in id:
+                    return True
+        return False
 
     # Checks if the NTGID contains the residential default
     #
@@ -508,16 +489,24 @@ class Measure:
             if 'Res-Default' in label:
                 return True
         return False
-    
+
+    # Checks if the NTGID contains the non-residential default
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'NTGID' parameter is missing
+    #
+    # Returns:
+    #   bool: True if the NTGID parameter contains the non-residential
+    #         default
     def is_nonres_default(self) -> bool:
         ntg_id = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
-        
+
         for label in ntg_id.labels:
-            if 'Agric-Default' in label \
-                    or 'Com-Default' in label \
-                    or 'Ind-Default' in label:
+            if ('Agric-Default' in label
+                    or 'Com-Default' in label
+                    or 'Ind-Default' in label):
                 return True
         return False
 
@@ -530,14 +519,31 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains the GSIA default
     def is_GSIA_default(self) -> bool:
-        version = self.get_param('GSIAID')
-        if version == None:
+        gsia = self.get_param('GSIAID')
+        if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        for label in version.labels:
+        for label in gsia.labels:
             if 'Def-GSIA' in label:
                 return True
+        return False
 
+    # Checks if the GSIAID contains a non-default label
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'GSIAID' parameter is
+    #                           missing
+    #
+    # Returns:
+    #   bool: True if the GSIAID parameter contains a non-default label
+    def is_GSIA_nondef(self) -> bool:
+        gsia = self.get_param('GSIAID')
+        if gsia == None:
+            raise RequiredParameterError(name='GSIA ID')
+
+        for label in gsia.labels:
+            if 'Def-GSIA' not in label:
+                return True
         return False
 
     # Checks if the measure is an interactive measure
@@ -556,11 +562,48 @@ class Measure:
         residential_effects = self.get_shared_table(
             'residentialInteractiveEffects')
 
-        if lighting_type and (commercial_effects or residential_effects):
+        if lighting_type or (commercial_effects or residential_effects):
             return True
-        elif (lighting_type or (commercial_effects or residential_effects)
-              or interactive_effect_app):
-            raise MeasureFormatError(
-                'Missing required information for interactive effects')
+        # elif (lighting_type or (commercial_effects or residential_effects)
+        #       or interactive_effect_app):
+        #     raise MeasureFormatError(
+        #         'Missing required information for interactive effects')
 
         return False
+    
+
+# returns a list of all characterizations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Characterization]: the list of characterizations found in
+#                           @measure
+def get_characterizations(measure: Namespace) -> list[Characterization]:
+    char_list: list[Characterization] = []
+    for char_name in ALL_CHARACTERIZATIONS:
+        content: str = getattr(measure, char_name, None)
+        if content == None:
+            raise RequiredCharacterizationError(name=char_name)
+        char_list.append(Characterization(char_name, content))
+    return char_list
+
+# returns a list of all permutations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Permutation]: the list of permutations found in @measure
+def get_permutations(measure: Namespace) -> list[Permutation]:
+    permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
+    perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
+    perm_list: list[Permutation] = []
+    for perm_name in perm_names:
+        permutation = getattr(permutations, perm_name, None)
+        if permutation == None:
+            raise RequiredPermutationError(name=perm_name)
+        verbose_name = getattr(measure, perm_name, None)
+        perm_list.append(Permutation(perm_name, verbose_name))
+    return perm_list

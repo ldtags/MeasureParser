@@ -15,10 +15,10 @@ def main(args: list[str]) -> None:
         filename = args[1]
     except IndexError:
         print('ERROR - filename missing')
-        return None
+        return
     except Exception as err:
         print(f'ERROR - something went wrong when parsing args:\n{err}')
-        return None
+        return
 
     with open(filename, 'r') as measure_file:
         out: Optional[TextIO] = None

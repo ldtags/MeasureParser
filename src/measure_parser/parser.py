@@ -48,13 +48,13 @@ class MeasureParser:
         except RequiredParameterError as err:
             print('ERROR - the measure is missing required information\n',
                   err)
-            return None
+            return
         except MeasureFormatError as err:
             print(f'ERROR - the measure is incorrectly formatted:\n{err}')
-            return None
+            return
         except Exception as err:
             print(f'ERROR - something went wrong:\n{err}')
-            return None
+            return
 
     # defines the control flow for the generic parsing of @measure
     def parse(self) -> None:
@@ -208,7 +208,8 @@ class MeasureParser:
                 valid_name: str = self.__get_valid_perm_name(permutation)
                 mapped_name: str = permutation.mapped_name
                 if mapped_name != valid_name:
-                    print(f'\tIncorrect Permutation ({permutation.reporting_name})',
+                    print('\tIncorrect Permutation',
+                          f'({permutation.reporting_name})',
                           f'- {mapped_name} should be {valid_name}',
                           file=self.out)
             except UnknownPermutationError as err:
@@ -329,8 +330,8 @@ def get_ordered_params(measure: Measure) -> list[str]:
         if not measure.is_DEER():
             ordered_params = filter_dict(ordered_params, 'DEER')
 
-        if measure.is_GSIA_default():
-            ordered_params = filter_dict(ordered_params, 'NGSIA')
+        if not measure.is_GSIA_nondef():
+            ordered_params = filter_dict(ordered_params, 'GSIA')
 
         if not (measure.contains_MAT_label('AR')
                 or measure.contains_MAT_label('AOE')):
@@ -339,7 +340,7 @@ def get_ordered_params(measure: Measure) -> list[str]:
         if not measure.is_WEN():
             ordered_params = filter_dict(ordered_params, 'WEN')
 
-        if measure.is_sector_default():
+        if not measure.is_sector_nondef():
             ordered_params = filter_dict(ordered_params, 'NTG')
 
         if not measure.is_interactive():
@@ -376,6 +377,9 @@ def get_ordered_value_tables(measure: Measure) -> list[str]:
             ordered_val_tables \
                 = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
 
+        if not measure.contains_value_table('emergingTech'):
+            ordered_val_tables = filter_dict(ordered_val_tables, 'ET')
+
         if not measure.is_deemed():
             ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
 
@@ -408,8 +412,10 @@ def get_ordered_shared_tables(measure: Measure) -> list[str]:
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'DEER')
 
         if not measure.is_GSIA_default():
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'NGSIA')
-        else:
+            ordered_sha_tables \
+                = filter_dict(ordered_sha_tables, 'GSIA-DEF')
+
+        if not measure.is_GSIA_nondef():
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'GSIA')
 
         if not (measure.contains_MAT_label('AR')
@@ -425,7 +431,7 @@ def get_ordered_shared_tables(measure: Measure) -> list[str]:
         else:
             ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
 
-        if not measure.is_sector_default(): # needs to be changed to nonres default check
+        if not measure.is_nonres_default():
             ordered_sha_tables \
                 = filter_dict(ordered_sha_tables, 'RES-NDEF')
         else:
@@ -452,7 +458,6 @@ def get_ordered_shared_tables(measure: Measure) -> list[str]:
 def filter_dict(ordered_list: dict[str, str],
                 flag: str) -> dict[str, str]:
     return {key:val for (key, val) in ordered_list.items() if val != flag}
-
 
 # filters the provided list in accordance to the interactive measure specs
 #
@@ -492,12 +497,12 @@ def filter_inter_value_tables(measure: Measure,
 # filters the provided list in accordance to the interactive measure specs
 #
 # Parameters:
-#   measure (Measure):  the measure object being parsed
+#   measure (Measure): the measure object being parsed
 #   ordered_tables (dict[str, str]): an ordered dict of shared table names
 #
 # Returns:
 #   dict[str, str]: the dict filtered in accordance to the interactive
-#   measure specs
+#                   measure specs
 def filter_inter_shared_tables(measure: Measure,
                                ordered_tables: dict[str, str]
                               ) -> dict[str, str]:
