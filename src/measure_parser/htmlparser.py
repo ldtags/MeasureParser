@@ -29,6 +29,8 @@ class CharacterizationParser(HTMLParser):
         self.tabs: str = '\t' * tabs
         self.__prev_tag: str = ''
         self.__prev_data: str = ''
+        self.capitalized: list[str] = []
+        self.italicized: list[str] = []
         super().__init__()
 
     # sets the objects @characterization to the input @characterization
@@ -39,6 +41,21 @@ class CharacterizationParser(HTMLParser):
                              characterization: Characterization) -> None:
         self.characterization = characterization
 
+    # sets the objects @out to the input @out
+    #
+    # Parameters:
+    #   out (Optional[TextIO]): the file output stream for the log file
+    def set_out(self, out: Optional[TextIO]) -> None:
+        self.out = out
+
+    # sets the objects @tabs to the amount of tabs specified by the input
+    # tabs
+    #
+    # Parameters:
+    #   tabs (int): the amount of tabs to be placed before any output
+    def set_tabs(self, tabs: int) -> None:
+        self.tabs = '\t' * tabs
+
     # parses the objects @characterization
     def parse(self) -> None:
         if self.characterization != None:
@@ -48,8 +65,7 @@ class CharacterizationParser(HTMLParser):
     #
     # Parameters:
     #   characterization (Characterization): characterization to be parsed
-    def parse(self,
-              characterization: Characterization) -> None:
+    def parse(self, characterization: Characterization) -> None:
         self.feed(characterization.content)
 
     # determines how any data found in the HTML will be handled
@@ -81,6 +97,23 @@ class CharacterizationParser(HTMLParser):
                       f'{extra_spaces - 1}',
                       file=self.out)
 
+
+    def validate_capitalization(self, data: str) -> None:
+        regex: re.Pattern = re.compile('[^A-Za-z-]$')
+        words: list[str] = data.split(' ')
+        for word in words:
+            word = regex.sub('', word)
+            if word.capitalize() not in self.capitalized:
+                continue
+
+            val: int = ord(word[0])
+            if val > 96 and val < 123:
+                capitalized: str = chr(ord(word[0]) - 32) + word[1:]
+                print(self.tabs + 'uncapitalized word detected in',
+                      f'{self.characterization.name} -',
+                      f'{word} should be {capitalized}')
+
+
     # determines how many spaces occur at the beginning of @data
     #
     # Parameters:
@@ -107,6 +140,7 @@ class CharacterizationParser(HTMLParser):
     #             print(self.tabs
     #                     + f'misspelled word - {word} should be {correct}',
     #                   file=self.out)
+
 
     # determines what happens when a starting tag is detected
     #

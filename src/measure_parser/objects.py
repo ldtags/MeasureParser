@@ -486,7 +486,7 @@ class Measure:
                 if sector in id:
                     return True
         return False
-    
+
     def is_sector_nondef(self) -> bool:
         sector = self.get_param('Sector')
         if sector == None:
