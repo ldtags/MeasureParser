@@ -6,5 +6,5 @@ A command-line driven measure parsing application
   2. Execute main with the file path to the eTRM measure JSON file as an argument
 
 ### Flags
-  - -console: redirects all parsing output to the console
+  - -console
     - redirects all output to the console
