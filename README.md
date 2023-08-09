@@ -7,3 +7,4 @@ A command-line driven measure parsing application
 
 ### Flags
   - -console: redirects all parsing output to the console
+    - redirects all output to the console
