@@ -1,6 +1,6 @@
 import sys
 from typing import Optional, TextIO
-from parser import MeasureParser
+from src.measure_parser.parser import MeasureParser
 
 # controls the flow of processes when parsing the measure
 #

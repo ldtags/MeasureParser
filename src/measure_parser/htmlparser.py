@@ -1,11 +1,11 @@
 from html.parser import HTMLParser
 from typing import Optional, TextIO
 from spellchecker import SpellChecker
-from objects import Characterization
+from src.measure_parser.objects import Characterization
 import re
 
 # Global Variables
-spell = SpellChecker()
+# spell = SpellChecker()
 
 class CharacterizationParser(HTMLParser):
     """The parser for measure characterization HTML
@@ -96,17 +96,17 @@ class CharacterizationParser(HTMLParser):
         return count
 
 
-    def spell_check(self, words: list[str]) -> None:
-        regex: re.Pattern = re.compile('[^a-zA-Z]')
-        spell.word_frequency.load_words(
-            ['IWF', 'IMEF', 'kWh', 'MEF', 'high-efficiency']
-        )
-        for word in words:
-            correct: str = spell.correction(word)
-            if correct != None:
-                print(self.tabs
-                        + f'misspelled word - {word} should be {correct}',
-                      file=self.out)
+    # def spell_check(self, words: list[str]) -> None:
+    #     regex: re.Pattern = re.compile('[^a-zA-Z]')
+    #     spell.word_frequency.load_words(
+    #         ['IWF', 'IMEF', 'kWh', 'MEF', 'high-efficiency']
+    #     )
+    #     for word in words:
+    #         correct: str = spell.correction(word)
+    #         if correct != None:
+    #             print(self.tabs
+    #                     + f'misspelled word - {word} should be {correct}',
+    #                   file=self.out)
 
     # determines what happens when a starting tag is detected
     #

@@ -1,18 +1,18 @@
 import json
-from objects import Measure, Permutation
 from typing import Optional, TextIO
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
-from htmlparser import CharacterizationParser
-from data.parameters import ALL_PARAMS
-from data.permutations import ALL_PERMUTATIONS
-from data.valuetables import (
+from src.measure_parser.objects import Measure, Permutation
+from src.measure_parser.htmlparser import CharacterizationParser
+from src.measure_parser.data.parameters import ALL_PARAMS
+from src.measure_parser.data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.data.valuetables import (
     ALL_SHARED_TABLES,
     ALL_VALUE_TABLES
 )
-from exceptions import (
+from src.measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
     UnknownPermutationError
@@ -112,8 +112,9 @@ class MeasureParser:
         sha_tables: bool = self.validate_shared_table_existence()
         if params and val_tables and sha_tables:
             print('\tAll required parameters and shared/non-shared',
-                  'value tables exist')
-        
+                  'value tables exist',
+                  file=self.out)
+
     # validates that all shared value tables names in @ordered_sha_tables
     # correlate to a shared value table in @measure
     def validate_shared_table_existence(self) -> bool:

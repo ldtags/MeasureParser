@@ -1,7 +1,7 @@
 from typing import Optional
-from data.permutations import ALL_PERMUTATIONS
-from data.characterizations import ALL_CHARACTERIZATIONS
-from exceptions import (
+from src.measure_parser.data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.data.characterizations import ALL_CHARACTERIZATIONS
+from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
@@ -20,11 +20,15 @@ except ImportError:
     from argparse import Namespace
 
 class Characterization:
+    """the representation of a characterization
+    """
     def __init__(self, name: str, content: str):
         self.name: str = name
         self.content: str = content
 
 class Permutation:
+    """the representation of a permutation
+    """
     def __init__(self,
                  reporting_name: str,
                  mapped_name: Optional[str],
@@ -34,6 +38,8 @@ class Permutation:
         self.derivation: str = derivation
 
 class Column:
+    """the representation of a column
+    """
     def __init__(self, column: Namespace):
         try:
             self.name: str = getattr(column, 'name')
@@ -46,6 +52,8 @@ class Column:
             raise err
 
 class Version:
+    """the representation of a version
+    """
     def __init__(self, version: Namespace):
         try:
             version_string: str = getattr(version, 'version_string')
@@ -59,6 +67,8 @@ class Version:
             raise err
 
 class Calculation:
+    """contains data related to a calculation
+    """
     def __init__(self, calculation: Namespace):
         try:
             self.name: str = getattr(calculation, 'name')
@@ -76,6 +86,8 @@ class Calculation:
             raise err
 
 class SharedParameter:
+    """contains data related to parameters
+    """
     def __init__(self, param: Namespace):
         try:
             self.order: int = getattr(param, 'order')
@@ -88,6 +100,8 @@ class SharedParameter:
             raise err
 
 class ValueTable:
+    """contains data related to a non-shared value table
+    """
     def __init__(self, value_table: Namespace):
         try:
             self.name: str = getattr(value_table, 'name')
@@ -108,6 +122,9 @@ class ValueTable:
             raise err
 
 class SharedValueTable:
+    """contains data related to a shared value table
+    """
+
     def __init__(self, shared_table: Namespace):
         try:
             self.order: int = getattr(shared_table, 'order')
@@ -119,6 +136,21 @@ class SharedValueTable:
             raise err
 
 class Measure:
+    """a measure built from data in an eTRM measure JSON file
+    
+    Attributes:
+        owner (str): the listed owner of the measure
+        params (list[SharedParameter]): the list of parameters
+        shared_tables (list[SharedValueTable]): the list of shared
+                                                value tables
+        value_tables (list[ValueTable]): the list of non-shared value
+                                         tables
+        calculations (list[Calculation]): the list of calculations
+        permutations (list[Permutation]): the list of permutations
+        characterizations (list[Characterization]): the list of
+                                                    characterizations
+    """
+
     def __init__(self, measure: Namespace):
         try:
             self.owner: str = getattr(measure, 'owned_by_user')
