@@ -15,7 +15,7 @@ ALL_SHARED_TABLES = {
     'DEERMeasure': 'DEER',
     'EnergyImpactAP': 'DEER',
     'GSIA': 'GSIA',
-    'GSIA_default': 'NGSIA',
+    'GSIA_default': 'GSIA-DEF',
     'EUL': 'REQ',
     'hostEulAndRul': 'ARAOE',
     'netToGrossRatio': 'RES',

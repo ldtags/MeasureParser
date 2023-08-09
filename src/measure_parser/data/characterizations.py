@@ -1,0 +1,21 @@
+ALL_CHARACTERIZATIONS = [
+    'TechnologySummary',
+    'MeasureCaseDescription',
+    'BaseCaseDescription',
+    'CodeRequirements',
+    'ProgramRequirements',
+    'ProgramExclusions',
+    'DataCollectionRequirements',
+    'ElectricSavings_kWh',
+    'PeakElectricDemandReduction_kW',
+    'GasSavings_Therms',
+    'LifeCycle',
+    'BaseCaseMaterialCost_DollarPerUnit',
+    'MeasureCaseMaterialCost_DollarPerUnit',
+    'BaseCaseLaborCost_DollarPerUnit',
+    'MeasureCaseLaborCost_DollarPerUnit',
+    'NetToGross',
+    'GrossSavingsInstallationAdjustment',
+    'NonEnergyImpacts',
+    'DEERDifferencesAnalysis'
+]

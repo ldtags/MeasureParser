@@ -1,6 +1,7 @@
 from typing import Optional
-from data.permutations import ALL_PERMUTATIONS
-from exceptions import (
+from src.measure_parser.data.permutations import ALL_PERMUTATIONS
+from src.measure_parser.data.characterizations import ALL_CHARACTERIZATIONS
+from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
@@ -9,24 +10,36 @@ from exceptions import (
     MeasureFormatError,
     RequiredPermutationError,
     ColumnFormatError,
-    CalculationFormatError
+    CalculationFormatError,
+    RequiredCharacterizationError,
+    UnknownPermutationError
 )
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
 
+class Characterization:
+    """the representation of a characterization
+    """
+    def __init__(self, name: str, content: str):
+        self.name: str = name
+        self.content: str = content
 
 class Permutation:
+    """the representation of a permutation
+    """
     def __init__(self,
                  reporting_name: str,
-                 valid_name: Optional[str],
+                 mapped_name: Optional[str],
                  derivation: str = 'mapped'):
         self.reporting_name: str = reporting_name
-        self.valid_name: str = valid_name
+        self.mapped_name: str = mapped_name
         self.derivation: str = derivation
 
 class Column:
+    """the representation of a column
+    """
     def __init__(self, column: Namespace):
         try:
             self.name: str = getattr(column, 'name')
@@ -39,6 +52,8 @@ class Column:
             raise err
 
 class Version:
+    """the representation of a version
+    """
     def __init__(self, version: Namespace):
         try:
             version_string: str = getattr(version, 'version_string')
@@ -52,6 +67,8 @@ class Version:
             raise err
 
 class Calculation:
+    """contains data related to a calculation
+    """
     def __init__(self, calculation: Namespace):
         try:
             self.name: str = getattr(calculation, 'name')
@@ -69,6 +86,8 @@ class Calculation:
             raise err
 
 class SharedParameter:
+    """contains data related to parameters
+    """
     def __init__(self, param: Namespace):
         try:
             self.order: int = getattr(param, 'order')
@@ -81,6 +100,8 @@ class SharedParameter:
             raise err
 
 class ValueTable:
+    """contains data related to a non-shared value table
+    """
     def __init__(self, value_table: Namespace):
         try:
             self.name: str = getattr(value_table, 'name')
@@ -101,6 +122,9 @@ class ValueTable:
             raise err
 
 class SharedValueTable:
+    """contains data related to a shared value table
+    """
+
     def __init__(self, shared_table: Namespace):
         try:
             self.order: int = getattr(shared_table, 'order')
@@ -112,6 +136,21 @@ class SharedValueTable:
             raise err
 
 class Measure:
+    """a measure built from data in an eTRM measure JSON file
+    
+    Attributes:
+        owner (str): the listed owner of the measure
+        params (list[SharedParameter]): the list of parameters
+        shared_tables (list[SharedValueTable]): the list of shared
+                                                value tables
+        value_tables (list[ValueTable]): the list of non-shared value
+                                         tables
+        calculations (list[Calculation]): the list of calculations
+        permutations (list[Permutation]): the list of permutations
+        characterizations (list[Characterization]): the list of
+                                                    characterizations
+    """
+
     def __init__(self, measure: Namespace):
         try:
             self.owner: str = getattr(measure, 'owned_by_user')
@@ -128,24 +167,13 @@ class Measure:
                 map(lambda calc: Calculation(calc),
                     getattr(measure, 'calculations')))
             self.permutations: list[Permutation] \
-                = self.get_permutations(measure)
+                = get_permutations(measure)
+            self.characterizations: list[Characterization] \
+                = get_characterizations(measure)
         except AttributeError:
             raise MeasureFormatError()
         except Exception as err:
             raise err
-
-    def get_permutations(self, measure: Namespace) -> list[Permutation]:
-        permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
-        perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
-        perm_list: list[Permutation] = []
-        for perm_name in perm_names:
-            permutation = getattr(permutations, perm_name, None)
-            if permutation == None:
-                raise RequiredPermutationError()
-            verbose_name = getattr(measure, perm_name, None)
-            perm_list.append(Permutation(perm_name, verbose_name))
-        return perm_list
-        
 
     # Checks if the measure contains a parameter associated with
     # @param_name
@@ -171,8 +199,8 @@ class Measure:
     #   bool: True if the measure contains a non-shared value table
     #         associated with @table_name
     def contains_value_table(self, table_name: str) -> bool:
-        value_tables \
-            = map(lambda table: table.api_name, self.value_tables)
+        value_tables = map(lambda table: table.api_name,
+                           self.value_tables)
         return table_name in value_tables
     
     # Checks if the measure contains a shared value table associated with
@@ -184,10 +212,24 @@ class Measure:
     # Returns:
     #   bool: True if the measure contains a shared value table associated
     #         with @table_name
-    def contains_shared_table(self, table_name : str) -> bool:
-        shared_tables = map(lambda table: table.version.version_string,
+    def contains_shared_table(self, table_name: str) -> bool:
+        table_names = map(lambda table: table.version.version_string,
                             self.shared_tables)
-        return table_name in shared_tables
+        return table_name in table_names
+
+    # Checks if the measure contains a permutation associated with
+    # @perm_name
+    #
+    # Parameters:
+    #   perm_name (str): the name of the desired permutation
+    #
+    # Returns:
+    #   bool: True if the measure contains a permutation associated
+    #         with @perm_name
+    def contains_permutation(self, perm_name: str) -> bool:
+        perm_names = map(lambda perm: perm.reporting_name,
+                         self.permutations)
+        return perm_name in perm_names
 
     # Returns the parameter associated with @param_name
     #
@@ -197,12 +239,12 @@ class Measure:
     # Returns:
     #   SharedParameter: The desired parameter
     #   None: If no parameter with a name matching @param_name exists 
-    def get_param(self, param_name: str) -> SharedParameter:
+    def get_param(self, param_name: str) -> Optional[SharedParameter]:
         for param in self.params:
             if param.version.version_string == param_name:
                 return param
         return None
-    
+
     # Returns the non-shared value table associated with @table_name
     #
     # Parameters:
@@ -211,12 +253,12 @@ class Measure:
     # Returns:
     #   ValueTable: The desired non-shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_value_table(self, table_name: str) -> ValueTable:
+    def get_value_table(self, table_name: str) -> Optional[ValueTable]:
         for table in self.value_tables:
             if table.api_name == table_name:
                 return table
         return None
-    
+
     # Returns the shared value table associated with @table_name
     #
     # Parameters:
@@ -225,10 +267,25 @@ class Measure:
     # Returns:
     #   SharedValueTable: The desired shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_shared_table(self, table_name : str) -> SharedValueTable:
+    def get_shared_table(self,
+                         table_name: str) -> Optional[SharedValueTable]:
         for table in self.shared_tables:
             if table.version.version_string == table_name:
                 return table
+        return None
+
+    # Returns the permutation associated with @perm_name
+    #
+    # Parameters:
+    #   perm_name (str): name of desired permutation
+    #
+    # Returns:
+    #   SharedValueTable: The desired permutation
+    #   None: If no permutation with a name matching @perm_name exists
+    def get_permutation(self, perm_name: str) -> Optional[Permutation]:
+        for permutation in self.permutations:
+            if permutation.reporting_name == perm_name:
+                return permutation
         return None
 
     # Removes all parameters whose names don't appear in @param_names
@@ -362,8 +419,8 @@ class Measure:
         if wen_param == None or wen_table == None:
             if (wen_param == None) ^ (wen_table == None):
                 raise Exception(
-                    'WEN measure detected but required data is missing - ' \
-                    + ('Water Energy Intensity Parameter' if wen_table \
+                    'WEN measure detected but required data is missing - '
+                    + ('Water Energy Intensity Parameter' if wen_table
                        else 'Water Energy Intensity Value Table'))
             return False
         return True
@@ -382,9 +439,9 @@ class Measure:
         if delivery_table == None:
             raise RequiredParameterError(name='Delivery Type')
 
-        return 'DnDeemDI' in delivery_table.labels \
-            or ('DnDeemed' in delivery_table.labels
-                and 'UpDeemed' in delivery_table.labels)
+        return ('DnDeemDI' in delivery_table.labels
+                or ('DnDeemed' in delivery_table.labels
+                    and 'UpDeemed' in delivery_table.labels))
 
     # Checks if the Measure Impact Type of the measure is FuelSub
     #
@@ -430,6 +487,24 @@ class Measure:
                     return True
         return False
 
+    def is_sector_nondef(self) -> bool:
+        sector = self.get_param('Sector')
+        if sector == None:
+            raise RequiredParameterError(name='Sector')
+
+        ntg_id = self.get_param('NTGID')
+        if ntg_id == None:
+            raise RequiredParameterError(name='Net to Gross Ratio ID')
+
+        sectors = list(map(lambda sector: sector + '-Default',
+                           sector.labels))
+
+        for sector in sectors:
+            for id in ntg_id.labels:
+                if sector not in id:
+                    return True
+        return False
+
     # Checks if the NTGID contains the residential default
     #
     # Exceptions:
@@ -437,13 +512,33 @@ class Measure:
     #
     # Returns:
     #   bool: True if the NTGID parameter contains the residential default
-    def is_residential_default(self) -> bool:
+    def is_res_default(self) -> bool:
         ntg_id = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
             if 'Res-Default' in label:
+                return True
+        return False
+
+    # Checks if the NTGID contains the non-residential default
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'NTGID' parameter is missing
+    #
+    # Returns:
+    #   bool: True if the NTGID parameter contains the non-residential
+    #         default
+    def is_nonres_default(self) -> bool:
+        ntg_id = self.get_param('NTGID')
+        if ntg_id == None:
+            raise RequiredParameterError(name='Net to Gross Ratio ID')
+
+        for label in ntg_id.labels:
+            if ('Agric-Default' in label
+                    or 'Com-Default' in label
+                    or 'Ind-Default' in label):
                 return True
         return False
 
@@ -456,14 +551,31 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains the GSIA default
     def is_GSIA_default(self) -> bool:
-        version = self.get_param('GSIAID')
-        if version == None:
+        gsia = self.get_param('GSIAID')
+        if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        for label in version.labels:
+        for label in gsia.labels:
             if 'Def-GSIA' in label:
                 return True
+        return False
 
+    # Checks if the GSIAID contains a non-default label
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'GSIAID' parameter is
+    #                           missing
+    #
+    # Returns:
+    #   bool: True if the GSIAID parameter contains a non-default label
+    def is_GSIA_nondef(self) -> bool:
+        gsia = self.get_param('GSIAID')
+        if gsia == None:
+            raise RequiredParameterError(name='GSIA ID')
+
+        for label in gsia.labels:
+            if 'Def-GSIA' not in label:
+                return True
         return False
 
     # Checks if the measure is an interactive measure
@@ -482,11 +594,48 @@ class Measure:
         residential_effects = self.get_shared_table(
             'residentialInteractiveEffects')
 
-        if lighting_type and (commercial_effects or residential_effects):
+        if lighting_type or (commercial_effects or residential_effects):
             return True
-        elif (lighting_type or (commercial_effects or residential_effects)
-              or interactive_effect_app):
-            raise MeasureFormatError(
-                'Missing required information for interactive effects')
+        # elif (lighting_type or (commercial_effects or residential_effects)
+        #       or interactive_effect_app):
+        #     raise MeasureFormatError(
+        #         'Missing required information for interactive effects')
 
         return False
+    
+
+# returns a list of all characterizations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Characterization]: the list of characterizations found in
+#                           @measure
+def get_characterizations(measure: Namespace) -> list[Characterization]:
+    char_list: list[Characterization] = []
+    for char_name in ALL_CHARACTERIZATIONS:
+        content: str = getattr(measure, char_name, None)
+        if content == None:
+            raise RequiredCharacterizationError(name=char_name)
+        char_list.append(Characterization(char_name, content))
+    return char_list
+
+# returns a list of all permutations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Permutation]: the list of permutations found in @measure
+def get_permutations(measure: Namespace) -> list[Permutation]:
+    permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
+    perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
+    perm_list: list[Permutation] = []
+    for perm_name in perm_names:
+        permutation = getattr(permutations, perm_name, None)
+        if permutation == None:
+            raise RequiredPermutationError(name=perm_name)
+        verbose_name = getattr(measure, perm_name, None)
+        perm_list.append(Permutation(perm_name, verbose_name))
+    return perm_list
