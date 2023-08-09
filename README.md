@@ -1,4 +1,6 @@
 # MeasureParser
+A command-line driven measure parsing application
 
 ## How to Use
-The MeasureParser is a command-line application that accepts a file path to an eTRM measure JSON file.
+  1. Navigate to the 'measure_parser' directory
+  2. Execute __main__ with the file path to the eTRM measure JSON file as an argument
