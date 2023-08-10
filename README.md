@@ -16,4 +16,5 @@ A command-line driven measure parsing application
 ## Building the Executable
   1. Navigate to the root directory of the application in your CLI
   2. Run the command  *pyinstaller [path to main python file] --noconfirm*
-  3. The executable will be in the main folder in the newly created directory *dist*
+
+When built, the executable will be in the main folder in the newly created directory *dist*
