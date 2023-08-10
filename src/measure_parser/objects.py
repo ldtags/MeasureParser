@@ -1,6 +1,8 @@
 from typing import Optional
 from src.measure_parser.data.permutations import ALL_PERMUTATIONS
-from src.measure_parser.data.characterizations import ALL_CHARACTERIZATIONS
+from src.measure_parser.data.characterizations import (
+    ALL_CHARACTERIZATIONS
+)
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,

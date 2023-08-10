@@ -111,7 +111,8 @@ class CharacterizationParser(HTMLParser):
                 capitalized: str = chr(ord(word[0]) - 32) + word[1:]
                 print(self.tabs + 'uncapitalized word detected in',
                       f'{self.characterization.name} -',
-                      f'{word} should be {capitalized}')
+                      f'{word} should be {capitalized}',
+                      file=self.out)
 
 
     # determines how many spaces occur at the beginning of @data
