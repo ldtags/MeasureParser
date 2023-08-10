@@ -9,3 +9,8 @@ A command-line driven measure parsing application
 ### Flags
   - -console
     - redirects all output to the console
+
+## Building the Executable
+  1. Navigate to the src/measure_parser directory or the location of the executable in your favorite CLI
+  2. Run the command  *pip install -r requirements.txt*
+  3. Run the command  *pyinstaller __main__.disable('emphasis').py*
