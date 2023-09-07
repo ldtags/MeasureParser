@@ -6,10 +6,11 @@ import re
 
 # Global Variables
 # spell = SpellChecker()
+#   look into multithreading before implementing this VERY slow process
 
 class CharacterizationParser(HTMLParser):
     """The parser for measure characterization HTML
-    
+
     Attributes:
         characterization (Optional[Characterization]): an object
             containing the name and HTML of a characterization
