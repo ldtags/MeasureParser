@@ -1,5 +1,4 @@
 import sys
-from typing import Optional, TextIO
 from src.measure_parser.parser import MeasureParser
 
 # controls the flow of processes when parsing the measure
@@ -21,17 +20,8 @@ def main(args: list[str]) -> None:
         return
 
     with open(filename, 'r') as measure_file:
-        out: Optional[TextIO] = None
-        if '-console' not in flags: 
-            out = open('out.txt', 'w+')
-
-        print(f'\nstarting to parse measure file - {measure_file.name}')
-        parser: MeasureParser = MeasureParser(measure_file, out)
+        parser: MeasureParser = MeasureParser(measure_file)
         parser.parse()
-        print(f'\nfinished parsing measure file - {measure_file.name}\n')
-
-        if out != None:
-            out.close()
 
 
 if __name__ == '__main__':
