@@ -1,136 +1,91 @@
+import sys
 import sqlite3
-from src.measure_parser.objects import Measure
+from typing import Any, Optional
 
-class dbservice():
-    def __init__(self, filepath: str):
-        self.connection = sqlite3.connect(filepath)
-        self.cursor = self.connection.cursor()
+__filepath__ = sys.executable[0:sys.executable.rindex('\\')]
+connection = sqlite3.connect(__filepath__ + '\\database.db')
+cursor = connection.cursor()
 
-    def get_all_params(self, measure: Measure) -> list[str]:
-        query: str = 'SELECT api_name FROM parameters WHERE criteria IN ('
-        criteria: list[str] = ['REQ']
 
-        if measure.is_DEER():
-            criteria.append('DEER')
+def get_param_names(criteria: list[str]) -> list[str]:
+    query: str = 'SELECT api_name FROM parameters'
+    query += ' WHERE criteria IN ' + querify_list(criteria)
+    query += ' ORDER BY ord ASC'
+    params: list[str] = cursor.execute(query).fetchall()
+    return listify(params)
 
-        if measure.is_GSIA_nondef():
-            criteria.append('GSIA')
 
-        if (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
+def get_value_table_names(criteria: list[str]) -> list[str]:
+    query: str = 'SELECT api_name FROM tables WHERE shared = 0'
+    query += ' AND criteria IN ' + querify_list(criteria)
+    query += ' ORDER BY ord ASC'
+    tables: list[str] = cursor.execute(query).fetchall()
+    return listify(tables)
 
-        if measure.is_WEN():
-            criteria.append('WEN')
 
-        if measure.is_sector_nondef():
-            criteria.append('NTG')
+def get_shared_table_names(criteria: list[str]) -> list[str]:
+    query: str = 'SELECT api_name FROM tables WHERE shared != 0'
+    query += ' AND criteria IN ' + querify_list(criteria)
+    query += ' ORDER BY ord ASC'
+    tables: list[str] = cursor.execute(query).fetchall()
+    return listify(tables)
 
-        if measure.is_interactive():
-            criteria.append('INTER')
 
-        length: int = len(criteria)
-        for i, spec in enumerate(criteria):
-            query += spec
-            if i != length - 1:
-                query += ', '
-        query += ')'
+def get_permutations() -> list[tuple[str, str, Optional[str]]]:
+    query: str = 'SELECT reporting_name, verbose_name, valid_name'
+    query += ' FROM permutations'
+    response = cursor.execute(query).fetchall()
+    return listify(response)
 
-        params: list[str] = self.cursor.execute(query).fetchall()
-        if (measure.is_interactive()
-                and not measure.contains_param('LightingType')):
-            params.remove('LightingType')
 
-        return params
-    
-    
-    def get_value_tables(self, measure: Measure) -> list[str]:
-        query: str = 'SELECT api_name FROM tables WHERE shared = 0'
-        query += ' AND criteria IN ('
-        criteria: list[str] = ['REQ']
+def get_permutation_data(reporting_name: str
+                         ) -> tuple[str, Optional[str]]:
+    query: str = 'SELECT verbose_name, valid_name FROM permutations'
+    query += f' WHERE reporting_name = \"{reporting_name}\"'
+    response = cursor.execute(query).fetchall()
+    response_list: list[str] = listify(response)
+    if len(response_list) == 0:
+        return ('', None)
+    return response_list[0]
 
-        if measure.is_DEER():
-            criteria.append('DEER')
 
-        if (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
-            
-        if measure.contains_value_table('emergingTech'):
-            criteria.append('ET')
-            
-        if measure.is_deemed():
-            criteria.append('DEEM')
-            
-        if measure.is_fuel_sub():
-            criteria.append('FUEL')
-            
-        if measure.is_interactive():
-            criteria.append('INTER')
-            
-        length: int = len(criteria)
-        for i, spec in enumerate(criteria):
-            query += spec
-            if i != length - 1:
-                query += ', '
-        query += ')'
-        
-        tables: list[str] = self.cursor.execute(query).fetchall()
-        if (measure.is_interactive()
-                and not measure.contains_value_table('IEApplicability')):
-            tables.remove('IEApplicability')
+def get_permutation_names() -> list[str]:
+    query: str = 'SELECT reporting_name FROM permutations'
+    cursor.execute(query)
+    response: list[tuple[str,]] = cursor.fetchall()
+    return listify(response)
 
-        return tables
-        
-        
-    def get_shared_tables(self, measure: Measure) -> list[str]:
-        query: str = 'SELECT api_name FROM tables WHERE shared != 0'
-        query += ' AND criteria IN ('
-        criteria: list[str] = ['REQ']
-        
-        if measure.is_DEER():
-            criteria.append('DEER')
-            
-        if measure.is_GSIA_default():
-            criteria.append('GSIA-DEF')
-            
-        if measure.is_GSIA_nondef():
-            criteria.append('GSIA')
-            
-        if (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
-            
-        if measure.is_WEN():
-            criteria.append('WEN')
-            
-        if measure.is_res_default():
-            criteria.append('RES-DEF')
-        else:
-            criteria.append('RES')
-            
-        if measure.is_nonres_default():
-            criteria.append('RES-NDEF')
-        elif 'RES' not in criteria:
-            criteria.append('RES')
-            
-        if measure.is_interactive():
-            criteria.append('INTER')
-        
-        length: int = len(criteria)
-        for i, spec in enumerate(criteria):
-            query += spec
-            if i != length - 1:
-                query += ', '
-        query += ')'
 
-        tables: list[str] = self.cursor.execute(query).fetchall()
-        if measure.is_interactive():
-            commercial: str = 'commercialInteractiveEffects'
-            if not measure.contains_shared_table(commercial):
-                tables.remove(commercial)
-            residential: str = 'residentialInteractiveEffects'
-            if not measure.contains_shared_table(residential):
-                tables.remove(residential)
+def get_characterization_names() -> list[str]:
+    query: str = 'SELECT name FROM characterizations'
+    cursor.execute(query)
+    response: list[tuple[str,]] = cursor.fetchall()
+    return listify(response)
 
-        return tables
+
+def querify_list(elements: list[str]) -> str:
+    query_list: str = '('
+    length: int = len(elements)
+    for i, spec in enumerate(elements):
+        query_list += '\"' + spec + '\"'
+        if i != length - 1:
+            query_list += ', '
+    query_list += ')'
+    return query_list
+
+
+def listify(tuples: list[tuple[Any,]]) -> list[Any]:
+    if type(tuples) is not list:
+        return []
+
+    if len(tuples) == 0:
+        return []
+
+    first = tuples[0]
+    if type(first) is not tuple:
+        return []
+
+    if len(first) == 0:
+        return []
+
+    return [element[0] for element in tuples]

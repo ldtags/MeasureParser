@@ -6,18 +6,13 @@ except ImportError:
     from argparse import Namespace
 from src.measure_parser.objects import Measure, Permutation
 from src.measure_parser.htmlparser import CharacterizationParser
-from src.measure_parser.data.parameters import ALL_PARAMS
 from src.measure_parser.data.permutations import ALL_PERMUTATIONS
-from src.measure_parser.data.valuetables import (
-    ALL_SHARED_TABLES,
-    ALL_VALUE_TABLES
-)
+import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
     UnknownPermutationError
 )
-
 
 class MeasureParser:
     """The parser for eTRM measure JSON files
@@ -43,11 +38,11 @@ class MeasureParser:
 
         try:
             self.ordered_params: list[str] \
-                = get_ordered_params(self.measure)
+                = self.__get_ordered_params()
             self.ordered_val_tables: list[str] \
-                = get_ordered_value_tables(self.measure)
+                = self.__get_ordered_value_tables()
             self.ordered_sha_tables: list[str] \
-                = get_ordered_shared_tables(self.measure)
+                = self.__get_ordered_shared_tables()
         except RequiredParameterError as err:
             print('ERROR - the measure is missing required information\n',
                   err)
@@ -61,6 +56,10 @@ class MeasureParser:
 
     # defines the control flow for the generic parsing of @measure
     def parse(self) -> None:
+        if self.measure == None:
+            print('ERROR - measure parser requires a measure to parse')
+            return
+
         print(f'starting to parse measure {self.measure.id}\n')
 
         self.print_measure_details()
@@ -260,41 +259,44 @@ class MeasureParser:
     # Returns:
     #   str: the valid name of @permutation
     def __get_valid_perm_name(self, permutation: Permutation) -> str:
-        name: str = permutation.reporting_name
-        data: dict[str, str] = ALL_PERMUTATIONS.get(name, None)
-        if data == None:
-            raise UnknownPermutationError(name=name)
+        reporting_name: str = permutation.reporting_name
+        data: tuple[str, Optional[str]] \
+            = db.get_permutation_data(reporting_name)
 
         mapped_name: str = permutation.mapped_name
-        valid_name: Optional[str] = data.get('validity', None)
-        if valid_name == None:
+        if len(data) != 2:
             return mapped_name
+        elif data[0] == '':
+            raise UnknownPermutationError(name=reporting_name)
 
-        cond_names: list[str] = data.get('conditional', [])
-        if len(cond_names) == 0:
-            return valid_name
+        valid_name: str = data[1] or mapped_name
 
         get_param: function = self.measure.get_param
         get_value_table: function = self.measure.get_value_table
-        if name == 'BaseCase2nd' \
+        if reporting_name == 'BaseCase2nd' \
                 and 'AR' in get_param('MeasAppType').labels:
-            valid_name = cond_names[0]
-        elif name == 'Upstream_Flag' \
+            valid_name = 'measOffer__descBase2'
+        elif reporting_name == 'Upstream_Flag' \
                 and 'UpDeemed' in get_param('DelivType').labels:
-            valid_name = cond_names[0]
-        elif name == 'WaterUse' \
+            valid_name = 'upstreamFlag__upstreamFlag'
+        elif reporting_name == 'WaterUse' \
                 and get_param('waterMeasureType') != None:
-            valid_name = cond_names[0]
-        elif name == 'ETP_Flag' \
+            valid_name = 'p.waterMeasureType__label'
+        elif reporting_name == 'ETP_Flag' \
                 and get_value_table('emergingTech') != None:
-            valid_name = cond_names[0]
-        elif name == 'ETP_YearFirstIntroducedToPrograms' \
+            valid_name = 'emergingTech__projectNumber'
+        elif reporting_name == 'ETP_YearFirstIntroducedToPrograms' \
                 and get_value_table('emergingTech') != None:
-            valid_name = cond_names[0]
+            valid_name = 'emergingTech__introYear'
 
         return valid_name
 
-
+    # validates that all exclusion tables follow the following
+    #   1. There are no whitespaces in the table name
+    #   2. The amount of hyphens in the table name must be one less than
+    #            the total amount of parameters
+    #
+    # prints out all exclusion tables
     def validate_exclusion_tables(self) -> None:
         print('\nAll Exclusion Tables:', file=self.out)
         for table in self.measure.exclusion_tables:
@@ -308,9 +310,8 @@ class MeasureParser:
             params: list[str] = table.determinants
             print(f'\t\tParams: {params}', file=self.out)
             if name.count('-') != (len(params) - 1):
-                print('\t\t\tWarning: Amount of hyphens found in the',
-                      'table name does not equal one less than the',
-                      'amount of parameters',
+                print('\t\t\tWarning: Incorrect amount of hyphens',
+                      'in the table name',
                       file=self.out)
             print(file=self.out)
 
@@ -326,7 +327,7 @@ class MeasureParser:
 
     # prints a representation of every non-shared value table in @measure
     def print_value_tables(self) -> None:
-        print('\n\nAll Value Tables:', file=self.out)
+        print('\n\nAll Non-Shared Value Tables:', file=self.out)
         for table in self.measure.value_tables:
             print(f'\tTable Name: {table.name}', file=self.out)
             print(f'\t\tAPI Name: {table.api_name}', file=self.out)
@@ -369,207 +370,110 @@ class MeasureParser:
             except:
                 continue
 
+
+    def __get_ordered_params(self) -> list[str]:
+        criteria: list[str] = ['REQ']
+        if self.measure.is_DEER():
+            criteria.append('DEER')
+
+        if self.measure.is_GSIA_nondef():
+            criteria.append('GSIA')
+
+        if (self.measure.contains_MAT_label('AR')
+                or self.measure.contains_MAT_label('AOE')):
+            criteria.append('MAT')
+
+        if self.measure.is_WEN():
+            criteria.append('WEN')
+
+        if self.measure.is_sector_nondef():
+            criteria.append('NTG')
+
+        if self.measure.is_interactive():
+            criteria.append('INTER')
+
+        params: list[str] = db.get_param_names(criteria)
+        if (self.measure.is_interactive()
+                and not self.measure.contains_param('LightingType')):
+            params.remove('LightingType')
+        return params
+
+
+    def __get_ordered_value_tables(self) -> list[str]:
+        criteria: list[str] = ['REQ']
+
+        if self.measure.is_DEER():
+            criteria.append('DEER')
+
+        if (self.measure.contains_MAT_label('AR')
+                or self.measure.contains_MAT_label('AOE')):
+            criteria.append('MAT')
+
+        if self.measure.contains_value_table('emergingTech'):
+            criteria.append('ET')
+
+        if self.measure.is_deemed():
+            criteria.append('DEEM')
+
+        if self.measure.is_fuel_sub():
+            criteria.append('FUEL')
+
+        if self.measure.is_interactive():
+            criteria.append('INTER')
+
+        tables: list[str] = db.get_value_table_names(criteria)
+        if (self.measure.is_interactive()
+                and not self.measure.contains_value_table(
+                    'IEApplicability')):
+            tables.remove('IEApplicability')
+        return tables
+
+
+    def __get_ordered_shared_tables(self) -> list[str]:
+        criteria: list[str] = ['REQ']
+
+        if self.measure.is_DEER():
+            criteria.append('DEER')
+
+        if self.measure.is_GSIA_default():
+            criteria.append('GSIA-DEF')
+
+        if self.measure.is_GSIA_nondef():
+            criteria.append('GSIA')
+
+        if (self.measure.contains_MAT_label('AR')
+                or self.measure.contains_MAT_label('AOE')):
+            criteria.append('MAT')
+
+        if self.measure.is_WEN():
+            criteria.append('WEN')
+
+        if self.measure.is_res_default():
+            criteria.append('RES-DEF')
+        else:
+            criteria.append('RES')
+
+        if self.measure.is_nonres_default():
+            criteria.append('RES-NDEF')
+        elif 'RES' not in criteria:
+            criteria.append('RES')
+
+        if self.measure.is_interactive():
+            criteria.append('INTER')
+
+        tables: list[str] = db.get_shared_table_names(criteria)
+        if self.measure.is_interactive():
+            commercial: str = 'commercialInteractiveEffects'
+            if not self.measure.contains_shared_table(commercial):
+                tables.remove(commercial)
+            residential: str = 'residentialInteractiveEffects'
+            if not self.measure.contains_shared_table(residential):
+                tables.remove(residential)
+        return tables
+
     # method to print to the parser's out stream
     def printo(self, *strings: str) -> None:
         concat_string: str = ''
         for string in strings:
             concat_string += string
         print(concat_string, file=self.out)
-
-# returns the ordered list of all parameters to check for
-#
-# Parameters:
-#   measure (Measure): the measure object being parsed
-#
-# Returns:
-#   list[str]: a list of parameter names
-def get_ordered_params(measure: Measure) -> list[str]:
-    ordered_params = ALL_PARAMS
-
-    try:
-        if not measure.is_DEER():
-            ordered_params = filter_dict(ordered_params, 'DEER')
-
-        if not measure.is_GSIA_nondef():
-            ordered_params = filter_dict(ordered_params, 'GSIA')
-
-        if not (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            ordered_params = filter_dict(ordered_params, 'MAT')
-
-        if not measure.is_WEN():
-            ordered_params = filter_dict(ordered_params, 'WEN')
-
-        if not measure.is_sector_nondef():
-            ordered_params = filter_dict(ordered_params, 'NTG')
-
-        if not measure.is_interactive():
-            ordered_params = filter_dict(ordered_params, 'INTER')
-        else:
-            ordered_params = filter_inter_params(measure,
-                                                 ordered_params)
-    except Exception as err:
-        raise err
-
-    return list(ordered_params.keys())
-
-# returns the ordered list of all non-shared value tables to check for
-#
-# Parameters:
-#   measure (Measure): the measure object being parsed
-#
-# Returns:
-#   list[str]: a list of non-shared value table names
-def get_ordered_value_tables(measure: Measure) -> list[str]:
-    ordered_val_tables = ALL_VALUE_TABLES
-
-    try:
-        if not measure.is_DEER():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'DEER')
-
-        if not (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            ordered_val_tables \
-                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
-
-        if not (measure.contains_MAT_label('NR')
-                or measure.contains_MAT_label('NC')):
-            ordered_val_tables \
-                = filter_dict(ordered_val_tables, 'NRNC+ARAOE')
-
-        if not measure.contains_value_table('emergingTech'):
-            ordered_val_tables = filter_dict(ordered_val_tables, 'ET')
-
-        if not measure.is_deemed():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'DEEM')
-
-        if not measure.is_fuel_sub():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'FUEL')
-
-        if not measure.is_interactive():
-            ordered_val_tables = filter_dict(ordered_val_tables, 'INTER')
-        else:
-            ordered_val_tables \
-                    = filter_inter_value_tables(measure,
-                                                ordered_val_tables)
-    except Exception as err:
-        raise err
-
-    return list(ordered_val_tables.keys())
-
-# returns the ordered list of all shared value tables to check for
-#
-# Parameters:
-#   measure (Measure): the measure object being parsed
-#
-# Returns:
-#   list[str]: a list of shared value table names
-def get_ordered_shared_tables(measure: Measure) -> list[str]:
-    ordered_sha_tables = ALL_SHARED_TABLES
-
-    try:
-        if not measure.is_DEER():
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'DEER')
-
-        if not measure.is_GSIA_default():
-            ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'GSIA-DEF')
-
-        if not measure.is_GSIA_nondef():
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'GSIA')
-
-        if not (measure.contains_MAT_label('AR')
-                or measure.contains_MAT_label('AOE')):
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'ARAOE')
-
-        if not measure.is_WEN():
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'WEN')
-
-        if not measure.is_res_default():
-            ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'RES-DEF')
-        else:
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
-
-        if not measure.is_nonres_default():
-            ordered_sha_tables \
-                = filter_dict(ordered_sha_tables, 'RES-NDEF')
-        else:
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'RES')
-
-        if not measure.is_interactive():
-            ordered_sha_tables = filter_dict(ordered_sha_tables, 'INTER')
-        else:
-            ordered_sha_tables \
-                = filter_inter_shared_tables(measure, ordered_sha_tables)
-    except Exception as err:
-        raise err
-
-    return list(ordered_sha_tables.keys())
-
-# returns the provided dict excluding any item whose value matches @flag
-#
-# Parameters:
-#   ordered_list (dict[str, str]): the dict being filtered
-#   flag (str): the flag to filter the dict for
-#
-# Returns:
-#   dict[str, str]: the filtered dict
-def filter_dict(ordered_list: dict[str, str],
-                flag: str) -> dict[str, str]:
-    return {key:val for (key, val) in ordered_list.items() if val != flag}
-
-# filters the provided list in accordance to the interactive measure specs
-#
-# Parameters:
-#   measure (Measure):  the measure object being parsed
-#   ordered_params (dict[str, str]): an ordered dict of parameter names
-#
-# Returns:
-#   dict[str, str]: the dict filtered in accordance to the interactive
-#   measure specs
-def filter_inter_params(measure: Measure,
-                        ordered_params: dict[str, str]
-                       ) -> dict[str, str]:
-    if not measure.contains_param('LightingType'):
-        del ordered_params['LightingType']
-
-    return ordered_params
-
-# filters the provided list in accordance to the interactive measure specs
-#
-# Parameters:
-#   measure (Measure):  the measure object being parsed
-#   ordered_tables (dict[str, str]): an ordered dict of non-shared table
-#                                    names
-#
-# Returns:
-#   dict[str, str]: the dict filtered in accordance to the interactive
-#   measure specs
-def filter_inter_value_tables(measure: Measure,
-                              ordered_tables: dict[str, str]
-                             ) -> dict[str, str]:
-    if not measure.contains_value_table('IEApplicability'):
-        del ordered_tables['IEApplicability']
-
-    return ordered_tables
-
-# filters the provided list in accordance to the interactive measure specs
-#
-# Parameters:
-#   measure (Measure): the measure object being parsed
-#   ordered_tables (dict[str, str]): an ordered dict of shared table names
-#
-# Returns:
-#   dict[str, str]: the dict filtered in accordance to the interactive
-#                   measure specs
-def filter_inter_shared_tables(measure: Measure,
-                               ordered_tables: dict[str, str]
-                              ) -> dict[str, str]:
-    if not measure.contains_shared_table('commercialInteractiveEffects'):
-        del ordered_tables['commercialInteractiveEffects']
-
-    if not measure.contains_shared_table('residentialInteractiveEffects'):
-        del ordered_tables['residentialInteractiveEffects']
-
-    return ordered_tables

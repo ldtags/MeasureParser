@@ -1,8 +1,5 @@
 from typing import Optional
-from src.measure_parser.data.permutations import ALL_PERMUTATIONS
-from src.measure_parser.data.characterizations import (
-    ALL_CHARACTERIZATIONS
-)
+import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
@@ -10,16 +7,15 @@ from src.measure_parser.exceptions import (
     ValueTableFormatError,
     SharedTableFormatError,
     MeasureFormatError,
-    RequiredPermutationError,
     ColumnFormatError,
     CalculationFormatError,
-    RequiredCharacterizationError,
-    UnknownPermutationError
+    RequiredCharacterizationError
 )
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
+
 
 class Characterization:
     """the representation of a characterization
@@ -661,7 +657,7 @@ class Measure:
         #         'Missing required information for interactive effects')
 
         return False
-    
+
 
 # returns a list of all characterizations found in @measure
 #
@@ -671,9 +667,10 @@ class Measure:
 # Returns:
 #   list[Characterization]: the list of characterizations found in
 #                           @measure
-def get_characterizations(measure: Namespace) -> list[Characterization]:
+def get_characterizations(measure: Namespace
+                            ) -> list[Characterization]:
     char_list: list[Characterization] = []
-    for char_name in ALL_CHARACTERIZATIONS:
+    for char_name in db.get_characterization_names():
         content: str = getattr(measure, char_name, None)
         if content == None:
             raise RequiredCharacterizationError(name=char_name)
@@ -688,13 +685,9 @@ def get_characterizations(measure: Namespace) -> list[Characterization]:
 # Returns:
 #   list[Permutation]: the list of permutations found in @measure
 def get_permutations(measure: Namespace) -> list[Permutation]:
-    permutations: Namespace = Namespace(**ALL_PERMUTATIONS)
-    perm_names: list[str] = list(ALL_PERMUTATIONS.keys())
+    perm_names: list[str] = db.get_permutation_names()
     perm_list: list[Permutation] = []
     for perm_name in perm_names:
-        permutation = getattr(permutations, perm_name, None)
-        if permutation == None:
-            raise RequiredPermutationError(name=perm_name)
         verbose_name = getattr(measure, perm_name, None)
         perm_list.append(Permutation(perm_name, verbose_name))
     return perm_list

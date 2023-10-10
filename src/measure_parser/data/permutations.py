@@ -297,8 +297,7 @@ ALL_PERMUTATIONS = {
         'validity': 'p.StdTechType__label'
     },
     'UseCategory': {
-        'verbose': 'Use Category',
-        'validity': 'p.UseSubCategory__label'
+        'verbose': 'Use Category'
     },
     'UseSubCategory': {
         'verbose': 'Use Sub Category'

@@ -67,7 +67,8 @@ class CharacterizationParser(HTMLParser):
     # Parameters:
     #   characterization (Characterization): characterization to be parsed
     def parse(self, characterization: Characterization) -> None:
-        self.feed(characterization.content)
+        self.characterization = characterization
+        self.feed(self.characterization.content)
 
     # determines how any data found in the HTML will be handled
     #
@@ -163,6 +164,9 @@ class CharacterizationParser(HTMLParser):
     #   attrs (list[tuple[str, str | None]]): the list of tag attributes
     def check_ref_spacing(self,
                           attrs: list[tuple[str, str | None]]) -> None:
+        if self.characterization == None:
+            return
+
         for attr, value in attrs:
             if (attr == 'data-etrmreference'
                     and self.__prev_data.endswith(' ')):
