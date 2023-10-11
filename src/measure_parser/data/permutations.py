@@ -10,7 +10,7 @@ ALL_PERMUTATIONS = {
     'BaseCase2nd': {
         'verbose': 'Second Base Case',
         'validity': 'Null__Blank',
-        'conditional': ['measOffer__descBase2']
+        'conditional': [('measOffer__descBase2', 'MAT-AR')]
     },
     'MeasDescription': {
         'verbose': 'Measure Case Description',
@@ -231,7 +231,7 @@ ALL_PERMUTATIONS = {
     'Upstream_Flag': {
         'verbose': 'Upstream Flag (True / False)',
         'validity': 'Null__false',
-        'conditional': ['upstreamFlag__upstreamFlag']
+        'conditional': [('upstreamFlag__upstreamFlag', 'DVY-UD')]
     },
     'Version': {
         'verbose': 'Version',
@@ -243,7 +243,7 @@ ALL_PERMUTATIONS = {
     'WaterUse': {
         'verbose': 'Water Measure Type',
         'validity': 'Null__Blank',
-        'conditional': ['p.waterMeasureType__label']
+        'conditional': [('p.waterMeasureType__label', 'WMT')]
     },
     'UnitGalWater1stBaseline': {
         'verbose': 'First Baseline - Water Savings'
@@ -297,8 +297,7 @@ ALL_PERMUTATIONS = {
         'validity': 'p.StdTechType__label'
     },
     'UseCategory': {
-        'verbose': 'Use Category',
-        'validity': 'p.UseSubCategory__label'
+        'verbose': 'Use Category'
     },
     'UseSubCategory': {
         'verbose': 'Use Sub Category'
@@ -310,12 +309,12 @@ ALL_PERMUTATIONS = {
     'ETP_Flag': {
         'verbose': 'ETP Flag',
         'validity': 'Null__Blank',
-        'conditional': ['emergingTech__projectNumber']
+        'conditional': [('emergingTech__projectNumber', 'ETVT')]
     },
     'ETP_YearFirstIntroducedToPrograms': {
         'verbose': 'ETP First Year Introduced to Programs',
         'validity': 'Null__BlankDate',
-        'conditional': ['emergingTech__introYear']
+        'conditional': [('emergingTech__introYear', 'ETVT')]
     },
     'IE_Applicable': {
         'verbose': 'Is IE Factor Applied? (Yes / No)'
