@@ -1,4 +1,3 @@
-import json
 import sys
 from src.measure_parser.parser import MeasureParser
 

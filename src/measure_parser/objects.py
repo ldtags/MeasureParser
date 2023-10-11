@@ -542,21 +542,20 @@ class Measure:
                     return True
         return False
 
-    def is_sector_nondef(self) -> bool:
-        sector = self.get_param('Sector')
-        if sector == None:
-            raise RequiredParameterError(name='Sector')
 
-        ntg_id = self.get_param('NTGID')
+    def requires_NTG_Version(self) -> bool:
+        ntg_id: Parameter = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
-        sectors = list(map(lambda sector: sector + '-Default',
-                           sector.labels))
-
-        for sector in sectors:
-            for id in ntg_id.labels:
-                if sector not in id:
+        for label in ntg_id.labels:
+            match label:
+                case ('Com-Default>2yrs'
+                        | 'Ind-Default>2yrs'
+                        | 'Agric-Default>2yrs'
+                        | 'Res-Default>2yrs'):
+                    break
+                case _:
                     return True
         return False
 

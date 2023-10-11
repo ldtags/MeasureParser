@@ -2,6 +2,7 @@ import sys
 import sqlite3
 from typing import Any, Optional
 
+
 __filepath__ = sys.executable[0:sys.executable.rindex('\\')]
 connection = sqlite3.connect(__filepath__ + '\\database.db')
 cursor = connection.cursor()

@@ -327,7 +327,7 @@ class MeasureParser:
 
     # prints a representation of every non-shared value table in @measure
     def print_value_tables(self) -> None:
-        print('\n\nAll Non-Shared Value Tables:', file=self.out)
+        print('\n\nStandard Non-Shared Value Tables:', file=self.out)
         for table in self.measure.value_tables:
             print(f'\tTable Name: {table.name}', file=self.out)
             print(f'\t\tAPI Name: {table.api_name}', file=self.out)
@@ -386,7 +386,7 @@ class MeasureParser:
         if self.measure.is_WEN():
             criteria.append('WEN')
 
-        if self.measure.is_sector_nondef():
+        if self.measure.requires_NTG_Version():
             criteria.append('NTG')
 
         if self.measure.is_interactive():
