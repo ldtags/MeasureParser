@@ -666,8 +666,7 @@ class Measure:
 # Returns:
 #   list[Characterization]: the list of characterizations found in
 #                           @measure
-def get_characterizations(measure: Namespace
-                            ) -> list[Characterization]:
+def get_characterizations(measure: Namespace) -> list[Characterization]:
     char_list: list[Characterization] = []
     for char_name in db.get_characterization_names():
         content: str = getattr(measure, char_name, None)
@@ -684,9 +683,8 @@ def get_characterizations(measure: Namespace
 # Returns:
 #   list[Permutation]: the list of permutations found in @measure
 def get_permutations(measure: Namespace) -> list[Permutation]:
-    perm_names: list[str] = db.get_permutation_names()
     perm_list: list[Permutation] = []
-    for perm_name in perm_names:
+    for perm_name in db.get_permutation_names():
         verbose_name = getattr(measure, perm_name, None)
         perm_list.append(Permutation(perm_name, verbose_name))
     return perm_list
