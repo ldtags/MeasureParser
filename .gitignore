@@ -22,3 +22,4 @@ database.db-journal
 # Testing Items
 measures/
 tested/
+/measure.json
