@@ -1,4 +1,5 @@
 from typing import Optional
+import src.measure_parser.constants as cnst
 import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
     RequiredParameterError,
@@ -544,16 +545,16 @@ class Measure:
 
 
     def requires_NTG_Version(self) -> bool:
-        ntg_id: Parameter = self.get_param('NTGID')
+        ntg_id: SharedParameter = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
             match label:
-                case ('Com-Default>2yrs'
-                        | 'Ind-Default>2yrs'
-                        | 'Agric-Default>2yrs'
-                        | 'Res-Default>2yrs'):
+                case (cnst.RES_DEF
+                        | cnst.COM_DEF
+                        | cnst.IND_DEF
+                        | cnst.AGRIC_DEF):
                     break
                 case _:
                     return True
@@ -567,13 +568,16 @@ class Measure:
     # Returns:
     #   bool: True if the NTGID parameter contains the residential default
     def is_res_default(self) -> bool:
-        ntg_id = self.get_param('NTGID')
+        ntg_id: SharedParameter = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
-            if 'Res-Default' in label:
-                return True
+            match label:
+                case cnst.RES_DEF:
+                    return True
+                case _:
+                    break
         return False
 
     # Checks if the NTGID contains the non-residential default
@@ -585,15 +589,18 @@ class Measure:
     #   bool: True if the NTGID parameter contains the non-residential
     #         default
     def is_nonres_default(self) -> bool:
-        ntg_id = self.get_param('NTGID')
+        ntg_id: SharedParameter = self.get_param('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
-            if ('Agric-Default' in label
-                    or 'Com-Default' in label
-                    or 'Ind-Default' in label):
-                return True
+            match label:
+                case (cnst.COM_DEF
+                        | cnst.IND_DEF
+                        | cnst.AGRIC_DEF):
+                    return True
+                case _:
+                    break
         return False
 
     # Checks if the GSIAID contains the GSIA default
@@ -605,14 +612,11 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains the GSIA default
     def is_GSIA_default(self) -> bool:
-        gsia = self.get_param('GSIAID')
+        gsia: SharedParameter = self.get_param('GSIAID')
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        for label in gsia.labels:
-            if 'Def-GSIA' in label:
-                return True
-        return False
+        return cnst.GSIA_DEF in gsia.labels
 
     # Checks if the GSIAID contains a non-default label
     #
@@ -623,14 +627,11 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains a non-default label
     def is_GSIA_nondef(self) -> bool:
-        gsia = self.get_param('GSIAID')
+        gsia: SharedParameter = self.get_param('GSIAID')
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        for label in gsia.labels:
-            if 'Def-GSIA' not in label:
-                return True
-        return False
+        return cnst.GSIA_DEF not in gsia.labels
 
     # Checks if the measure is an interactive measure
     #
@@ -641,12 +642,13 @@ class Measure:
     # Returns:
     #   bool: True if the measure is an interactive measure
     def is_interactive(self) -> bool:
-        lighting_type = self.get_param('LightingType')
-        interactive_effect_app = self.get_value_table('IEApplicability')
-        commercial_effects = self.get_shared_table(
-            'commercialInteractiveEffects')
-        residential_effects = self.get_shared_table(
-            'residentialInteractiveEffects')
+        lighting_type: SharedParameter = self.get_param('LightingType')
+        interactive_effect_app: ValueTable \
+            = self.get_value_table('IEApplicability')
+        commercial_effects: SharedValueTable \
+            = self.get_shared_table('commercialInteractiveEffects')
+        residential_effects: SharedValueTable \
+            = self.get_shared_table('residentialInteractiveEffects')
 
         if lighting_type or (commercial_effects or residential_effects):
             return True

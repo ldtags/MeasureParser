@@ -1,11 +1,25 @@
 import sys
+import os
 import sqlite3
 from typing import Any, Optional
+from src.measure_parser.exceptions import (
+    DatabaseConnectionError,
+    DatabaseContentError
+)
 
 
-__filepath__ = sys.executable[0:sys.executable.rindex('\\')]
-connection = sqlite3.connect(__filepath__ + '\\database.db')
-cursor = connection.cursor()
+__filepath__: str \
+    = sys.executable[0:sys.executable.rindex('\\')] + '\\database.db'
+connection: sqlite3.Connection
+if os.path.isfile(__filepath__):
+    connection = sqlite3.connect(__filepath__)
+elif os.path.isfile('database.db'):
+    connection = sqlite3.connect('database.db')
+else:
+    raise DatabaseConnectionError('database file not found')
+cursor: sqlite3.Cursor = connection.cursor()
+if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
+    raise DatabaseContentError('database is empty')
 
 
 def get_param_names(criteria: list[str]) -> list[str]:

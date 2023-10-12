@@ -3,24 +3,20 @@ class MeasureFormatError(Exception):
         self.message: str = message
         super().__init__(self.message)
 
-
 class ParameterFormatError(Exception):
     def __init__(self, message='parameter is missing required fields'):
         self.message: str = message
         super().__init__(self.message)
-
 
 class ValueTableFormatError(Exception):
     def __init__(self, message='non-shared value table is missing required fields'):
         self.message: str = message
         super().__init__(self.message)
 
-
 class SharedTableFormatError(Exception):
     def __init__(self, message='shared value table is missing required fields'):
         self.message: str = message
         super().__int__(self.message)
-
         
 class VersionFormatError(Exception):
     def __init__(self, message='version is missing required fields'):
@@ -68,4 +64,15 @@ class RequiredPermutationError(Exception):
         self.message: str = message if message != None \
             else 'measure is missing a required permutation' \
                 + (f' - {name}' if name != None else '')
+        super().__init__(self.message)
+
+class DatabaseConnectionError(Exception):
+    def __init__(self, message: str='an unexpected database connection error has occurred'):
+        self.message: str = message
+        super().__init__(self.message)
+
+
+class DatabaseContentError(Exception):
+    def __init__(self, message: str='an unexpected database content error has occurred'):
+        self.message: str = message
         super().__init__(self.message)
