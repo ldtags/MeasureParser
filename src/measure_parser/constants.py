@@ -1,8 +1,7 @@
 '''Constants used in the Cal TF Measure Parser
-
 '''
 
-''' Parameters '''
+# Parameters #
 
 # NTGID
 COM_DEF: str = 'Com-Default>2yrs'

@@ -270,8 +270,7 @@ class MeasureParser:
             raise UnknownPermutationError(name=reporting_name)
 
         valid_name: str = data[1] or mapped_name
-
-        get_param: function = self.measure.get_param
+        get_param: function = self.measure.get_shared_parameter
         get_value_table: function = self.measure.get_value_table
         if reporting_name == 'BaseCase2nd' \
                 and 'AR' in get_param('MeasAppType').labels:
@@ -386,7 +385,7 @@ class MeasureParser:
         if self.measure.is_WEN():
             criteria.append('WEN')
 
-        if self.measure.requires_NTG_Version():
+        if self.measure.requires_ntg_version():
             criteria.append('NTG')
 
         if self.measure.is_interactive():
@@ -412,7 +411,7 @@ class MeasureParser:
         if self.measure.contains_value_table('emergingTech'):
             criteria.append('ET')
 
-        if self.measure.is_deemed():
+        if self.measure.requires_upstream_flag():
             criteria.append('DEEM')
 
         if self.measure.is_fuel_sub():

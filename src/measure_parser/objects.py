@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import src.measure_parser.constants as cnst
 import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
@@ -295,7 +295,7 @@ class Measure:
     # Returns:
     #   SharedParameter: The desired parameter
     #   None: If no parameter with a name matching @param_name exists 
-    def get_param(self, param_name: str) -> Optional[SharedParameter]:
+    def get_shared_parameter(self, param_name: str) -> Optional[SharedParameter]:
         for param in self.shared_params:
             if param.version.version_string == param_name:
                 return param
@@ -432,10 +432,10 @@ class Measure:
     #   bool: True if the Measure Application Type parameter contains
     #         all provided labels
     def contains_MAT_label(self, *labels: str) -> bool:
-        version = self.get_param('MeasAppType')
+        version = self.get_shared_parameter('MeasAppType')
         if version == None:
             raise RequiredParameterError(name='Measure Application Type')
-        
+
         for label in labels:
             if label not in version.labels:
                 return False
@@ -451,7 +451,7 @@ class Measure:
     # Returns:
     #   bool: True if the measure is a DEER measure
     def is_DEER(self) -> bool:
-        version = self.get_param('version')
+        version = self.get_shared_parameter('version')
         if version == None:
             raise RequiredParameterError(name='Version')
 
@@ -470,7 +470,7 @@ class Measure:
     # Returns:
     #   bool: True if the measure is a WEN measure
     def is_WEN(self) -> bool:
-        wen_param = self.get_param('waterMeasureType')
+        wen_param = self.get_shared_parameter('waterMeasureType')
         wen_table = self.get_shared_table('waterEnergyIntensity')
         if wen_param == None or wen_table == None:
             if (wen_param == None) ^ (wen_table == None):
@@ -491,7 +491,7 @@ class Measure:
     # Returns:
     #   bool: True if the measure is deemed
     def is_deemed(self) -> bool:
-        delivery_table = self.get_param('DelivType')
+        delivery_table = self.get_shared_parameter('DelivType')
         if delivery_table == None:
             raise RequiredParameterError(name='Delivery Type')
 
@@ -508,7 +508,7 @@ class Measure:
     # Returns:
     #   bool: True if the measure is a Fuel Substitution measure
     def is_fuel_sub(self) -> bool:
-        meas_impact_type = self.get_param('MeasImpactType')
+        meas_impact_type = self.get_shared_parameter('MeasImpactType')
         if meas_impact_type == None:
             raise RequiredParameterError(name='Measure Impact Type')
 
@@ -527,11 +527,11 @@ class Measure:
     # Returns:
     #   bool: True if the NTGID parameter contains a sector default
     def is_sector_default(self) -> bool:
-        sector = self.get_param('Sector')
+        sector = self.get_shared_parameter('Sector')
         if sector == None:
             raise RequiredParameterError(name='Sector')
 
-        ntg_id = self.get_param('NTGID')
+        ntg_id = self.get_shared_parameter('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
@@ -544,8 +544,8 @@ class Measure:
         return False
 
 
-    def requires_NTG_Version(self) -> bool:
-        ntg_id: SharedParameter = self.get_param('NTGID')
+    def requires_ntg_version(self) -> bool:
+        ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
@@ -560,6 +560,27 @@ class Measure:
                     return True
         return False
 
+    # Determines if the measure requires the upstream flag value table
+    #
+    # Exceptions:
+    #   RequiredParameterError: raised if the 'DelivType' parameter is
+    #                           missing
+    #
+    # Returns:
+    #   bool: True if there are multiple labels in the 'DelivType'
+    #         parameter and one of such labels is 'UpDeemed'
+    def requires_upstream_flag(self) -> bool:
+        upstream_flag: SharedParameter \
+            = self.get_shared_parameter('DelivType')
+        if upstream_flag == None:
+            raise RequiredParameterError(name='Upstream Flag')
+
+        labels: list[str] = upstream_flag.labels
+        if len(labels) < 2:
+            return False
+
+        return 'UpDeemed' in labels
+
     # Checks if the NTGID contains the residential default
     #
     # Exceptions:
@@ -568,7 +589,7 @@ class Measure:
     # Returns:
     #   bool: True if the NTGID parameter contains the residential default
     def is_res_default(self) -> bool:
-        ntg_id: SharedParameter = self.get_param('NTGID')
+        ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
@@ -589,7 +610,7 @@ class Measure:
     #   bool: True if the NTGID parameter contains the non-residential
     #         default
     def is_nonres_default(self) -> bool:
-        ntg_id: SharedParameter = self.get_param('NTGID')
+        ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
@@ -612,7 +633,7 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains the GSIA default
     def is_GSIA_default(self) -> bool:
-        gsia: SharedParameter = self.get_param('GSIAID')
+        gsia: SharedParameter = self.get_shared_parameter('GSIAID')
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
@@ -627,7 +648,7 @@ class Measure:
     # Returns:
     #   bool: True if the GSIAID parameter contains a non-default label
     def is_GSIA_nondef(self) -> bool:
-        gsia: SharedParameter = self.get_param('GSIAID')
+        gsia: SharedParameter = self.get_shared_parameter('GSIAID')
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
@@ -642,7 +663,8 @@ class Measure:
     # Returns:
     #   bool: True if the measure is an interactive measure
     def is_interactive(self) -> bool:
-        lighting_type: SharedParameter = self.get_param('LightingType')
+        lighting_type: SharedParameter \
+            = self.get_shared_parameter('LightingType')
         interactive_effect_app: ValueTable \
             = self.get_value_table('IEApplicability')
         commercial_effects: SharedValueTable \
@@ -690,3 +712,17 @@ def get_permutations(measure: Namespace) -> list[Permutation]:
         verbose_name = getattr(measure, perm_name, None)
         perm_list.append(Permutation(perm_name, verbose_name))
     return perm_list
+
+
+def __contains_all(search_list: list[Any], elements: list[Any]):
+    for element in elements:
+        if element not in search_list:
+            return False
+    return True
+
+
+def __contains_one(search_list: list[Any], elements: list[Any]):
+    for element in elements:
+        if element in search_list:
+            return True
+    return False

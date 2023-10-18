@@ -30,6 +30,19 @@ def get_param_names(criteria: list[str]) -> list[str]:
     return listify(params)
 
 
+def get_params(criteria: list[str] = None) -> dict[str, tuple[int, str]]:
+    query: str = 'SELECT * FROM parameters'
+    if criteria:
+        query += ' WHERE criteria IN ' + querify_list(criteria)
+    query += ' ORDER BY ord ASC'
+    response: list[Any] = cursor.execute(query).fetchall()
+    params: list[tuple[str, int, str]] = listify(response)
+    criteria_map: dict[str, tuple[int, str]] = []
+    for param in params:
+        criteria_map[param[0]]
+
+
+
 def get_value_table_names(criteria: list[str]) -> list[str]:
     query: str = 'SELECT api_name FROM tables WHERE shared = 0'
     query += ' AND criteria IN ' + querify_list(criteria)
