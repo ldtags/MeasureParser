@@ -19,9 +19,12 @@ def main(args: list[str]) -> None:
         print(f'ERROR - something went wrong when parsing args:\n{err}')
         return
 
-    with open(filename, 'r') as measure_file:
+    try:
+        measure_file = open(filename, 'r')
         parser: MeasureParser = MeasureParser(measure_file)
         parser.parse()
+    except OSError as err:
+        print(f'ERROR[{err.errno}] - {filename} not found')
 
 
 if __name__ == '__main__':
