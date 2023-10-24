@@ -153,7 +153,7 @@ class CharacterizationParser(HTMLParser):
     def handle_starttag(self,
                         tag: str,
                         attrs: list[tuple[str, str | None]]) -> None:
-        if not re.fullmatch('h[0-9]$', tag) == None:
+        if not re.fullmatch('h[0-57-9]$', tag) == None:
             self.validate_header(tag)
 
         self.check_ref_spacing(attrs)

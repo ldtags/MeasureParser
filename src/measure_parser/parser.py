@@ -67,16 +67,16 @@ class MeasureParser:
         print('validating parameters')
         self.validate_parameters()
         print('finished validating parameters\n')
-        
+
+        print('validating exclusion tables')
+        self.validate_exclusion_tables()
+        print('finished validating exclusion tables\n')
+
         print('validating tables')
         self.validate_tables()
         print('finished validating tables\n')
 
         self.print_value_tables()
-        
-        print('validating exclusion tables')
-        self.validate_exclusion_tables()
-        print('finished validating exclusion tables\n')
 
         self.print_calculations()
         
@@ -239,17 +239,22 @@ class MeasureParser:
     # validates that all permutations have the correct mapped name
     def validate_permutations(self) -> None:
         print('\nValidating Permutations:', file=self.out)
+        invalid_perms: list[str] = []
         for permutation in self.measure.permutations:
             try:
                 valid_name: str = self.__get_valid_perm_name(permutation)
                 mapped_name: str = permutation.mapped_name
                 if mapped_name != valid_name:
+                    invalid_perms.append(permutation.reporting_name)
                     print('\tIncorrect Permutation',
                           f'({permutation.reporting_name})',
                           f'- {mapped_name} should be {valid_name}',
                           file=self.out)
             except UnknownPermutationError as err:
                 print(f'UNKNOWN PERMUTATION: {err.name}', file=self.out)
+
+        if len(invalid_perms) == 0:
+            print('\tAll permutations are valid', file=self.out)
 
     # returns the valid name for @permutation
     #
@@ -297,11 +302,14 @@ class MeasureParser:
     #
     # prints out all exclusion tables
     def validate_exclusion_tables(self) -> None:
-        print('\nAll Exclusion Tables:', file=self.out)
+        print('\nValidating Exclusion Tables:', file=self.out)
+        invalid_tables: list[str] = []
         for table in self.measure.exclusion_tables:
             name: str = table.name
             print(f'\t{name.replace(" ", "")}:', file=self.out)
             if ' ' in name:
+                if name not in invalid_tables:
+                    invalid_tables.append(name)
                 print('\t\t\tWarning: Whitespace(s) detected in table',
                       'name, please remove the whitespace(s)',
                       file=self.out)
@@ -309,9 +317,15 @@ class MeasureParser:
             params: list[str] = table.determinants
             print(f'\t\tParams: {params}', file=self.out)
             if name.count('-') != (len(params) - 1):
+                if name not in invalid_tables:
+                    invalid_tables.append(name)
                 print('\t\t\tWarning: Incorrect amount of hyphens',
                       'in the table name',
                       file=self.out)
+            print(file=self.out)
+
+        if len(invalid_tables) == 0:
+            print('\tAll exclusion tables are valid', file=self.out)
             print(file=self.out)
 
     # calls the characterization parser to parse each characterization
@@ -471,7 +485,7 @@ class MeasureParser:
         return tables
 
     # method to print to the parser's out stream
-    def printo(self, *strings: str) -> None:
+    def log(self, *strings: str) -> None:
         concat_string: str = ''
         for string in strings:
             concat_string += string
