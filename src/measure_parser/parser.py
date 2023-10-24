@@ -62,7 +62,7 @@ class MeasureParser:
 
         print(f'starting to parse measure {self.measure.id}\n')
 
-        self.print_measure_details()
+        self.log_measure_details()
 
         print('validating parameters')
         self.validate_parameters()
@@ -76,15 +76,15 @@ class MeasureParser:
         self.validate_tables()
         print('finished validating tables\n')
 
-        self.print_value_tables()
+        self.log_value_tables()
 
-        self.print_calculations()
+        self.log_calculations()
         
         print('validating permutations')
         self.validate_permutations()
         print('finished validating permutations\n')
 
-        self.print_permutations()
+        self.log_permutations()
 
         print('parsing characterizations')
         self.parse_characterizations()
@@ -93,13 +93,13 @@ class MeasureParser:
         print(f'finished parsing measure {self.measure.id}')
 
 
-    def print_measure_details(self) -> None:
-        self.log('Measure Details: ')
-        self.log('\tMeasure Version ID: ' + self.measure.version_id)
-        self.log('\tMeasure Name: ' + self.measure.name)
-        self.log('\tPA Lead: ' + self.measure.pa_lead)
-        self.log('\tStart Date: ' + self.measure.start_date)
-        self.log('\tEnd Date: ' + self.measure.end_date, '\n\n')
+    def log_measure_details(self) -> None:
+        self.log('Measure Details:\n'
+                 f'\tMeasure Version ID: {self.measure.version_id}\n'
+                 f'\tMeasure Name: {self.measure.name}\n'
+                 f'\tPA Lead: {self.measure.pa_lead}\n'
+                 f'\tStart Date: {self.measure.start_date}\n'
+                 f'\tEnd Date: {self.measure.end_date}\n\n')
 
 
     def validate_parameters(self) -> None:
@@ -317,41 +317,36 @@ class MeasureParser:
     def parse_characterizations(self) -> None:
         parser: CharacterizationParser \
             = CharacterizationParser(out=self.out, tabs=1)
-        print('\nParsing Characterizations:', file=self.out)
+        self.log('\nParsing Characterizations:')
         for characterization in self.measure.characterizations:
             print(f'\tparsing {characterization.name}')
             parser.parse(characterization)
 
     # prints a representation of every non-shared value table in @measure
-    def print_value_tables(self) -> None:
-        print('\n\nStandard Non-Shared Value Tables:', file=self.out)
+    def log_value_tables(self) -> None:
+        self.log('\n\nStandard Non-Shared Value Tables:')
         for table in self.measure.value_tables:
-            print(f'\tTable Name: {table.name}', file=self.out)
-            print(f'\t\tAPI Name: {table.api_name}', file=self.out)
-            print('\t\tColumns:', file=self.out)
+            self.log(f'\tTable Name: {table.name}\n'
+                     f'\t\tAPI Name: {table.api_name}\n'
+                      '\t\tColumns:')
             for column in table.columns:
-                print(f'\t\t\tColumn Name: {column.name}',
-                      file=self.out)
-                print(f'\t\t\t\tAPI Name: {column.api_name}',
-                      file=self.out)
-            print(file=self.out)
+                self.log(f'\t\t\tColumn Name: {column.name}\n'
+                         f'\t\t\t\tAPI Name: {column.api_name}')
+            self.log()
 
     # prints out every calculation in @measure' name and API name
-    def print_calculations(self) -> None:
-        print('\nAll Calculations:', file=self.out)
+    def log_calculations(self) -> None:
+        self.log('\nAll Calculations:')
         for calculation in self.measure.calculations:
-            print(f'\tCalculation Name: {calculation.name}',
-                  file=self.out)
-            print(f'\t\tAPI Name: {calculation.api_name}',
-                  file=self.out)
-            print(f'\t\tUnit: {calculation.unit}', file=self.out)
-            print(f'\t\tParams: {calculation.determinants}\n',
-                  file=self.out)
+            self.log(f'\tCalculation Name: {calculation.name}\n'
+                     f'\t\tAPI Name: {calculation.api_name}\n'
+                     f'\t\tUnit: {calculation.unit}\n'
+                     f'\t\tParams: {calculation.determinants}\n')
 
     # prints out every permutation in @measure's reporting name,
     # verbose name, and mapped field
-    def print_permutations(self) -> None:
-        print('\n\nAll Permutations:', file=self.out)
+    def log_permutations(self) -> None:
+        self.log('\n\nAll Permutations:')
         for permutation in self.measure.permutations:
             try:
                 perm_data = ALL_PERMUTATIONS[permutation.reporting_name]
@@ -360,10 +355,9 @@ class MeasureParser:
 
             try:
                 verbose_name = perm_data['verbose']
-                print(f'\t{permutation.reporting_name}:'
-                      f'\n\t\tVerbose Name: {verbose_name}',
-                      f'\n\t\tMapped Field: {permutation.mapped_name}\n',
-                      file=self.out)
+                self.log(f'\t{permutation.reporting_name}:\n'
+                         f'\t\tVerbose Name: {verbose_name}\n'
+                         f'\t\tMapped Field: {permutation.mapped_name}\n')
             except:
                 continue
 
