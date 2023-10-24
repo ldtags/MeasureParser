@@ -22,7 +22,10 @@ def main(args: list[str]) -> None:
     try:
         measure_file = open(filename, 'r')
         parser: MeasureParser = MeasureParser(measure_file)
+        measure_file.close()
+
         parser.parse()
+        parser.close()
     except OSError as err:
         print(f'ERROR[{err.errno}] - {filename} not found')
 

@@ -28,13 +28,14 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, measure_file: TextIO, console: bool=False):
+    def __init__(self, filename: str):
+        measure_file: TextIO = open(filename, 'r')
         self.measure: Measure = Measure(
             json.loads(measure_file.read(),
                        object_hook=lambda dict: Namespace(**dict)))
-        self.out: Optional[TextIO] = None
-        if not console:
-            self.out = open('output-' + self.measure.id + '.txt', 'w')
+        measure_file.close()
+
+        self.out: TextIO = open('output-' + self.measure.id + '.txt', 'w')
 
         try:
             self.ordered_params: list[str] \
@@ -79,7 +80,7 @@ class MeasureParser:
         self.log_value_tables()
 
         self.log_calculations()
-        
+
         print('validating permutations')
         self.validate_permutations()
         print('finished validating permutations\n')
@@ -89,7 +90,7 @@ class MeasureParser:
         print('parsing characterizations')
         self.parse_characterizations()
         print('finished parsing characterizations\n')
-        
+
         print(f'finished parsing measure {self.measure.id}')
 
 
@@ -468,3 +469,12 @@ class MeasureParser:
         for string in strings:
             concat_string += string
         print(concat_string, file=self.out)
+
+
+    def close(self) -> bool:
+        try:
+            self.close()
+        except OSError:
+            print("error occurred while closing the output file")
+            return False
+        return True

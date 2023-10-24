@@ -93,11 +93,10 @@ class CharacterizationParser(HTMLParser):
         for sentence in sentences:
             extra_spaces: int = self.__get_start_spaces(sentence)
             if extra_spaces > 1:
-                print(self.tabs
-                        + 'extra space(s) detected after punctuation',
-                      f'in {self.characterization.name} -',
-                      f'{extra_spaces - 1}',
-                      file=self.out)
+                self.log(self.tabs
+                         + 'extra space(s) detected after punctuation '
+                         f'in {self.characterization.name} - '
+                         f'{extra_spaces - 1} spaces')
 
 
     def validate_capitalization(self, data: str) -> None:
@@ -111,10 +110,9 @@ class CharacterizationParser(HTMLParser):
             val: int = ord(word[0])
             if val > 96 and val < 123:
                 capitalized: str = chr(ord(word[0]) - 32) + word[1:]
-                print(self.tabs + 'uncapitalized word detected in',
-                      f'{self.characterization.name} -',
-                      f'{word} should be {capitalized}',
-                      file=self.out)
+                self.log(self.tabs + 'uncapitalized word detected in '
+                         f'{self.characterization.name} - ',
+                         f'{word} should be {capitalized}')
 
 
     # determines how many spaces occur at the beginning of @data
@@ -172,10 +170,10 @@ class CharacterizationParser(HTMLParser):
                     and self.__prev_data.endswith(' ')):
                 extra_spaces: int \
                     = self.__get_end_spaces(self.__prev_data)
-                print(self.tabs
-                        + 'extra space(s) detected before a reference',
-                      f'in {self.characterization.name} - {extra_spaces}',
-                      file=self.out)
+                self.log(self.tabs
+                         + 'extra space(s) detected before a reference '
+                         f'in {self.characterization.name} '
+                         f'- {extra_spaces} spaces')
 
     # determines how many spaces occur at the end of @data
     #
@@ -201,9 +199,8 @@ class CharacterizationParser(HTMLParser):
     def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
             if self.characterization != None:
-                print(self.tabs + 'invalid header in',
-                      f'{self.characterization.name} - {tag}',
-                      file=self.out)
+                self.log(self.tabs + 'invalid header in '
+                         f'{self.characterization.name} - {tag}')
             return False
 
         if tag == 'h3':
@@ -211,10 +208,9 @@ class CharacterizationParser(HTMLParser):
             return True
 
         if self.__prev_tag == '':
-            print(self.tabs + 'incorrect initial header in',
-                  f'{self.characterization.name} -',
-                  f'expected h3, but detected {tag}',
-                  file=self.out)
+            self.log(self.tabs + 'incorrect initial header in ',
+                     f'{self.characterization.name} - ',
+                     f'expected h3, but detected {tag}')
             return False
 
         level_re: re.Pattern = re.compile('[^3-5]')
@@ -224,11 +220,10 @@ class CharacterizationParser(HTMLParser):
             self.__prev_tag = tag
             return True
 
-        print(self.tabs + 'incorrect header in',
-              f'{self.characterization.name} -',
-              f'expected h{prev_level} or h{prev_level + 1},',
-              f'but detected {tag}',
-              file=self.out)
+        self.log(self.tabs + 'incorrect header in '
+                 f'{self.characterization.name} - '
+                 f'expected h{prev_level} or h{prev_level + 1}, '
+                 f'but detected {tag}')
         return False
 
     # determines what happens when an end tag is detected
@@ -237,3 +232,10 @@ class CharacterizationParser(HTMLParser):
     #   tag (str): the type of tag encountered
     def handle_endtag(self, tag: str) -> None:
         pass
+
+    # method to print to the parser's out stream
+    def log(self, *strings: str) -> None:
+        concat_string: str = ''
+        for string in strings:
+            concat_string += string
+        print(concat_string, file=self.out)
