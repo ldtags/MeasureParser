@@ -94,66 +94,56 @@ class MeasureParser:
 
 
     def print_measure_details(self) -> None:
-        print('Measure Details: ', file=self.out)
-        print('\tMeasure Version ID: ' + self.measure.version_id,
-              file=self.out)
-        print('\tMeasure Name: ' + self.measure.name, file=self.out)
-        print('\tPA Lead: ' + self.measure.pa_lead, file=self.out)
-        print('\tStart Date: ' + self.measure.start_date, file=self.out)
-        print('\tEnd Date: ' + self.measure.end_date, '\n\n',
-              file=self.out)
+        self.log('Measure Details: ')
+        self.log('\tMeasure Version ID: ' + self.measure.version_id)
+        self.log('\tMeasure Name: ' + self.measure.name)
+        self.log('\tPA Lead: ' + self.measure.pa_lead)
+        self.log('\tStart Date: ' + self.measure.start_date)
+        self.log('\tEnd Date: ' + self.measure.end_date, '\n\n')
 
 
     def validate_parameters(self) -> None:
-        print('Validating Parameters:', file=self.out)
-        print('\tMeasure Specific Parameters: ',
-              list(map(lambda param: param.name, self.measure.params)),
-              file=self.out)
-        print('\n\tUnexpected Shared Parameters: ', list(
-              map(lambda param: param.version.version_string,
-                  self.measure.remove_unknown_params(
-                      self.ordered_params))),
-              file=self.out)
-        print('\tMissing Shared Parameters: ',
-              self.validate_param_existence(),
-              file=self.out)
-        print('\n\tParameter Order:', file=self.out)
+        self.log('Validating Parameters:')
+        self.log('\tMeasure Specific Parameters: ',
+                 list(map(lambda param: param.name, self.measure.params)))
+        self.log('\n\tUnexpected Shared Parameters: ',
+                 list(map(lambda param: param.version.version_string,
+                          self.measure.remove_unknown_params(
+                            self.ordered_params))))
+        self.log('\tMissing Shared Parameters: ',
+                 self.validate_param_existence())
+        self.log('\n\tParameter Order:')
         in_order: bool = self.validate_param_order()
         if in_order:
-            print('\t\tAll shared parameters are in the correct order',
-                  file=self.out)
+            self.log('\t\tAll shared parameters are in the correct order')
         else:
-            print('', file=self.out)
+            self.log()
 
 
     def validate_tables(self):
-        print('\nValidating Value Tables:', file=self.out)
-        print('\tUnexpected Shared Tables: ', list(
-              map(lambda table: table.version.version_string,
-                  self.measure.remove_unknown_shared_tables(
-                      self.ordered_sha_tables))),
-              file=self.out)
-        print('\tMissing Shared Tables: ',
-              self.validate_shared_table_existence(),
-              file=self.out)
+        self.log('\nValidating Value Tables:')
+        self.log('\tUnexpected Shared Tables: ',
+                 list(map(lambda table: table.version.version_string,
+                          self.measure.remove_unknown_shared_tables(
+                            self.ordered_sha_tables))))
+        self.log('\tMissing Shared Tables: ',
+              self.validate_shared_table_existence())
 
-        print('\n\tUnexpected Non-Shared Tables: ', list(
-              map(lambda table: table.api_name,
-                  self.measure.remove_unknown_value_tables(
-                      self.ordered_val_tables))),
-              file=self.out)
-        print('\tMissing Non-Shared Tables: ',
-              self.validate_value_table_existence(),
-              file=self.out)
+        self.log('\n\tUnexpected Non-Shared Tables: ',
+                 list(map(lambda table: table.api_name,
+                          self.measure.remove_unknown_value_tables(
+                            self.ordered_val_tables))))
+        self.log('\tMissing Non-Shared Tables: ',
+                 self.validate_value_table_existence())
 
-        print('\n\tValue Table Order: ', file=self.out)
+        self.log('\n\tValue Table Order: ')
         if self.validate_shared_table_order():
-            print('\t\tAll shared value tables are in the correct order',
-                  file=self.out)
+            self.log('\t\tAll shared value tables are in the '
+                     'correct order')
+
         if self.validate_value_table_order():
-            print('\t\tAll non-shared value tables are in the '
-                    + 'correct order',
-                  file=self.out)
+            self.log('\t\tAll non-shared value tables are in the '
+                     'correct order')
 
 
     # validates that all shared value tables names in @ordered_sha_tables
@@ -199,9 +189,8 @@ class MeasureParser:
             param_name: str = param.version.version_string
             index: int = self.ordered_params.index(param_name)
             if param.order != (index + 1):
-                print('\t\tShared parameters may be out of order,',
-                      'please review the QA/QC guidelines',
-                      file=self.out)
+                self.log('\t\tShared parameters may be out of order, '
+                         'please review the QA/QC guidelines')
                 return False
         return True
 
@@ -217,9 +206,8 @@ class MeasureParser:
             table_name: str = table.api_name
             index: int = self.ordered_val_tables.index(table_name)
             if table.order != (index + 1):
-                print(f'\t\tNon-shared value tables may be out of order,',
-                      'please review the QA/QC guidelines',
-                      file=self.out)
+                self.log(f'\t\tNon-shared value tables may be out of '
+                         'order, please review the QA/QC guidelines')
                 return False
         return True
 
@@ -230,15 +218,14 @@ class MeasureParser:
             table_name: str = table.version.version_string
             index: int = self.ordered_sha_tables.index(table_name)
             if table.order != (index + 1):
-                print('\t\tShared value tables may be out of order,',
-                      'please review the QA/QC guidelines',
-                      file=self.out)
+                self.log('\t\tShared value tables may be out of order, '
+                         'please review the QA/QC guidelines')
                 return False
         return True
 
     # validates that all permutations have the correct mapped name
     def validate_permutations(self) -> None:
-        print('\nValidating Permutations:', file=self.out)
+        self.log('\nValidating Permutations:')
         invalid_perms: list[str] = []
         for permutation in self.measure.permutations:
             try:
@@ -246,15 +233,14 @@ class MeasureParser:
                 mapped_name: str = permutation.mapped_name
                 if mapped_name != valid_name:
                     invalid_perms.append(permutation.reporting_name)
-                    print('\tIncorrect Permutation',
-                          f'({permutation.reporting_name})',
-                          f'- {mapped_name} should be {valid_name}',
-                          file=self.out)
+                    self.log('\tIncorrect Permutation '
+                             f'({permutation.reporting_name}) '
+                             f'- {mapped_name} should be {valid_name}')
             except UnknownPermutationError as err:
-                print(f'UNKNOWN PERMUTATION: {err.name}', file=self.out)
+                self.log(f'UNKNOWN PERMUTATION: {err.name}')
 
         if len(invalid_perms) == 0:
-            print('\tAll permutations are valid', file=self.out)
+            self.log('\tAll permutations are valid')
 
     # returns the valid name for @permutation
     #
@@ -302,31 +288,29 @@ class MeasureParser:
     #
     # prints out all exclusion tables
     def validate_exclusion_tables(self) -> None:
-        print('\nValidating Exclusion Tables:', file=self.out)
+        self.log('\nValidating Exclusion Tables:')
         invalid_tables: list[str] = []
         for table in self.measure.exclusion_tables:
             name: str = table.name
-            print(f'\t{name.replace(" ", "")}:', file=self.out)
+            self.log(f'\t{name.replace(" ", "")}:')
             if ' ' in name:
                 if name not in invalid_tables:
                     invalid_tables.append(name)
-                print('\t\t\tWarning: Whitespace(s) detected in table',
-                      'name, please remove the whitespace(s)',
-                      file=self.out)
+                self.log('\t\t\tWarning: Whitespace(s) detected in table '
+                         'name, please remove the whitespace(s)')
 
             params: list[str] = table.determinants
-            print(f'\t\tParams: {params}', file=self.out)
+            self.log(f'\t\tParams: {params}')
             if name.count('-') != (len(params) - 1):
                 if name not in invalid_tables:
                     invalid_tables.append(name)
-                print('\t\t\tWarning: Incorrect amount of hyphens',
-                      'in the table name',
-                      file=self.out)
-            print(file=self.out)
+                self.log('\t\t\tWarning: Incorrect amount of hyphens '
+                         'in the table name')
+            self.log()
 
         if len(invalid_tables) == 0:
-            print('\tAll exclusion tables are valid', file=self.out)
-            print(file=self.out)
+            self.log('\tAll exclusion tables are valid')
+            self.log()
 
     # calls the characterization parser to parse each characterization
     # in @measure
