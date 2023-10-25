@@ -20,10 +20,7 @@ def main(args: list[str]) -> None:
         return
 
     try:
-        measure_file = open(filename, 'r')
-        parser: MeasureParser = MeasureParser(measure_file)
-        measure_file.close()
-
+        parser: MeasureParser = MeasureParser(filename)
         parser.parse()
         parser.close()
     except OSError as err:

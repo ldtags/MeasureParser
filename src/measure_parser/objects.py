@@ -196,24 +196,31 @@ class Measure:
     def __init__(self, measure: Namespace):
         try:
             self.owner: str = getattr(measure, 'owned_by_user')
+
             self.params: list[Parameter] = list(
                 map(lambda param: Parameter(param),
                     getattr(measure, 'determinants')))
+
             self.shared_params: list[SharedParameter] = list(
                 map(lambda param: SharedParameter(param),
                     getattr(measure, 'shared_determinant_refs')))
+
             self.shared_tables: list[SharedValueTable] = list(
                 map(lambda table: SharedValueTable(table),
                     getattr(measure, 'shared_lookup_refs')))
+
             self.value_tables: list[ValueTable] = list(
                 map(lambda table: ValueTable(table),
                     getattr(measure, 'value_tables')))
+
             self.calculations: list[Calculation] = list(
                 map(lambda calc: Calculation(calc),
                     getattr(measure, 'calculations')))
+
             self.exclusion_tables: list[ExclusionTable] = list(
                 map(lambda table: ExclusionTable(table),
                     getattr(measure, 'exclusion_tables')))
+
             self.id: str = getattr(measure, 'MeasureID')
             self.version_id: str = getattr(measure, 'MeasureVersionID')
             self.name: str = getattr(measure, 'MeasureName')
@@ -222,6 +229,7 @@ class Measure:
             self.start_date: str = getattr(measure, 'StartDate')
             self.end_date: str = getattr(measure, 'EndDate') or 'None'
             self.status: str = getattr(measure, 'Status')
+
             self.characterizations: list[Characterization] \
                 = get_characterizations(measure)
             self.permutations: list[Permutation] \

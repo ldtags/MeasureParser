@@ -329,11 +329,12 @@ class MeasureParser:
         for table in self.measure.value_tables:
             self.log(f'\tTable Name: {table.name}\n'
                      f'\t\tAPI Name: {table.api_name}\n'
-                      '\t\tColumns:')
+                     f'\t\tParameters: {table.determinants}')
+            self.log('\t\tColumns:')
             for column in table.columns:
                 self.log(f'\t\t\tColumn Name: {column.name}\n'
-                         f'\t\t\t\tAPI Name: {column.api_name}')
-            self.log()
+                         f'\t\t\t\tAPI Name: {column.api_name}\n'
+                         f'\t\t\t\tUnit: {column.unit}\n')
 
     # prints out every calculation in @measure' name and API name
     def log_calculations(self) -> None:
@@ -342,7 +343,7 @@ class MeasureParser:
             self.log(f'\tCalculation Name: {calculation.name}\n'
                      f'\t\tAPI Name: {calculation.api_name}\n'
                      f'\t\tUnit: {calculation.unit}\n'
-                     f'\t\tParams: {calculation.determinants}\n')
+                     f'\t\tParameters: {calculation.determinants}\n')
 
     # prints out every permutation in @measure's reporting name,
     # verbose name, and mapped field
@@ -464,16 +465,12 @@ class MeasureParser:
         return tables
 
     # method to print to the parser's out stream
-    def log(self, *strings: str) -> None:
-        concat_string: str = ''
-        for string in strings:
-            concat_string += string
-        print(concat_string, file=self.out)
-
+    def log(self, *values: object) -> None:
+        print(*values, file=self.out)
 
     def close(self) -> bool:
         try:
-            self.close()
+            self.out.close()
         except OSError:
             print("error occurred while closing the output file")
             return False
