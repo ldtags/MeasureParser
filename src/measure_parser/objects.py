@@ -227,7 +227,7 @@ class Measure:
             self.use_category: str = getattr(measure, 'UseCategory')
             self.pa_lead: str = getattr(measure, 'PALead')
             self.start_date: str = getattr(measure, 'StartDate')
-            self.end_date: str = getattr(measure, 'EndDate') or 'None'
+            self.end_date: str = getattr(measure, 'EndDate', 'None')
             self.status: str = getattr(measure, 'Status')
 
             self.characterizations: list[Characterization] \
@@ -720,17 +720,3 @@ def get_permutations(measure: Namespace) -> list[Permutation]:
         verbose_name = getattr(measure, perm_name, None)
         perm_list.append(Permutation(perm_name, verbose_name))
     return perm_list
-
-
-def __contains_all(search_list: list[Any], elements: list[Any]):
-    for element in elements:
-        if element not in search_list:
-            return False
-    return True
-
-
-def __contains_one(search_list: list[Any], elements: list[Any]):
-    for element in elements:
-        if element in search_list:
-            return True
-    return False

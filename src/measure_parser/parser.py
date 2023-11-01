@@ -310,8 +310,7 @@ class MeasureParser:
             self.log()
 
         if len(invalid_tables) == 0:
-            self.log('\tAll exclusion tables are valid')
-            self.log()
+            self.log('\tAll exclusion tables are valid\n')
 
     # calls the characterization parser to parse each characterization
     # in @measure

@@ -8,6 +8,7 @@ from src.measure_parser.exceptions import (
 )
 
 
+# connecting the database
 __filepath__: str \
     = sys.executable[0:sys.executable.rindex('\\')] + '\\database.db'
 connection: sqlite3.Connection
