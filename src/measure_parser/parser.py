@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 import json
 from typing import Optional, TextIO
 try:
@@ -28,8 +29,7 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, filename: str):
-        measure_file: TextIO = open(filename, 'r')
+    def __init__(self, measure_file: TextIOWrapper):
         self.measure: Measure = Measure(
             json.loads(measure_file.read(),
                        object_hook=lambda dict: Namespace(**dict)))
@@ -45,7 +45,7 @@ class MeasureParser:
             self.ordered_sha_tables: list[str] \
                 = self.__get_ordered_shared_tables()
         except RequiredParameterError as err:
-            print('ERROR - the measure is missing required information\n',
+            print('ERROR - the measure is missing required information\n', 
                   err)
             return
         except MeasureFormatError as err:
