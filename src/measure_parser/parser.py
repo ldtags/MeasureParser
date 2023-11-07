@@ -29,13 +29,14 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, measure_file: TextIOWrapper):
+    def __init__(self, measure_file: TextIOWrapper, output: str):
         self.measure: Measure = Measure(
             json.loads(measure_file.read(),
                        object_hook=lambda dict: Namespace(**dict)))
         measure_file.close()
 
-        self.out: TextIO = open('output-' + self.measure.id + '.txt', 'w')
+        self.out: TextIO \
+            = open(fr'{output}/output-{self.measure.id}.txt', 'w')
 
         try:
             self.ordered_params: list[str] \

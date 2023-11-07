@@ -1,6 +1,4 @@
-import os
 from io import TextIOWrapper
-from typing import Type
 from gooey import (
     Gooey,
     GooeyParser
@@ -20,15 +18,19 @@ def parse_arguments() -> Namespace:
     argparser: GooeyParser = GooeyParser(
         description='parser for eTRM measure JSON files')
 
-    argparser.add_argument('measure_file', widget='FileChooser',
+    argparser.add_argument('measure_file',
+        widget='FileChooser',
         type=FileType('r'),
-        help='filepath to the measure JSON file',
+        metavar='Measure JSON File',
+        help='Select an eTRM measure JSON file',
         gooey_options={
             'wildcard': 'JSON file (*.json)|*.json'
         })
 
-    argparser.add_argument('output', widget='DirChooser',
-        help='directory that will contain the output file')
+    argparser.add_argument('output',
+        widget='DirChooser',
+        metavar='Output Location',
+        help='Select a folder to store the output file')
 
     return argparser.parse_args()
 
@@ -38,7 +40,8 @@ def parse_arguments() -> Namespace:
 #   args (list[str]): measure parsing arguments, including flags
 @Gooey (
     program_name='eTRM Measure Parser',
-    program_description='Parses and validates eTRM measures'
+    program_description='Parses and validates eTRM measures',
+    required_cols=1
 )
 def main() -> None:
     args: Namespace = parse_arguments()
@@ -46,12 +49,16 @@ def main() -> None:
     if (measure_file == None):
         print('measure JSON file not found')
 
+    output: str = getattr(args, 'output', None)
+    if (output == None):
+        print('invalid output location')
+
     try:
-        parser: MeasureParser = MeasureParser(measure_file)
+        parser: MeasureParser = MeasureParser(measure_file, output)
         parser.parse()
         parser.close()
     except OSError as err:
-        print(f'ERROR[{err.errno}] - {measure_file.name} not found')
+        print(f'ERROR[{err.errno}] - {output} not found')
 
 
 if __name__ == '__main__':
