@@ -1,6 +1,8 @@
 class MeasureFormatError(Exception):
-    def __init__(self, message='measure is missing required fields'):
+    def __init__(self, message='measure is missing required fields', info: str=None):
         self.message: str = message
+        if info != None:
+            self.message += f' - {info}'
         super().__init__(self.message)
 
 class ParameterFormatError(Exception):
@@ -46,14 +48,14 @@ class CalculationFormatError(Exception):
         super().__init__(self.message)
 
 class RequiredParameterError(Exception):
-    def __init__(self, message: str, name: str):
+    def __init__(self, name: str, message: str=None):
         self.message: str = message if message != None \
             else 'measure is missing a required parameter' \
                 + (f' - {name}' if name != None else '')
         super().__init__(self.message)
-        
+
 class RequiredCharacterizationError(Exception):
-    def __init__(self, message: str, name: str):
+    def __init__(self, name: str, message: str=None):
         self.message: str = message if message != None \
             else 'measure is missing a required characterization' \
                 + (f' - {name}' if name != None else '')

@@ -8,6 +8,9 @@ from argparse import (
     Namespace
 )
 from src.measure_parser.parser import MeasureParser
+from src.measure_parser.exceptions import (
+    MeasureFormatError
+)
 
 
 # parses the command line arguments in sys.argv
@@ -59,6 +62,11 @@ def main() -> None:
         parser.close()
     except OSError as err:
         print(f'ERROR[{err.errno}] - {output} not found')
+    except MeasureFormatError as err:
+        print(f'An error occurred while parsing {measure_file.name}: \n',
+              f'{err.message}')
+    except Exception as err:
+        print(f'An unhandled error occurred while parsing {measure_file.name}')
 
 
 if __name__ == '__main__':

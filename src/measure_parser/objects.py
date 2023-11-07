@@ -236,6 +236,8 @@ class Measure:
                 = get_permutations(measure)
         except AttributeError:
             raise MeasureFormatError()
+        except RequiredCharacterizationError as err:
+            raise MeasureFormatError(err.message)
         except Exception as err:
             raise err
 
