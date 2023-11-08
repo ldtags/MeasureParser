@@ -21,9 +21,8 @@ def parse_arguments() -> Namespace:
     argparser: GooeyParser = GooeyParser(
         description='parser for eTRM measure JSON files')
 
-    argparser.add_argument('measure_file',
+    argparser.add_argument('filepath',
         widget='FileChooser',
-        type=FileType('r'),
         metavar='Measure JSON File',
         help='Select an eTRM measure JSON file',
         gooey_options={
@@ -48,8 +47,8 @@ def parse_arguments() -> Namespace:
 )
 def main() -> None:
     args: Namespace = parse_arguments()
-    measure_file: TextIOWrapper = getattr(args, 'measure_file', None)
-    if (measure_file == None):
+    filepath: str = getattr(args, 'filepath', None)
+    if (filepath == None):
         print('measure JSON file not found')
 
     output: str = getattr(args, 'output', None)
@@ -57,16 +56,17 @@ def main() -> None:
         print('invalid output location')
 
     try:
-        parser: MeasureParser = MeasureParser(measure_file, output)
+        parser: MeasureParser = MeasureParser(filepath, output)
         parser.parse()
         parser.close()
     except OSError as err:
         print(f'ERROR[{err.errno}] - {output} not found')
     except MeasureFormatError as err:
-        print(f'An error occurred while parsing {measure_file.name}: \n',
-              f'{err.message}')
+        print(f'An error occurred while parsing {filepath}:',
+              f'\n{err.message}')
     except Exception as err:
-        print(f'An unhandled error occurred while parsing {measure_file.name}')
+        print(f'An unhandled error occurred while parsing {filepath}:',
+              f'\n{err}')
 
 
 if __name__ == '__main__':

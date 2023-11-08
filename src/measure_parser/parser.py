@@ -1,6 +1,6 @@
 from io import TextIOWrapper
 import json
-from typing import Optional, TextIO
+from typing import Optional
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
@@ -29,13 +29,14 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, measure_file: TextIOWrapper, output: str):
+    def __init__(self, filepath: str, output: str):
+        measure_file: TextIOWrapper = open(filepath, 'r')
         self.measure: Measure = Measure(
             json.loads(measure_file.read(),
                        object_hook=lambda dict: Namespace(**dict)))
         measure_file.close()
 
-        self.out: TextIO \
+        self.out: TextIOWrapper \
             = open(fr'{output}/output-{self.measure.id}.txt', 'w')
 
         try:
@@ -319,6 +320,9 @@ class MeasureParser:
         parser: CharacterizationParser \
             = CharacterizationParser(out=self.out, tabs=1)
         self.log('\nParsing Characterizations:')
+        for char_name in db.get_all_characterization_names():
+            if self.measure.get_characterization(char_name) == None:
+                self.log(f'\tMissing {char_name}')
         for characterization in self.measure.characterizations:
             print(f'\tparsing {characterization.name}')
             parser.parse(characterization)

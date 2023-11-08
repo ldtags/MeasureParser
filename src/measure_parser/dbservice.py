@@ -6,6 +6,10 @@ from src.measure_parser.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
+try:
+    from types import SimpleNamespace as Namespace
+except ImportError:
+    from argparse import Namespace
 
 
 # connecting the database
@@ -85,11 +89,20 @@ def get_permutation_names() -> list[str]:
     return listify(response)
 
 
-def get_characterization_names() -> list[str]:
+def get_all_characterization_names() -> list[str]:
     query: str = 'SELECT name FROM characterizations'
     cursor.execute(query)
     response: list[tuple[str,]] = cursor.fetchall()
     return listify(response)
+
+
+def get_characterization_names(measure: Namespace) -> list[str]:
+    char_list: list[str] = []
+    for char_name in get_all_characterization_names():
+        content: str = getattr(measure, char_name, None)
+        if content != None:
+            char_list.append(char_name)
+    return char_list
 
 
 def querify_list(elements: list[str]) -> str:

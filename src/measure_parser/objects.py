@@ -692,6 +692,13 @@ class Measure:
         return False
 
 
+    def get_characterization(self, name: str) -> Characterization | None:
+        for characterization in self.characterizations:
+            if characterization.name == name:
+                return characterization
+        return None
+
+
 # returns a list of all characterizations found in @measure
 #
 # Parameters:
@@ -702,7 +709,7 @@ class Measure:
 #                           @measure
 def get_characterizations(measure: Namespace) -> list[Characterization]:
     char_list: list[Characterization] = []
-    for char_name in db.get_characterization_names():
+    for char_name in db.get_characterization_names(measure):
         content: str = getattr(measure, char_name, None)
         if content == None:
             raise RequiredCharacterizationError(name=char_name)
