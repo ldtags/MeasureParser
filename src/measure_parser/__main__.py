@@ -1,10 +1,9 @@
-from io import TextIOWrapper
+import sys
 from gooey import (
     Gooey,
     GooeyParser
 )
 from argparse import (
-    FileType,
     Namespace
 )
 from src.measure_parser.parser import MeasureParser
@@ -32,7 +31,8 @@ def parse_arguments() -> Namespace:
     argparser.add_argument('output',
         widget='DirChooser',
         metavar='Output Location',
-        help='Select a folder to store the output file')
+        help='Select a folder to store the output file',
+        default=sys.executable[0:(sys.executable[0:sys.executable.rindex('\\')]).rindex('\\')]) # this is terrible, fix it
 
     return argparser.parse_args()
 
