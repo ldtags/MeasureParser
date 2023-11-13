@@ -1,16 +1,18 @@
-# Environments
+# IDE
 .vscode/
+
+# Environments
 __pycache__
 Include/
 Lib/
 Scripts/
 pyvenv.cfg
+venv/
 
 # pyinstaller
 build/
 dist/
 __main__.spec
-Makefile
 
 # Output
 out.txt

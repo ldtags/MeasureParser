@@ -1,14 +1,14 @@
-from io import TextIOWrapper
 import json
+from io import TextIOWrapper
 from typing import Optional
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
+
+import src.measure_parser.dbservice as db
 from src.measure_parser.objects import Measure, Permutation
 from src.measure_parser.htmlparser import CharacterizationParser
-from src.measure_parser.data.permutations import ALL_PERMUTATIONS
-import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
@@ -260,27 +260,45 @@ class MeasureParser:
         mapped_name: str = permutation.mapped_name
         if len(data) != 2:
             return mapped_name
-        elif data[0] == '':
+        elif data['verbose'] == '':
             raise UnknownPermutationError(name=reporting_name)
 
-        valid_name: str = data[1] or mapped_name
+        valid_name: str = data['valid']
+        if valid_name == None:
+            valid_name = mapped_name
+
         get_param: function = self.measure.get_shared_parameter
         get_value_table: function = self.measure.get_value_table
-        if reporting_name == 'BaseCase2nd' \
-                and 'AR' in get_param('MeasAppType').labels:
-            valid_name = 'measOffer__descBase2'
-        elif reporting_name == 'Upstream_Flag' \
-                and 'UpDeemed' in get_param('DelivType').labels:
-            valid_name = 'upstreamFlag__upstreamFlag'
-        elif reporting_name == 'WaterUse' \
-                and get_param('waterMeasureType') != None:
-            valid_name = 'p.waterMeasureType__label'
-        elif reporting_name == 'ETP_Flag' \
-                and get_value_table('emergingTech') != None:
-            valid_name = 'emergingTech__projectNumber'
-        elif reporting_name == 'ETP_YearFirstIntroducedToPrograms' \
-                and get_value_table('emergingTech') != None:
-            valid_name = 'emergingTech__introYear'
+        match reporting_name:
+            case 'BaseCase2nd':
+                if ('AR' in get_param('MeasAppType').labels):
+                    valid_name = 'measOffer__descBase2'
+            
+            case 'Upstream_Flag':
+                if ('UpDeemed' in get_param('DelivType').labels):
+                    valid_name = 'upstreamFlag__upstreamFlag'
+
+            case 'WaterUse':
+                if (get_param('waterMeasureType') != None):
+                    valid_name = 'p.waterMeasureType__label'
+
+            case 'ETP_Flag':
+                if (get_value_table('emergingTech') != None):
+                    valid_name = 'emergingTech__projectNumber'
+
+            case 'ETP_YearFirstIntroducedToPrograms':
+                if (get_value_table('emergingTech') != None):
+                    valid_name = 'emergingTech__introYear'
+
+            case 'RUL_Yrs':
+                mat_labels: list[str] = get_param('MeasAppType').labels
+                if ('AR' in mat_labels):
+                    if (len(mat_labels) == 1):
+                        valid_name = 'hostEulAndRul__RUL_Yrs'
+                    elif (len(mat_labels) > 1):
+                        valid_name = 'HostEULID__RUL_Yrs'
+                else:
+                    valid_name = 'Null__ZeroYrs'
 
         return valid_name
 
@@ -354,10 +372,8 @@ class MeasureParser:
     def log_permutations(self) -> None:
         self.log('\n\nAll Permutations:')
         for permutation in self.measure.permutations:
-            try:
-                perm_data = ALL_PERMUTATIONS[permutation.reporting_name]
-            except:
-                raise MeasureFormatError()
+            perm_data: dict[str, str] \
+                = db.get_permutation_data(permutation.reporting_name)
 
             try:
                 verbose_name = perm_data['verbose']

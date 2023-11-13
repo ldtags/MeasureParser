@@ -1,4 +1,9 @@
-from typing import Any, Optional
+from typing import Optional
+try:
+    from types import SimpleNamespace as Namespace
+except ImportError:
+    from argparse import Namespace
+
 import src.measure_parser.constants as cnst
 import src.measure_parser.dbservice as db
 from src.measure_parser.exceptions import (
@@ -12,10 +17,6 @@ from src.measure_parser.exceptions import (
     CalculationFormatError,
     RequiredCharacterizationError
 )
-try:
-    from types import SimpleNamespace as Namespace
-except ImportError:
-    from argparse import Namespace
 
 
 class Characterization:
@@ -727,5 +728,6 @@ def get_permutations(measure: Namespace) -> list[Permutation]:
     perm_list: list[Permutation] = []
     for perm_name in db.get_permutation_names():
         verbose_name = getattr(measure, perm_name, None)
-        perm_list.append(Permutation(perm_name, verbose_name))
+        if verbose_name != None:
+            perm_list.append(Permutation(perm_name, verbose_name))
     return perm_list

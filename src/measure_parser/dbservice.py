@@ -71,15 +71,16 @@ def get_permutations() -> list[tuple[str, str, Optional[str]]]:
     return listify(response)
 
 
-def get_permutation_data(reporting_name: str
-                         ) -> tuple[str, Optional[str]]:
+def get_permutation_data(reporting_name: str) -> dict[str, str]:
     query: str = 'SELECT verbose_name, valid_name FROM permutations'
     query += f' WHERE reporting_name = \"{reporting_name}\"'
     response = cursor.execute(query).fetchall()
     response_list: list[str] = listify(response)
     if len(response_list) == 0:
         return ('', None)
-    return response_list[0]
+
+    return {'verbose': response_list[0],
+            'valid': response_list[1] if len(response_list) > 1 else None}
 
 
 def get_permutation_names() -> list[str]:

@@ -6,6 +6,7 @@ from gooey import (
 from argparse import (
     Namespace
 )
+
 from src.measure_parser.parser import MeasureParser
 from src.measure_parser.exceptions import (
     MeasureFormatError
@@ -32,7 +33,7 @@ def parse_arguments() -> Namespace:
         widget='DirChooser',
         metavar='Output Location',
         help='Select a folder to store the output file',
-        default=sys.executable[0:(sys.executable[0:sys.executable.rindex('\\')]).rindex('\\')]) # this is terrible, fix it
+        default=sys.executable[0:sys.executable.rindex('\\')])
 
     return argparser.parse_args()
 
@@ -66,7 +67,7 @@ def main() -> None:
               f'\n{err.message}')
     except Exception as err:
         print(f'An unhandled error occurred while parsing {filepath}:',
-              f'\n{err}')
+              f'\n{err.__class__.__name__}: {err}')
 
 
 if __name__ == '__main__':
