@@ -317,8 +317,8 @@ class MeasureParser:
             if ' ' in name:
                 if name not in invalid_tables:
                     invalid_tables.append(name)
-                self.log('\t\t\tWarning: Whitespace(s) detected in table '
-                         'name, please remove the whitespace(s)')
+                self.log('\t\t\tWarning: Whitespace(s) detected in '
+                         f'{name}, please remove the whitespace(s)')
 
             params: list[str] = table.determinants
             self.log(f'\t\tParams: {params}')
@@ -326,7 +326,7 @@ class MeasureParser:
                 if name not in invalid_tables:
                     invalid_tables.append(name)
                 self.log('\t\t\tWarning: Incorrect amount of hyphens '
-                         'in the table name')
+                         f'in {name}')
             self.log()
 
         if len(invalid_tables) == 0:
