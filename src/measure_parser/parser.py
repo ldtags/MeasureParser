@@ -389,12 +389,12 @@ class MeasureParser:
         if self.measure.is_DEER():
             criteria.append('DEER')
 
-        if self.measure.is_GSIA_nondef():
+        if not self.measure.contains_shared_table('GSIA_default'):
             criteria.append('GSIA')
 
         if (self.measure.contains_MAT_label('AR')
                 or self.measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
+            criteria.append('MAT_ARAOE')
 
         if self.measure.is_WEN():
             criteria.append('WEN')
@@ -406,9 +406,11 @@ class MeasureParser:
             criteria.append('INTER')
 
         params: list[str] = db.get_param_names(criteria)
+
         if (self.measure.is_interactive()
                 and not self.measure.contains_param('LightingType')):
             params.remove('LightingType')
+
         return params
 
 
@@ -420,7 +422,7 @@ class MeasureParser:
 
         if (self.measure.contains_MAT_label('AR')
                 or self.measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
+            criteria.append('MAT_ARAOE')
 
         if self.measure.contains_value_table('emergingTech'):
             criteria.append('ET')
@@ -449,14 +451,14 @@ class MeasureParser:
             criteria.append('DEER')
 
         if self.measure.is_GSIA_default():
-            criteria.append('GSIA-DEF')
-
-        if self.measure.is_GSIA_nondef():
+            print('gsia def')
+            criteria.append('DEF_GSIA')
+        else:
             criteria.append('GSIA')
 
         if (self.measure.contains_MAT_label('AR')
                 or self.measure.contains_MAT_label('AOE')):
-            criteria.append('MAT')
+            criteria.append('MAT_ARAOE')
 
         if self.measure.is_WEN():
             criteria.append('WEN')

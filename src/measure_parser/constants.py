@@ -10,4 +10,4 @@ AGRIC_DEF: str = 'Agric-Default>2yrs'
 RES_DEF: str = 'Res-Default>2yrs'
 
 # GSIAID
-GSIA_DEF: str = 'Res-Default>2yrs'
+GSIA_DEF: str = 'Def-GSIA'

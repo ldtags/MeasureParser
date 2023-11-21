@@ -117,6 +117,30 @@ def querify_list(elements: list[str]) -> str:
     return query_list
 
 
+def __add_value_table(api_name: str,
+                      order: int,
+                      shared: bool,
+                      criteria: str=None) -> None:
+    cursor.execute('SELECT * FROM tables')
+    response: list[tuple[str,]] = cursor.fetchall()
+    tables: list[tuple] = listify(response)
+    for table in tables:
+        if table[0] == api_name:
+            return
+
+    cursor.execute('UPDATE tables'
+                        ' SET ord = tables.ord + 1'
+                       f' WHERE ord >= {order}')
+
+    cursor.execute('INSERT INTO tables VALUES (?, ?, ?, ?)',
+                   (api_name,
+                    order,
+                    criteria if criteria else 'REQ',
+                    1 if shared else 0))
+
+    connection.commit()
+
+
 def listify(tuples: list[tuple[Any,]]) -> list[Any]:
     if type(tuples) is not list:
         return []

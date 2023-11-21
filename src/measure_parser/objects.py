@@ -648,7 +648,7 @@ class Measure:
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        return cnst.GSIA_DEF in gsia.labels
+        return 'Def-GSIA' in gsia.labels
 
     # Checks if the GSIAID contains a non-default label
     #
