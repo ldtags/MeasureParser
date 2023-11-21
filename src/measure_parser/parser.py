@@ -451,7 +451,6 @@ class MeasureParser:
             criteria.append('DEER')
 
         if self.measure.is_GSIA_default():
-            print('gsia def')
             criteria.append('DEF_GSIA')
         else:
             criteria.append('GSIA')
