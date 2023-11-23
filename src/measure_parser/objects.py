@@ -164,6 +164,12 @@ class ValueTable:
         except Exception as err:
             raise err
 
+    def contains_column(self, api_name: str) -> bool:
+        for column in self.columns:
+            if column.api_name == api_name:
+                return True
+        return False
+
 class SharedValueTable:
     """contains data related to a shared value table
     """

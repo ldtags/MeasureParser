@@ -7,7 +7,7 @@ except ImportError:
     from argparse import Namespace
 
 import src.measure_parser.dbservice as db
-from src.measure_parser.objects import Measure, Permutation
+from src.measure_parser.objects import Measure, Permutation, ValueTable
 from src.measure_parser.htmlparser import CharacterizationParser
 from src.measure_parser.exceptions import (
     RequiredParameterError,
@@ -144,9 +144,38 @@ class MeasureParser:
             self.log('\t\tAll shared value tables are in the '
                      'correct order')
 
+
         if self.validate_value_table_order():
             self.log('\t\tAll non-shared value tables are in the '
                      'correct order')
+
+
+    def validate_table_columns(self) -> bool:
+        self.log('\tValue Table Columns:')
+        issue_tables: list[ValueTable] = []
+        column_dict: dict[str, list[dict]] \
+            = db.get_table_columns(measure=self.measure)
+
+        for table in self.measure.value_tables:
+            columns: list[dict[str, str]] = column_dict[table.api_name]
+            for column in columns:
+                api_name: str = getattr(column, 'api_name', None)
+                if api_name == None:
+                    continue
+
+                name: str = getattr(column, 'name', None)
+                if not table.contains_column(api_name):
+                    self.log(f'\t\tTable {table.name} is missing
+                             column {name or "None"}')
+                    if table not in issue_tables:
+                        issue_tables.append(table)
+
+        if len(issue_tables) == 0:
+            self.log('All value table columns are valid\n')
+            return True
+
+        self.log()
+        return False
 
 
     # validates that all shared value tables names in @ordered_sha_tables
@@ -417,8 +446,8 @@ class MeasureParser:
     def __get_ordered_value_tables(self) -> list[str]:
         criteria: list[str] = ['REQ']
 
-        if self.measure.is_DEER():
-            criteria.append('DEER')
+        # if self.measure.is_DEER():
+        #     criteria.append('DEER')
 
         if (self.measure.contains_MAT_label('AR')
                 or self.measure.contains_MAT_label('AOE')):
@@ -436,19 +465,22 @@ class MeasureParser:
         if self.measure.is_interactive():
             criteria.append('INTER')
 
-        tables: list[str] = db.get_value_table_names(criteria)
+        tables: list[str] = db.get_table_names(self.measure, criteria, nonshared=True)
+
+        # query response post-processing
         if (self.measure.is_interactive()
                 and not self.measure.contains_value_table(
                     'IEApplicability')):
             tables.remove('IEApplicability')
+
         return tables
 
 
     def __get_ordered_shared_tables(self) -> list[str]:
         criteria: list[str] = ['REQ']
 
-        if self.measure.is_DEER():
-            criteria.append('DEER')
+        # if self.measure.is_DEER():
+        #     criteria.append('DEER')
 
         if self.measure.is_GSIA_default():
             criteria.append('DEF_GSIA')
@@ -475,7 +507,8 @@ class MeasureParser:
         if self.measure.is_interactive():
             criteria.append('INTER')
 
-        tables: list[str] = db.get_shared_table_names(criteria)
+        tables: list[str] = db.get_table_names(self.measure, criteria, shared=True)
+
         if self.measure.is_interactive():
             commercial: str = 'commercialInteractiveEffects'
             if not self.measure.contains_shared_table(commercial):
@@ -483,6 +516,7 @@ class MeasureParser:
             residential: str = 'residentialInteractiveEffects'
             if not self.measure.contains_shared_table(residential):
                 tables.remove(residential)
+
         return tables
 
     # method to print to the parser's out stream
