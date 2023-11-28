@@ -777,6 +777,11 @@ class Measure:
         if 'AR' in mat_labels or 'AOE' in mat_labels:
             criteria.append('MAT_ARAOE')
 
+        if 'NC' in mat_labels or 'NR' in mat_labels:
+            criteria.append('MAT_NCNR')
+            if 'AR' in mat_labels or 'AOE' in mat_labels:
+                criteria.append('MAT_NCNR_ARAOE')
+
         if self.requires_ntg_version():
             criteria.append('NTG')
 
