@@ -2,7 +2,7 @@ import sys
 import os
 import sqlite3
 from typing import Any, Optional
-from src.measure_parser.objects import Measure
+from src.measure_parser.objects import Measure, Characterization
 from src.measure_parser.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
@@ -28,26 +28,37 @@ if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
     raise DatabaseContentError('database is empty')
 
 
-def get_param_names(criteria: list[str]) -> list[str]:
+# queries the database for shared parameter names
+#
+# Parameters:
+#   measure (Measure)   : a measure object that will determine criteria
+#                         and allow for accurate data processing
+#
+# Returns:
+#   list[str]   : a list of shared parameter names
+def get_param_names(measure: Measure=None) -> list[str]:
     query: str = 'SELECT api_name FROM parameters'
-    query += ' WHERE criteria IN ' + queryfy(criteria)
+    if measure:
+        query += f' WHERE criteria IN {queryfy(measure.get_criteria())}'
     query += ' ORDER BY ord ASC'
-    params: list[str] = cursor.execute(query).fetchall()
-    return listify(params)
+    response: list[tuple[str,]] = cursor.execute(query).fetchall()
+    param_names: list[str] = listify(response)
+
+    if measure and (measure.is_interactive()
+            and not measure.contains_param('LightingType')):
+        param_names.remove('LightingType')
+
+    return listify(response)
 
 
-def get_params(criteria: list[str] = None) -> dict[str, tuple[int, str]]:
-    query: str = 'SELECT * FROM parameters'
-    if criteria:
-        query += ' WHERE criteria IN ' + queryfy(criteria)
-    query += ' ORDER BY ord ASC'
-    response: list[Any] = cursor.execute(query).fetchall()
-    params: list[tuple[str, int, str]] = listify(response)
-    criteria_map: dict[str, tuple[int, str]] = []
-    for param in params:
-        criteria_map[param[0]]
-
-
+# queries the database for a list of non-shared value table names
+#   specified by @criteria
+#
+# Parameters:
+#   criteria (list[str])    : a list of criteria
+#
+# Returns:
+#   list[str]   : the list of non-shared value table names
 def get_value_table_names(criteria: list[str]) -> list[str]:
     query: str = 'SELECT api_name FROM tables WHERE shared = 0'
     query += ' AND criteria IN ' + queryfy(criteria)
@@ -56,6 +67,14 @@ def get_value_table_names(criteria: list[str]) -> list[str]:
     return listify(tables)
 
 
+# queries the database for a list of shared value table names specified
+#   by @criteria
+#
+# Parameters:
+#   criteria (list[str])    : a list of criteria
+#
+# Returns:
+#   list[str]   : the list of shared value table names
 def get_shared_table_names(criteria: list[str]) -> list[str]:
     query: str = 'SELECT api_name FROM tables WHERE shared != 0'
     query += ' AND criteria IN ' + queryfy(criteria)
@@ -64,37 +83,98 @@ def get_shared_table_names(criteria: list[str]) -> list[str]:
     return listify(tables)
 
 
-def get_table_names(measure: Measure,
-                    criteria: list[str],
+# queries the database for value table names
+#
+# Parameters:
+#   measure (Measure)   : a measure object that will determine criteria
+#                         and allow for accurate data processing
+#   shared (bool)       : limit tables queried to shared tables
+#   nonshared(bool)     : limit tables queried to nonshared tables
+#
+# Returns:
+#   list[str]   : a list of value table names
+def get_table_names(measure: Measure=None,
                     shared: bool=False,
-                    nonshared: bool=False,
-                    other: bool=False) -> list[str]:
-    if measure.is_DEER():
-        criteria.append('DEER')
+                    nonshared: bool=False) -> list[tuple[str, int]]:
+    query: str = 'SELECT api_name, ord FROM tables'
 
-    query: str = 'SELECT api_name FROM tables WHERE'
+    if measure or shared or nonshared:
+        query += ' WHERE '
 
     shared_vals: list[int] = []
     if shared:
         shared_vals.append(1)
     if nonshared:
         shared_vals.append(0)
-    if other:
-        shared_vals.append(-1)
-    if shared or nonshared or other:
-        query += f' shared IN {queryfy(shared_vals)} AND'
 
-    query += f' criteria IN {queryfy(criteria)}'
+    if shared or nonshared:
+        query += f'shared IN {queryfy(shared_vals)}'
+        if measure:
+            query += ' AND '
+
+    criteria: list[str] = []
+    if measure:
+        criteria = measure.get_criteria()
+        query += f'criteria IN {queryfy(criteria)}'
+
     query += ' ORDER BY ord ASC'
+    cursor.execute(query)
+    tables: dict[int, str] \
+        = {table[1]: table[0] for table in cursor.fetchall()}
 
-    response: list[tuple[str,]] = cursor.execute(query).fetchall()
-    table_names: list[str] = listify(response)
+    if measure:
+        # adding tables that can either be shared or non-shared
+        # these tables are currently all optional, regardless of
+        #   how they are defined in the database
+        cursor.execute('SELECT api_name, ord FROM tables'
+                            ' WHERE shared = -1'
+                           f' AND criteria IN {queryfy(criteria)}'
+                            ' ORDER BY ord ASC')
+        for table in cursor.fetchall():
+            if ((shared and measure.contains_shared_table(table[0]))
+                    or (nonshared and measure.contains_value_table(table[0]))):
+                tables[table[1]] = table[0]
 
-    if 'EnergyImpact' in table_names:
-        index: int = table_names.index('EnergyImpact')
-        table_names[index] = f'EnergyImpact{measure.use_category}'
+        # postprocessing for table names that require it
+        for index, table_name in tables.items():
+            match table_name:
+                case 'EnergyImpact':
+                    tables[index] = f'EnergyImpact{measure.use_category}'
+ 
+    table_names: list[str] = []
+    for index in sorted(tables):
+        table_names.append(tables[index])
+
+    if measure:
+        table_names = filter_optional_tables(tables, table_names, measure)
 
     return table_names
+
+
+# filters out optional tables that don't exist in the measure
+#
+# Parameters:
+#   tables (dict[int, str]) : a dict mapping the order index to table name
+#   table_names (list[str]) : a list of table names
+#   measure (Measure)       : a measure object
+#
+# Returns:
+#   list[str]   : the filtered list of table names
+def filter_optional_tables(tables: dict[int, str],
+                           table_names: list[str],
+                           measure: Measure) -> list[str]:
+    names: list[str] = table_names.copy()
+
+    cursor.execute('SELECT api_name FROM tables WHERE optional = 0')
+    response: list[tuple[str,]] = cursor.fetchall()
+    optional_tables: list[str] = [element[0] for element in response]
+
+    for table_name in tables.values():
+        if ((table_name in optional_tables)
+                and not measure.contains_table(table_name)):
+            names.remove(table_name)
+
+    return names
 
 
 # queries the database for non-shared value table columns
@@ -123,7 +203,8 @@ def get_table_columns(measure: Measure=None,
 
     if measure:
         criteria: list[str] = []
-        mat_labels: list[str] = measure.get_shared_parameter('MAT').labels
+        mat_labels: list[str] \
+            = measure.get_shared_parameter('MeasAppType').labels
         if 'AR' in mat_labels:
             criteria.append('AR_MAT')
             if len(mat_labels) > 2:
@@ -152,6 +233,12 @@ def get_table_columns(measure: Measure=None,
     return column_dict
 
 
+# queries the database for all permutations
+#
+# Returns:
+#   list[tuple[str, str, Optional[str]]]    : a list of permutations
+#       permutations in this format are specified as:
+#           (reporting_name, verbose_name, valid_name)
 def get_permutations() -> list[tuple[str, str, Optional[str]]]:
     query: str = 'SELECT reporting_name, verbose_name, valid_name'
     query += ' FROM permutations'
@@ -159,6 +246,18 @@ def get_permutations() -> list[tuple[str, str, Optional[str]]]:
     return listify(response)
 
 
+# queries the database for permutation data for the permutation associated
+#   with @reporting_name
+#
+# Parameters:
+#   reporting_name (str)    : the reporting name of the desired
+#                             permutation
+#
+# Returns:
+#   dict[str, str]  : a dict representation of permutation data
+#       this dict is formatted as:
+#           {'verbose'  : str
+#            'valid'    : str}
 def get_permutation_data(reporting_name: str) -> dict[str, str]:
     query: str = 'SELECT verbose_name, valid_name FROM permutations'
     query += f' WHERE reporting_name = \"{reporting_name}\"'
@@ -194,6 +293,7 @@ def get_characterization_names(measure: Namespace) -> list[str]:
     return char_list
 
 
+# generates a list that is understood by SQL
 def queryfy(elements: list[Any]) -> str:
     query_list: str = '('
     length: int = len(elements)
@@ -211,6 +311,7 @@ def queryfy(elements: list[Any]) -> str:
     return query_list
 
 
+# returns a list of the first elements in a list of tuples
 def listify(tuples: list[tuple[Any,]]) -> list[Any]:
     if type(tuples) is not list:
         return []
@@ -232,6 +333,7 @@ def listify(tuples: list[tuple[Any,]]) -> list[Any]:
 def __insert_table(api_name: str,
                    order: int,
                    shared: bool,
+                   optional: bool,
                    criteria: str=None) -> None:
     cursor.execute('SELECT * FROM tables')
     response: list[tuple[str,]] = cursor.fetchall()
@@ -245,15 +347,22 @@ def __insert_table(api_name: str,
                         ' SET ord = tables.ord + 1'
                        f' WHERE ord >= {order}')
 
-    cursor.execute('INSERT INTO tables VALUES (?, ?, ?, ?)',
+    cursor.execute('INSERT INTO tables VALUES (?, ?, ?, ?, ?)',
                    (api_name,
                     order,
                     criteria if criteria else 'REQ',
-                    1 if shared else 0))
+                    1 if shared else 0,
+                    0 if optional else 1))
 
     connection.commit()
 
 
+# used to insert shared parameters
+#
+# Parameters:
+#   api_name (str)  : the api_name of the parameter
+#   order (int)     : the order of this parameter
+#   criteria (str)  : the criteria (if any) for the parameter
 def __insert_parameter(api_name: str,
                        order: int,
                        criteria: str=None) -> None:
@@ -269,13 +378,23 @@ def __insert_parameter(api_name: str,
                     ' SET ord = parameters.ord + 1'
                    f' WHERE ord >= {order}')
     
-    cursor.execute('INSERT INTO tables VALUES (?, ?, ?, ?)',
+    cursor.execute('INSERT INTO parameters VALUES (?, ?, ?)',
                    (api_name, order, criteria if criteria else 'REQ'))
 
     connection.commit()
 
 
+# used to insert permutations
+#
+# Parameters:
+#   reporting_name (str)    : the permutation's reporting name
+#   verbose_name (str)      : the permutation's verbose name
+#   valid_name (str)        : the permutation's valid name
 def __insert_permutation(reporting_name: str,
                          verbose_name: str,
-                         valid_name: str):
-    pass # make sure to include id validation here as i just use math.rand (oops actually maybe do something else)
+                         valid_name: str=None) -> None:
+    cursor.execute('INSERT INTO permutations VALUES (?, ?, ?)',
+                   (reporting_name, verbose_name,
+                    valid_name if valid_name else 'NULL'))
+
+    connection.commit()

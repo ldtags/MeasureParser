@@ -1,11 +1,7 @@
 import sys
-from gooey import (
-    Gooey,
-    GooeyParser
-)
-from argparse import (
-    Namespace
-)
+from traceback import print_exc
+from gooey import Gooey, GooeyParser
+from argparse import Namespace
 
 from src.measure_parser.parser import MeasureParser
 from src.measure_parser.exceptions import (
@@ -37,10 +33,7 @@ def parse_arguments() -> Namespace:
 
     return argparser.parse_args()
 
-# controls the flow of processes when parsing the measure
-#
-# Parameters:
-#   args (list[str]): measure parsing arguments, including flags
+
 @Gooey (
     program_name='eTRM Measure Parser',
     program_description='Parses and validates eTRM measures',
@@ -68,6 +61,7 @@ def main() -> None:
     except Exception as err:
         print(f'An unhandled error occurred while parsing {filepath}:',
               f'\n{err.__class__.__name__}: {err}')
+        print_exc()
 
 
 if __name__ == '__main__':
