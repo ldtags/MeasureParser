@@ -173,7 +173,7 @@ class CharacterizationParser(HTMLParser):
                 self.log(self.tabs
                          + 'extra space(s) detected before a reference '
                          f'in {self.characterization.name} '
-                         f'- {extra_spaces} spaces')
+                         f'- {extra_spaces} space(s)')
 
     # determines how many spaces occur at the end of @data
     #
