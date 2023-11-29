@@ -6,7 +6,12 @@ except ImportError:
     from argparse import Namespace
 
 import src.measure_parser.dbservice as db
-from src.measure_parser.objects import Measure, Permutation, ValueTable
+from src.measure_parser.objects import (
+    Measure,
+    Permutation,
+    ValueTable,
+    Column
+)
 from src.measure_parser.htmlparser import CharacterizationParser
 from src.measure_parser.exceptions import (
     RequiredParameterError,
@@ -112,20 +117,19 @@ class MeasureParser:
     def validate_parameters(self) -> None:
         self.log('Validating Parameters:')
         self.log('\tMeasure Specific Parameters: ',
-                 list(map(lambda param: param.name, self.measure.params)))
+                 list(map(lambda param: param.name, self.measure.parameters)))
         self.log('\n\tUnexpected Shared Parameters: ',
                  list(map(lambda param: param.version.version_string,
                           self.measure.remove_unknown_params(
                             self.ordered_params))))
         self.log('\tMissing Shared Parameters: ',
                  self.validate_param_existence())
+
         self.log('\n\tParameter Order:')
-        in_order: bool = self.validate_param_order()
-        if in_order:
+        if self.validate_param_order():
             self.log(
-                '\t\tAll shared parameters are in the correct order\n')
-        else:
-            self.log()
+                '\t\tAll shared parameters are in the correct order')
+        self.log()
 
 
     # specifies the control flow of shared/non-shared value table
@@ -170,17 +174,28 @@ class MeasureParser:
             = db.get_table_columns(measure=self.measure)
 
         for table in self.measure.value_tables:
-            for column in column_dict[table.api_name]:
-                api_name: str = getattr(column, 'api_name', None)
+            for column_data in column_dict[table.api_name]:
+                name: str = getattr(column_data, 'name', None)
+                api_name: str = getattr(column_data, 'api_name', None)
                 if api_name == None:
                     continue
 
-                name: str = getattr(column, 'name', None)
                 if not table.contains_column(api_name):
                     self.log(f'\t\tTable {table.name} is missing'
-                             f' column {name or "None"}')
+                             f' column {name or api_name}')
                     if table not in issue_tables:
                         issue_tables.append(table)
+                    continue
+    
+                column: Column = table.get_column(api_name)
+                unit: str = getattr(column_data, 'unit', None)
+                if not unit == column.unit:
+                    self.log(f'\t\tTable {table.name} has an incorrect '
+                             'unit in {name or api_name}, '
+                             f'{column.unit} should be {unit}')
+                    if table not in issue_tables:
+                        issue_tables.append(table)
+                    continue
 
         return len(issue_tables) == 0
 

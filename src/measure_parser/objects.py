@@ -65,7 +65,7 @@ class Version:
             raise VersionFormatError()
         except Exception as err:
             raise err
-        
+
 class ExclusionTable:
     """defines a measure exclusion table
     """
@@ -97,7 +97,7 @@ class Calculation:
             raise CalculationFormatError()
         except Exception as err:
             raise err
-        
+
 class ParameterLabel:
     """a label found in a measure specific parameter
     """
@@ -110,7 +110,7 @@ class ParameterLabel:
                 = getattr(label, 'description')
         except Exception as err:
             raise err
-        
+
 class Parameter:
     """contains data related to a measure specific parameter
     """
@@ -170,6 +170,12 @@ class ValueTable:
                 return True
         return False
 
+    def get_column(self, api_name: str) -> Column:
+        for column in self.columns:
+            if column.api_name == api_name:
+                return column
+        return None
+
 class SharedValueTable:
     """contains data related to a shared value table
     """
@@ -204,11 +210,11 @@ class Measure:
         try:
             self.owner: str = getattr(measure, 'owned_by_user')
 
-            self.params: list[Parameter] = list(
+            self.parameters: list[Parameter] = list(
                 map(lambda param: Parameter(param),
                     getattr(measure, 'determinants')))
 
-            self.shared_params: list[SharedParameter] = list(
+            self.shared_parameters: list[SharedParameter] = list(
                 map(lambda param: SharedParameter(param),
                     getattr(measure, 'shared_determinant_refs')))
 
@@ -260,7 +266,7 @@ class Measure:
     #         with @param_name
     def contains_param(self, param_name: str) -> bool:
         param_names = map(lambda param: param.version.version_string,
-                          self.shared_params)
+                          self.shared_parameters)
         return param_name in param_names
 
 
@@ -330,7 +336,7 @@ class Measure:
     #   SharedParameter: The desired parameter
     #   None: If no parameter with a name matching @param_name exists 
     def get_shared_parameter(self, param_name: str) -> Optional[SharedParameter]:
-        for param in self.shared_params:
+        for param in self.shared_parameters:
             if param.version.version_string == param_name:
                 return param
         return None
@@ -382,6 +388,22 @@ class Measure:
         return None
 
 
+    # returns the characterization object associated with @name, or None
+    #   if the characterization doesn't exist
+    #
+    # Parameters:
+    #   name (str)  : the name of the characterization being searched for
+    #
+    # Returns:
+    #   Characterization    : the characterization being searched for
+    #   None                : if no such characterization was found
+    def get_characterization(self, name: str) -> Characterization | None:
+        for characterization in self.characterizations:
+            if characterization.name == name:
+                return characterization
+        return None
+
+
     # Removes all parameters whose names don't appear in @param_names
     #    
     # Parameters:
@@ -394,15 +416,15 @@ class Measure:
                               param_names: list[str]
                              ) -> list[SharedParameter]:
         unknown_params: list[SharedParameter] = []
-        for param in self.shared_params:
+        for param in self.shared_parameters:
             if param.version.version_string not in param_names:
                 unknown_params.append(param)
 
         for param in unknown_params:
-            self.shared_params.remove(param)
+            self.shared_parameters.remove(param)
 
-        for i in range(0, len(self.shared_params)):
-            self.shared_params[i].order = i + 1
+        for i in range(0, len(self.shared_parameters)):
+            self.shared_parameters[i].order = i + 1
 
         return unknown_params
 
@@ -606,7 +628,7 @@ class Measure:
                         | cnst.COM_DEF
                         | cnst.IND_DEF
                         | cnst.AGRIC_DEF):
-                    break
+                    continue
                 case _:
                     return True
         return False
@@ -646,13 +668,7 @@ class Measure:
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
-        for label in ntg_id.labels:
-            match label:
-                case cnst.RES_DEF:
-                    return True
-                case _:
-                    break
-        return False
+        return cnst.RES_DEF in ntg_id.labels
 
 
     # Checks if the NTGID contains the non-residential default
@@ -675,7 +691,7 @@ class Measure:
                         | cnst.AGRIC_DEF):
                     return True
                 case _:
-                    break
+                    continue
         return False
 
 
@@ -723,22 +739,6 @@ class Measure:
         return False
 
 
-    # returns the characterization object associated with @name, or None
-    #   if the characterization doesn't exist
-    #
-    # Parameters:
-    #   name (str)  : the name of the characterization being searched for
-    #
-    # Returns:
-    #   Characterization    : the characterization being searched for
-    #   None                : if no such characterization was found
-    def get_characterization(self, name: str) -> Characterization | None:
-        for characterization in self.characterizations:
-            if characterization.name == name:
-                return characterization
-        return None
-
-
     # generates a list of criteria determined by the data in the measure
     #
     # Returns:
@@ -764,10 +764,10 @@ class Measure:
             criteria.append('INTER')
 
         if self.is_res_default():
-            criteria.append('RES-DEF')
+            criteria.append('RES_DEF')
 
         if self.is_nonres_default():
-            criteria.append('RES-NDEF')
+            criteria.append('RES_NDEF')
 
         if not ('RES-DEF' in criteria or 'RES-NDEF' in criteria):
             criteria.append('RES')
