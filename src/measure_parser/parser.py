@@ -249,7 +249,7 @@ class MeasureParser:
         param_names: list[str] = list(
             filter(lambda name: self.measure.contains_param(name),
                    self.ordered_params))
-        for param in self.measure.shared_params:
+        for param in self.measure.shared_parameters:
             index: int = param_names.index(param.version.version_string)
             if param.order != (index + 1):
                 self.log('\t\tShared parameters may be out of order, '
