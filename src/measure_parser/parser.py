@@ -258,6 +258,31 @@ class MeasureParser:
         return True
 
 
+    def smart_validate_param_order(self) -> bool:
+        unordered_params: list[str] = []
+        ordered_params: list[str] = list(
+            filter(lambda name: self.measure.contains_param(name),
+                   self.ordered_params))
+        param_names: list[str] = list(
+            map(lambda param: param.version.version_string,
+                self.measure.shared_parameters))
+        index: int = 0
+        while index < len(param_names):
+            param: str = param_names[index]
+            ordered_param: str = ordered_params[index]
+            if (param != ordered_param
+                    and ordered_param not in unordered_params):
+                self.log(f'\t\t{ordered_param} is out of order')
+                unordered_params.append(ordered_param)
+                param_names.remove(ordered_param)
+                ordered_params.remove(ordered_param)
+                index = 0
+                continue
+            index = index + 1
+
+        return len(unordered_params) == 0
+
+
     # validates that all non-shared value tables in @measure are in the
     # same order as the non-shared value tables represented by
     # @ordered_val_tables
@@ -274,6 +299,30 @@ class MeasureParser:
         return True
 
 
+    def smart_validate_value_table_order(self) -> bool:
+        unordered_tables: list[str] = []
+        ordered_tables: list[str] = list(
+            filter(lambda name: self.measure.contains_value_table(name),
+                   self.ordered_val_tables))
+        table_names: list[str] = list(
+            map(lambda table: table.api_name, self.measure.value_tables))
+        index: int = 0
+        while index < len(table_names):
+            table: str = table_names[index]
+            ordered_table: str = ordered_tables[index]
+            if (table != ordered_table
+                    and ordered_table not in unordered_tables):
+                self.log(f'\t\t{ordered_table} is out of order')
+                unordered_tables.append(ordered_table)
+                table_names.remove(ordered_table)
+                ordered_tables.remove(ordered_table)
+                index = 0
+                continue
+            index = index + 1
+
+        return len(unordered_tables) == 0
+
+
     # validates that all shared value tables in @measure are in the same
     # order as the non-shared value tables represented by
     # @ordered_val_tables
@@ -288,6 +337,31 @@ class MeasureParser:
                          'please review the QA/QC guidelines')
                 return False
         return True
+
+
+    def smart_validate_shared_table_order(self) -> bool:
+        unordered_tables: list[str] = []
+        ordered_tables: list[str] = list(
+            filter(lambda name: self.measure.contains_shared_table(name),
+                   self.ordered_sha_tables))
+        table_names: list[str] = list(
+            map(lambda table: table.version.version_string,
+                self.measure.shared_tables))
+        index: int = 0
+        while index < len(table_names):
+            table: str = table_names[index]
+            ordered_table: str = ordered_tables[index]
+            if (table != ordered_table
+                    and ordered_table not in unordered_tables):
+                self.log(f'\t\t{ordered_table} is out of order')
+                unordered_tables.append(ordered_table)
+                table_names.remove(ordered_table)
+                ordered_tables.remove(ordered_table)
+                index = 0
+                continue
+            index = index + 1
+
+        return len(unordered_tables) == 0
 
 
     # validates that all permutations have a valid mapped name
