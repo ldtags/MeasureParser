@@ -10,7 +10,9 @@ from src.measure_parser.objects import (
     Measure,
     Permutation,
     ValueTable,
-    Column
+    Column,
+    SharedParameter,
+    SharedValueTable
 )
 from src.measure_parser.htmlparser import CharacterizationParser
 from src.measure_parser.exceptions import (
@@ -33,15 +35,16 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, filepath: str, output: str):
+    def __init__(self, filepath: str):
         measure_file: TextIOWrapper = open(filepath, 'r')
         self.measure: Measure = Measure(
             json.loads(measure_file.read(),
                        object_hook=lambda dict: Namespace(**dict)))
         measure_file.close()
 
-        self.out: TextIOWrapper \
-            = open(fr'{output}/output-{self.measure.id}.txt', 'w')
+        self.data: dict[str, object] = {}
+
+        self.out: TextIOWrapper | None = None
 
         try:
             self.ordered_params: list[str] \
@@ -65,7 +68,7 @@ class MeasureParser:
 
 
     # specifies the control flow for the generic parsing of @measure
-    def parse(self) -> None:
+    def parse(self, filename: str) -> None:
         if self.measure == None:
             print('ERROR - measure parser requires a measure to parse')
             return
@@ -103,73 +106,96 @@ class MeasureParser:
         print(f'finished parsing measure {self.measure.id}')
 
 
-    # logs specific details about the measure
-    def log_measure_details(self) -> None:
-        self.log('Measure Details:\n'
-                 f'\tMeasure Version ID: {self.measure.version_id}\n'
-                 f'\tMeasure Name: {self.measure.name}\n'
-                 f'\tPA Lead: {self.measure.pa_lead}\n'
-                 f'\tStart Date: {self.measure.start_date}\n'
-                 f'\tEnd Date: {self.measure.end_date}\n\n')
-
-
-    # specifies the control flow of shared parameter validation
     def validate_parameters(self) -> None:
-        self.log('Validating Parameters:')
-        self.log('\tMeasure Specific Parameters: ',
-                 list(map(lambda param: param.name, self.measure.parameters)))
-        self.log('\n\tUnexpected Shared Parameters: ',
-                 list(map(lambda param: param.version.version_string,
-                          self.measure.remove_unknown_params(
-                            self.ordered_params))))
-        self.log('\tMissing Shared Parameters: ',
-                 self.validate_param_existence())
+        param_data: dict[str, list[str]] = {}
 
-        self.log('\n\tParameter Order:')
-        if self.validate_param_order():
-            self.log(
-                '\t\tAll shared parameters are in the correct order')
-        self.log()
+        param_data['nonshared'] = list(
+            map(lambda param: param.name, self.measure.parameters))
+
+        unexpected_params: list[SharedParameter] \
+            = self.measure.remove_unknown_params(self.ordered_params)
+        param_data['unexpected'] = list(
+            map(lambda param: param.version.version_string,
+                unexpected_params))
+
+        param_data['missing'] = self.validate_param_existence()
+        param_data['unordered'] = self.smart_validate_param_order()
+        self.data['parameter'] = param_data
 
 
     # specifies the control flow of shared/non-shared value table
     #   validation
-    def validate_tables(self):
-        self.log('\nValidating Value Tables:')
-        self.log('\tUnexpected Shared Tables: ',
-                 list(map(lambda table: table.version.version_string,
-                          self.measure.remove_unknown_shared_tables(
-                            self.ordered_sha_tables))))
-        self.log('\tMissing Shared Tables: ',
-              self.validate_shared_table_existence())
+    # def validate_tables(self):
+    #     self.log('\nValidating Value Tables:')
+    #     self.log('\tUnexpected Shared Tables: ',
+    #              list(map(lambda table: table.version.version_string,
+    #                       self.measure.remove_unknown_shared_tables(
+    #                         self.ordered_sha_tables))))
+    #     self.log('\tMissing Shared Tables: ',
+    #           self.validate_shared_table_existence())
 
-        self.log('\n\tUnexpected Non-Shared Tables: ',
-                 list(map(lambda table: table.api_name,
-                          self.measure.remove_unknown_value_tables(
-                            self.ordered_val_tables))))
-        self.log('\tMissing Non-Shared Tables: ',
-                 self.validate_value_table_existence())
+    #     self.log('\n\tUnexpected Non-Shared Tables: ',
+    #              list(map(lambda table: table.api_name,
+    #                       self.measure.remove_unknown_value_tables(
+    #                         self.ordered_val_tables))))
+    #     self.log('\tMissing Non-Shared Tables: ',
+    #              self.validate_value_table_existence())
 
-        self.log('\n\tValue Table Columns:')
-        if self.validate_table_columns():
-            self.log('\t\tAll table columns are valid')
+    #     self.log('\n\tValue Table Columns:')
+    #     if self.validate_table_columns():
+    #         self.log('\t\tAll table columns are valid')
 
-        self.log('\n\tValue Table Order: ')
-        if self.validate_shared_table_order():
-            self.log('\t\tAll shared value tables are in the '
-                     'correct order')
+    #     self.log('\n\tValue Table Order: ')
+    #     if self.validate_shared_table_order():
+    #         self.log('\t\tAll shared value tables are in the '
+    #                  'correct order')
 
-        if self.validate_value_table_order():
-            self.log('\t\tAll non-shared value tables are in the '
-                     'correct order')
+    #     if self.validate_value_table_order():
+    #         self.log('\t\tAll non-shared value tables are in the '
+    #                  'correct order')
+
+
+    def validate_tables(self) -> None:
+        table_data: dict[str, dict] = {}
+        table_data['shared'] = self.validate_shared_tables()
+        table_data['nonshared'] = self.validate_nonshared_tables()
+        table_data['column'] = self.validate_table_columns()
+        self.data['table'] = table_data
+
+
+    def validate_shared_tables(self) -> dict[str, list[str]]:
+        shared: dict[str, list[str]] = {}
+        unexp_shared: list[SharedValueTable] \
+            = self.measure.remove_unknown_shared_tables(
+                self.ordered_sha_tables)
+        shared['unexpected'] = list(
+            map(lambda table: table.version.version_string, unexp_shared))
+        shared['missing'] = self.validate_shared_table_existence()
+        shared['unordered'] = self.validate_shared_table_order()
+        return shared
+
+
+    def validate_nonshared_tables(self) -> dict[str, list[str]]:
+        nonshared: dict[str, list[str]] = {}
+        unexp_nonshared: list[ValueTable] \
+            = self.measure.remove_unknown_value_tables(
+                self.ordered_val_tables)
+        nonshared['unexpected'] = list(
+            map(lambda table: table.name, unexp_nonshared))
+        nonshared['missing'] = self.validate_value_table_existence()
+        nonshared['unordered'] = self.validate_value_table_order()
+        return nonshared
 
 
     # validates all non-shared value table columns
     #
     # Returns:
     #   bool    : true if all columns are valid, false otherwise 
-    def validate_table_columns(self) -> bool:
-        issue_tables: list[ValueTable] = []
+    def validate_table_columns(self) -> dict[str, list[dict]]:
+        data: dict[str, list[dict]] = {
+            'name': [],
+            'unit': []
+        }
         column_dict: dict[str, list[dict]] \
             = db.get_table_columns(measure=self.measure)
 
@@ -181,23 +207,28 @@ class MeasureParser:
                     continue
 
                 if not table.contains_column(api_name):
-                    self.log(f'\t\tTable {table.name} is missing'
-                             f' column {name or api_name}')
-                    if table not in issue_tables:
-                        issue_tables.append(table)
+                    # self.log(f'\t\tTable {table.name} is missing'
+                    #          f' column {name or api_name}')
+                    data['name'].append({
+                        'table': table.name,
+                        'column': name or api_name
+                    })
                     continue
     
                 column: Column = table.get_column(api_name)
                 unit: str = getattr(column_data, 'unit', None)
                 if not unit == column.unit:
-                    self.log(f'\t\tTable {table.name} has an incorrect '
-                             'unit in {name or api_name}, '
-                             f'{column.unit} should be {unit}')
-                    if table not in issue_tables:
-                        issue_tables.append(table)
+                    # self.log(f'\t\tTable {table.name} has an incorrect '
+                    #          'unit in {name or api_name}, '
+                    #          f'{column.unit} should be {unit}')
+                    data['unit'].append({
+                        'table': table.name,
+                        'invalid': unit,
+                        'valid': column.unit
+                    })
                     continue
 
-        return len(issue_tables) == 0
+        return data
 
 
     # validates that all shared value tables names in @ordered_sha_tables
@@ -258,7 +289,7 @@ class MeasureParser:
         return True
 
 
-    def smart_validate_param_order(self) -> bool:
+    def smart_validate_param_order(self) -> list[str]:
         unordered_params: list[str] = []
         ordered_params: list[str] = list(
             filter(lambda name: self.measure.contains_param(name),
@@ -272,7 +303,6 @@ class MeasureParser:
             ordered_param: str = ordered_params[index]
             if (param != ordered_param
                     and ordered_param not in unordered_params):
-                self.log(f'\t\t{ordered_param} is out of order')
                 unordered_params.append(ordered_param)
                 param_names.remove(ordered_param)
                 ordered_params.remove(ordered_param)
@@ -280,7 +310,7 @@ class MeasureParser:
                 continue
             index = index + 1
 
-        return len(unordered_params) == 0
+        return unordered_params
 
 
     # validates that all non-shared value tables in @measure are in the
@@ -299,7 +329,7 @@ class MeasureParser:
         return True
 
 
-    def smart_validate_value_table_order(self) -> bool:
+    def smart_validate_value_table_order(self) -> list[str]:
         unordered_tables: list[str] = []
         ordered_tables: list[str] = list(
             filter(lambda name: self.measure.contains_value_table(name),
@@ -320,13 +350,13 @@ class MeasureParser:
                 continue
             index = index + 1
 
-        return len(unordered_tables) == 0
+        return unordered_tables
 
 
     # validates that all shared value tables in @measure are in the same
     # order as the non-shared value tables represented by
     # @ordered_val_tables
-    def validate_shared_table_order(self) -> list[str]:
+    def validate_shared_table_order(self) -> bool:
         table_names: list[str] = list(
             filter(lambda name: self.measure.contains_shared_table(name),
                    self.ordered_sha_tables))
@@ -339,7 +369,7 @@ class MeasureParser:
         return True
 
 
-    def smart_validate_shared_table_order(self) -> bool:
+    def smart_validate_shared_table_order(self) -> list[str]:
         unordered_tables: list[str] = []
         ordered_tables: list[str] = list(
             filter(lambda name: self.measure.contains_shared_table(name),
@@ -361,30 +391,42 @@ class MeasureParser:
                 continue
             index = index + 1
 
-        return len(unordered_tables) == 0
+        return unordered_tables
 
 
     # validates that all permutations have a valid mapped name
     def validate_permutations(self) -> None:
-        self.log('\nValidating Permutations:')
-        invalid_perms: list[str] = []
+        data: dict[str, list] = {
+            'invalid': [],
+            'unexpected': []
+        }
+        # self.log('\nValidating Permutations:')
+        # invalid_perms: list[str] = []
         for permutation in self.measure.permutations:
             try:
                 valid_names: list[str] \
                     = self.get_valid_perm_names(permutation)
                 mapped_name: str = permutation.mapped_name
                 if mapped_name not in valid_names:
-                    invalid_perms.append(permutation.reporting_name)
-                    self.log('\tIncorrect Permutation '
-                             f'({permutation.reporting_name})'
-                             f'- {mapped_name} should be ' +
-                             (f'{valid_names[0]}' if len(valid_names) == 1
-                                else f'one of {valid_names}'))
+                    # invalid_perms.append(permutation.reporting_name)
+                    # self.log('\tIncorrect Permutation '
+                    #          f'({permutation.reporting_name})'
+                    #          f'- {mapped_name} should be ' +
+                    #          (f'{valid_names[0]}' if len(valid_names) == 1
+                    #             else f'one of {valid_names}'))
+                    data['invalid'].append({
+                        'reporting': permutation.reporting_name,
+                        'mapped_name': mapped_name,
+                        'valid_names': valid_names
+                    })
             except UnknownPermutationError as err:
-                self.log(f'UNKNOWN PERMUTATION: {err.name}')
+                # self.log(f'UNKNOWN PERMUTATION: {err.name}')
+                data['unexpected'].append(err.name)
 
-        if len(invalid_perms) == 0:
-            self.log('\tAll permutations are valid')
+        # if len(invalid_perms) == 0:
+        #     self.log('\tAll permutations are valid')
+
+        self.data['permutation'] = data
 
 
     # returns the valid name for @permutation
@@ -454,42 +496,115 @@ class MeasureParser:
     #
     # prints out all exclusion tables
     def validate_exclusion_tables(self) -> None:
-        self.log('\nValidating Exclusion Tables:')
-        invalid_tables: list[str] = []
+        data: dict[str, list[str]] = {
+            'whitespace': [],
+            'hyphen': []
+        }
         for table in self.measure.exclusion_tables:
             name: str = table.name
-            self.log(f'\t{name.replace(" ", "")}:')
             if ' ' in name:
-                if name not in invalid_tables:
-                    invalid_tables.append(name)
-                self.log('\t\t\tWarning: Whitespace(s) detected in '
-                         f'{name}, please remove the whitespace(s)')
+                data['whitespace'].append(name)
 
             params: list[str] = table.determinants
-            self.log(f'\t\tParams: {params}')
             if name.count('-') != (len(params) - 1):
-                if name not in invalid_tables:
-                    invalid_tables.append(name)
-                self.log('\t\t\tWarning: Incorrect amount of hyphens '
-                         f'in {name}')
-            self.log()
+                data['hyphen'].append(name)
 
-        if len(invalid_tables) == 0:
-            self.log('\tAll exclusion tables are valid\n')
+        self.data['exclusion'] = data
 
 
-    # calls the characterization parser to parse each characterization
-    # in @measure
-    def parse_characterizations(self) -> None:
-        parser: CharacterizationParser \
-            = CharacterizationParser(out=self.out, tabs=1)
-        self.log('\nParsing Characterizations:')
-        for char_name in db.get_all_characterization_names():
-            if self.measure.get_characterization(char_name) == None:
-                self.log(f'\tMissing {char_name}')
-        for characterization in self.measure.characterizations:
-            print(f'\tparsing {characterization.name}')
-            parser.parse(characterization)
+    def log_output(self, filepath: str | None=None) -> None:
+        if filepath:
+            self.out = open(f'{filepath}-{self.measure.id}.txt', 'w+')
+
+        self.log_measure_details()
+        self.log_parameter_data()
+        self.log_exclusion_table_data()
+        self.log_value_table_data()
+        self.log_value_tables()
+        self.log_calculations()
+
+        if self.out:
+            self.out.close()
+            self.out = None
+
+
+    # logs specific details about the measure
+    def log_measure_details(self) -> None:
+        self.log('Measure Details:\n'
+                 f'\tMeasure Version ID: {self.measure.version_id}\n'
+                 f'\tMeasure Name: {self.measure.name}\n'
+                 f'\tPA Lead: {self.measure.pa_lead}\n'
+                 f'\tStart Date: {self.measure.start_date}\n'
+                 f'\tEnd Date: {self.measure.end_date}\n\n')
+
+
+    def log_parameter_data(self) -> None:
+        param_data: [str, list[str]] = self.data['parameter']
+        self.log('Validating Parameters:')
+        self.log('\tMeasure Specific Parameters: ',
+                 param_data['nonshared'])
+        self.log()
+        self.log('\n\tUnexpected Shared Parameters: ',
+                 param_data['unexpected'])
+        self.log('\tMissing Shared Parameters: ',
+                 param_data['missing'])
+        self.log()
+        self.log('\n\tParameter Order:')
+        unordered: list[str] = param_data['unordered']
+        for param_name in unordered:
+            self.log(f'\t\t{param_name} is out of order')
+        if len(unordered) == 0:
+            self.log(
+                '\t\tAll shared parameters are in the correct order')
+        self.log()
+
+
+    def log_exclusion_table_data(self) -> None:
+        self.log('Validating Exclusion Tables:')
+        for table in self.measure.exclusion_tables:
+            self.log(f'\t{table.name}:\n',
+                     f'\t\tParams: {table.determinants}\n')
+        tables: list[str] = self.data['exclusion']
+        whitespace: list[dict[str, str]] = tables['whitespace']
+        for table_name in whitespace:
+            self.log('\t\t\tWarning: Whitespace(s) detected in '
+                     f'{table_name}, please remove the whitespace(s)')
+        hyphen: list[str] = tables['hyphen']
+        for table_name in hyphen:
+            self.log('\t\t\tWarning: Incorrect amount of hyphens '
+                     f'in {table_name}')
+        if len(whitespace) == 0 and len(hyphen) == 0:
+            self.log('\t\tAll exclusion tables are valid')
+        self.log()
+
+
+    def log_value_table_data(self) -> None:
+        self.log('\nValidating Value Tables:')
+        table_data: dict[str, dict] = self.data['table']
+        shared_data: dict[str, list[str]] = table_data['shared']
+        self.log('\tUnexpected Shared Tables: ',
+                 shared_data['unexpected'])
+        self.log('\tMissing Shared Tables: ',
+                 shared_data['missing'])
+
+        nonshared_data: dict[str, list[str]] = table_data['nonshared']
+        self.log('\n\tUnexpected Non-Shared Tables: ',
+                 nonshared_data['unexpected'])
+        self.log('\tMissing Non-Shared Tables: ',
+                 nonshared_data['missing'])
+
+        self.log('\n\tValue Table Columns:')
+        if self.validate_table_columns():
+            self.log('\t\tAll table columns are valid')
+
+        self.log('\n\tValue Table Order: ')
+        if self.validate_shared_table_order():
+            self.log('\t\tAll shared value tables are in the '
+                     'correct order')
+
+        if self.validate_value_table_order():
+            self.log('\t\tAll non-shared value tables are in the '
+                     'correct order')
 
 
     # prints a representation of every non-shared value table in @measure
@@ -533,19 +648,23 @@ class MeasureParser:
                 continue
 
 
+    # calls the characterization parser to parse each characterization
+    # in @measure
+    def parse_characterizations(self) -> None:
+        parser: CharacterizationParser \
+            = CharacterizationParser(out=self.out, tabs=1)
+        self.log('\nParsing Characterizations:')
+        for char_name in db.get_all_characterization_names():
+            if self.measure.get_characterization(char_name) == None:
+                self.log(f'\tMissing {char_name}')
+        for characterization in self.measure.characterizations:
+            print(f'\tparsing {characterization.name}')
+            parser.parse(characterization)
+
+
     # method to print to the parser's out stream
     #
     # Parameters:
     #   *object : the object being printed
     def log(self, *values: object) -> None:
         print(*values, file=self.out)
-
-
-    # closes the parser's out stream
-    def close(self) -> bool:
-        try:
-            self.out.close()
-        except OSError:
-            print("error occurred while closing the output file")
-            return False
-        return True

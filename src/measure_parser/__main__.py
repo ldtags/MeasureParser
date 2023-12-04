@@ -50,9 +50,9 @@ def main() -> None:
         print('invalid output location')
 
     try:
-        parser: MeasureParser = MeasureParser(filepath, output)
+        parser: MeasureParser = MeasureParser(filepath)
         parser.parse()
-        parser.close()
+        parser.log_output(output)
     except OSError as err:
         print(f'ERROR[{err.errno}] - {output} not found')
     except MeasureFormatError as err:
