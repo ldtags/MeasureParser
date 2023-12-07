@@ -68,14 +68,12 @@ class MeasureParser:
 
 
     # specifies the control flow for the generic parsing of @measure
-    def parse(self, filename: str) -> None:
+    def parse(self) -> None:
         if self.measure == None:
             print('ERROR - measure parser requires a measure to parse')
             return
 
         print(f'starting to parse measure {self.measure.id}\n')
-
-        self.log_measure_details()
 
         print('validating parameters')
         self.validate_parameters()
@@ -89,15 +87,9 @@ class MeasureParser:
         self.validate_tables()
         print('finished validating tables\n')
 
-        self.log_value_tables()
-
-        self.log_calculations()
-
         print('validating permutations')
         self.validate_permutations()
         print('finished validating permutations\n')
-
-        self.log_permutations()
 
         print('parsing characterizations')
         self.parse_characterizations()
@@ -123,38 +115,6 @@ class MeasureParser:
         self.data['parameter'] = param_data
 
 
-    # specifies the control flow of shared/non-shared value table
-    #   validation
-    # def validate_tables(self):
-    #     self.log('\nValidating Value Tables:')
-    #     self.log('\tUnexpected Shared Tables: ',
-    #              list(map(lambda table: table.version.version_string,
-    #                       self.measure.remove_unknown_shared_tables(
-    #                         self.ordered_sha_tables))))
-    #     self.log('\tMissing Shared Tables: ',
-    #           self.validate_shared_table_existence())
-
-    #     self.log('\n\tUnexpected Non-Shared Tables: ',
-    #              list(map(lambda table: table.api_name,
-    #                       self.measure.remove_unknown_value_tables(
-    #                         self.ordered_val_tables))))
-    #     self.log('\tMissing Non-Shared Tables: ',
-    #              self.validate_value_table_existence())
-
-    #     self.log('\n\tValue Table Columns:')
-    #     if self.validate_table_columns():
-    #         self.log('\t\tAll table columns are valid')
-
-    #     self.log('\n\tValue Table Order: ')
-    #     if self.validate_shared_table_order():
-    #         self.log('\t\tAll shared value tables are in the '
-    #                  'correct order')
-
-    #     if self.validate_value_table_order():
-    #         self.log('\t\tAll non-shared value tables are in the '
-    #                  'correct order')
-
-
     def validate_tables(self) -> None:
         table_data: dict[str, dict] = {}
         table_data['shared'] = self.validate_shared_tables()
@@ -171,7 +131,7 @@ class MeasureParser:
         shared['unexpected'] = list(
             map(lambda table: table.version.version_string, unexp_shared))
         shared['missing'] = self.validate_shared_table_existence()
-        shared['unordered'] = self.validate_shared_table_order()
+        shared['unordered'] = self.smart_validate_shared_table_order()
         return shared
 
 
@@ -183,7 +143,7 @@ class MeasureParser:
         nonshared['unexpected'] = list(
             map(lambda table: table.name, unexp_nonshared))
         nonshared['missing'] = self.validate_value_table_existence()
-        nonshared['unordered'] = self.validate_value_table_order()
+        nonshared['unordered'] = self.smart_validate_value_table_order()
         return nonshared
 
 
@@ -207,8 +167,6 @@ class MeasureParser:
                     continue
 
                 if not table.contains_column(api_name):
-                    # self.log(f'\t\tTable {table.name} is missing'
-                    #          f' column {name or api_name}')
                     data['name'].append({
                         'table': table.name,
                         'column': name or api_name
@@ -218,10 +176,8 @@ class MeasureParser:
                 column: Column = table.get_column(api_name)
                 unit: str = getattr(column_data, 'unit', None)
                 if not unit == column.unit:
-                    # self.log(f'\t\tTable {table.name} has an incorrect '
-                    #          'unit in {name or api_name}, '
-                    #          f'{column.unit} should be {unit}')
                     data['unit'].append({
+                        'column': name or api_name,
                         'table': table.name,
                         'invalid': unit,
                         'valid': column.unit
@@ -342,7 +298,6 @@ class MeasureParser:
             ordered_table: str = ordered_tables[index]
             if (table != ordered_table
                     and ordered_table not in unordered_tables):
-                self.log(f'\t\t{ordered_table} is out of order')
                 unordered_tables.append(ordered_table)
                 table_names.remove(ordered_table)
                 ordered_tables.remove(ordered_table)
@@ -512,6 +467,20 @@ class MeasureParser:
         self.data['exclusion'] = data
 
 
+    # calls the characterization parser to parse each characterization
+    # in @measure
+    def parse_characterizations(self) -> None:
+        parser = CharacterizationParser(self.data)
+        parser.data['missing'] = []
+        for char_name in db.get_all_characterization_names():
+            if self.measure.get_characterization(char_name) == None:
+                parser.data['missing'].append(char_name)
+        for characterization in self.measure.characterizations:
+            print(f'\tparsing {characterization.name}')
+            parser.parse(characterization)
+
+
+    # specifies the control flow for parser logging
     def log_output(self, filepath: str | None=None) -> None:
         if filepath:
             self.out = open(f'{filepath}-{self.measure.id}.txt', 'w+')
@@ -522,6 +491,9 @@ class MeasureParser:
         self.log_value_table_data()
         self.log_value_tables()
         self.log_calculations()
+        self.log_permutation_data()
+        self.log_permutations()
+        self.log_characterization_data()
 
         if self.out:
             self.out.close()
@@ -594,15 +566,31 @@ class MeasureParser:
                  nonshared_data['missing'])
 
         self.log('\n\tValue Table Columns:')
-        if self.validate_table_columns():
+        for column in table_data['column']:
+            if getattr(column, 'name', None):
+                name_err: dict[str, str] = column['name']
+                self.log(f'\t\tTable {name_err["table"]} is missing'
+                         f' column {name_err["column"]}')
+            if getattr(column, 'unit', None):
+                unit_err: dict[str, dict[str, str]]
+                self.log(f'\t\tTable {unit_err["table"]} may have an '
+                         f'incorrect unit in {unit_err["column"]}, '
+                         f'{unit_err["invalid"]} should be '
+                         f'{unit_err["valid"]}')
+        if len(table_data) == 0:
             self.log('\t\tAll table columns are valid')
 
         self.log('\n\tValue Table Order: ')
-        if self.validate_shared_table_order():
+
+        for table in shared_data['unordered']:
+            self.log(f'\t\t{table} is out of order')
+        if len(shared_data['unordered']) == 0:
             self.log('\t\tAll shared value tables are in the '
                      'correct order')
 
-        if self.validate_value_table_order():
+        for table in nonshared_data['unordered']:
+            self.log(f'\t\t{table} is out of order')
+        if len(nonshared_data['unordered']) == 0:
             self.log('\t\tAll non-shared value tables are in the '
                      'correct order')
 
@@ -648,18 +636,8 @@ class MeasureParser:
                 continue
 
 
-    # calls the characterization parser to parse each characterization
-    # in @measure
-    def parse_characterizations(self) -> None:
-        parser: CharacterizationParser \
-            = CharacterizationParser(out=self.out, tabs=1)
-        self.log('\nParsing Characterizations:')
-        for char_name in db.get_all_characterization_names():
-            if self.measure.get_characterization(char_name) == None:
-                self.log(f'\tMissing {char_name}')
-        for characterization in self.measure.characterizations:
-            print(f'\tparsing {characterization.name}')
-            parser.parse(characterization)
+    def log_characterization_data(self) -> None:
+        pass
 
 
     # method to print to the parser's out stream

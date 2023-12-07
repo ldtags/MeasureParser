@@ -6,7 +6,7 @@ import re
 
 # Global Variables
 # spell = SpellChecker()
-#   look into multithreading before implementing this VERY slow process
+#   look into multithreading (maybe multiprocessing) before implementing this VERY slow process
 
 class CharacterizationParser(HTMLParser):
     """The parser for measure characterization HTML
@@ -20,14 +20,19 @@ class CharacterizationParser(HTMLParser):
         __prev_data (str): the data that was previously encountered
     """
 
-    def __init__(self,
-                 characterization: Optional[Characterization] = None,
-                 out: Optional[TextIO] = None,
-                 tabs: int = 0):
+    def __init__(self, data: dict[str, object],
+                 characterization: Optional[Characterization] = None):
+        self.data = data['characterization'] = {
+            'punc_space': [],
+            'refr_space': [],
+            'capitalization': [],
+            'inv_header': [],
+            'init_header': [],
+            'inc_header': []
+        }
+
         self.characterization: Optional[Characterization] \
             = characterization
-        self.out: Optional[TextIO] = out
-        self.tabs: str = '\t' * tabs
         self.__prev_tag: str = ''
         self.__prev_data: str = ''
         self.capitalized: list[str] = []
@@ -42,20 +47,6 @@ class CharacterizationParser(HTMLParser):
                              characterization: Characterization) -> None:
         self.characterization = characterization
 
-    # sets the objects @out to the input @out
-    #
-    # Parameters:
-    #   out (Optional[TextIO]): the file output stream for the log file
-    def set_out(self, out: Optional[TextIO]) -> None:
-        self.out = out
-
-    # sets the objects @tabs to the amount of tabs specified by the input
-    # tabs
-    #
-    # Parameters:
-    #   tabs (int): the amount of tabs to be placed before any output
-    def set_tabs(self, tabs: int) -> None:
-        self.tabs = '\t' * tabs
 
     # parses the objects @characterization
     def parse(self) -> None:
@@ -93,10 +84,14 @@ class CharacterizationParser(HTMLParser):
         for sentence in sentences:
             extra_spaces: int = self.__get_start_spaces(sentence)
             if extra_spaces > 1:
-                self.log(self.tabs
-                         + 'extra space(s) detected after punctuation '
-                         f'in {self.characterization.name} - '
-                         f'{extra_spaces - 1} spaces')
+                self.data['punc_space'].append({
+                    'name': self.characterization.name,
+                    'space': extra_spaces - 1
+                })
+                # self.log(self.tabs
+                #          + 'extra space(s) detected after punctuation '
+                #          f'in {self.characterization.name} - '
+                #          f'{extra_spaces - 1} spaces')
 
 
     def validate_capitalization(self, data: str) -> None:
@@ -109,10 +104,14 @@ class CharacterizationParser(HTMLParser):
 
             val: int = ord(word[0])
             if val > 96 and val < 123:
-                capitalized: str = chr(ord(word[0]) - 32) + word[1:]
-                self.log(self.tabs + 'uncapitalized word detected in '
-                         f'{self.characterization.name} - ',
-                         f'{word} should be {capitalized}')
+                self.data['capitalization'].append({
+                    'name': self.characterization.name,
+                    'word': word,
+                    'capitalized': chr(ord(word[0]) - 32) + word[1:]
+                })
+                # self.log(self.tabs + 'uncapitalized word detected in '
+                #          f'{self.characterization.name} - ',
+                #          f'{word} should be {capitalized}')
 
 
     # determines how many spaces occur at the beginning of @data
@@ -170,10 +169,14 @@ class CharacterizationParser(HTMLParser):
                     and self.__prev_data.endswith(' ')):
                 extra_spaces: int \
                     = self.__get_end_spaces(self.__prev_data)
-                self.log(self.tabs
-                         + 'extra space(s) detected before a reference '
-                         f'in {self.characterization.name} '
-                         f'- {extra_spaces} space(s)')
+                self.data['refr_space'].append({
+                    'name': self.characterization.name,
+                    'space': extra_spaces
+                })
+                # self.log(self.tabs
+                #          + 'extra space(s) detected before a reference '
+                #          f'in {self.characterization.name} '
+                #          f'- {extra_spaces} space(s)')
 
     # determines how many spaces occur at the end of @data
     #
@@ -199,8 +202,12 @@ class CharacterizationParser(HTMLParser):
     def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
             if self.characterization != None:
-                self.log(self.tabs + 'invalid header in '
-                         f'{self.characterization.name} - {tag}')
+                self.data['inv_header'].append({
+                    'name': self.characterization.name,
+                    'tag': tag
+                })
+                # self.log(self.tabs + 'invalid header in '
+                #          f'{self.characterization.name} - {tag}')
             return False
 
         if tag == 'h3':
@@ -208,9 +215,13 @@ class CharacterizationParser(HTMLParser):
             return True
 
         if self.__prev_tag == '':
-            self.log(self.tabs + 'incorrect initial header in ',
-                     f'{self.characterization.name} - ',
-                     f'expected h3, but detected {tag}')
+            self.data['init_header'].append({
+                'name': self.characterization.name,
+                'tag': tag
+            })
+            # self.log(self.tabs + 'incorrect initial header in ',
+            #          f'{self.characterization.name} - ',
+            #          f'expected h3, but detected {tag}')
             return False
 
         level_re: re.Pattern = re.compile('[^3-5]')
@@ -220,10 +231,15 @@ class CharacterizationParser(HTMLParser):
             self.__prev_tag = tag
             return True
 
-        self.log(self.tabs + 'incorrect header in '
-                 f'{self.characterization.name} - '
-                 f'expected h{prev_level} or h{prev_level + 1}, '
-                 f'but detected {tag}')
+        self.data['inc_header'].append({
+            'name': self.characterization.name,
+            'prev_level': prev_level,
+            'tag': tag
+        })
+        # self.log(self.tabs + 'incorrect header in '
+        #          f'{self.characterization.name} - '
+        #          f'expected h{prev_level} or h{prev_level + 1}, '
+        #          f'but detected {tag}')
         return False
 
     # determines what happens when an end tag is detected
@@ -232,10 +248,3 @@ class CharacterizationParser(HTMLParser):
     #   tag (str): the type of tag encountered
     def handle_endtag(self, tag: str) -> None:
         pass
-
-    # method to print to the parser's out stream
-    def log(self, *strings: str) -> None:
-        concat_string: str = ''
-        for string in strings:
-            concat_string += string
-        print(concat_string, file=self.out)
