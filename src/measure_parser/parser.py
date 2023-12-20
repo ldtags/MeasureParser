@@ -355,31 +355,19 @@ class MeasureParser:
             'invalid': [],
             'unexpected': []
         }
-        # self.log('\nValidating Permutations:')
-        # invalid_perms: list[str] = []
         for permutation in self.measure.permutations:
             try:
                 valid_names: list[str] \
                     = self.get_valid_perm_names(permutation)
                 mapped_name: str = permutation.mapped_name
                 if mapped_name not in valid_names:
-                    # invalid_perms.append(permutation.reporting_name)
-                    # self.log('\tIncorrect Permutation '
-                    #          f'({permutation.reporting_name})'
-                    #          f'- {mapped_name} should be ' +
-                    #          (f'{valid_names[0]}' if len(valid_names) == 1
-                    #             else f'one of {valid_names}'))
                     data['invalid'].append({
                         'reporting': permutation.reporting_name,
                         'mapped_name': mapped_name,
                         'valid_names': valid_names
                     })
             except UnknownPermutationError as err:
-                # self.log(f'UNKNOWN PERMUTATION: {err.name}')
                 data['unexpected'].append(err.name)
-
-        # if len(invalid_perms) == 0:
-        #     self.log('\tAll permutations are valid')
 
         self.data['permutation'] = data
 
@@ -483,7 +471,7 @@ class MeasureParser:
     # specifies the control flow for parser logging
     def log_output(self, filepath: str | None=None) -> None:
         if filepath:
-            self.out = open(f'{filepath}-{self.measure.id}.txt', 'w+')
+            self.out = open(f'{filepath}/output-{self.measure.id}.txt', 'w+')
 
         self.log_measure_details()
         self.log_parameter_data()
@@ -507,7 +495,8 @@ class MeasureParser:
                  f'\tMeasure Name: {self.measure.name}\n'
                  f'\tPA Lead: {self.measure.pa_lead}\n'
                  f'\tStart Date: {self.measure.start_date}\n'
-                 f'\tEnd Date: {self.measure.end_date}\n\n')
+                 f'\tEnd Date: {self.measure.end_date}')
+        self.log('\n')
 
 
     def log_parameter_data(self) -> None:
@@ -516,19 +505,19 @@ class MeasureParser:
         self.log('\tMeasure Specific Parameters: ',
                  param_data['nonshared'])
         self.log()
-        self.log('\n\tUnexpected Shared Parameters: ',
+        self.log('\tUnexpected Shared Parameters: ',
                  param_data['unexpected'])
         self.log('\tMissing Shared Parameters: ',
                  param_data['missing'])
         self.log()
-        self.log('\n\tParameter Order:')
+        self.log('\tParameter Order:')
         unordered: list[str] = param_data['unordered']
         for param_name in unordered:
             self.log(f'\t\t{param_name} is out of order')
         if len(unordered) == 0:
             self.log(
                 '\t\tAll shared parameters are in the correct order')
-        self.log()
+        self.log('\n')
 
 
     def log_exclusion_table_data(self) -> None:
@@ -546,12 +535,12 @@ class MeasureParser:
             self.log('\t\t\tWarning: Incorrect amount of hyphens '
                      f'in {table_name}')
         if len(whitespace) == 0 and len(hyphen) == 0:
-            self.log('\t\tAll exclusion tables are valid')
-        self.log()
+            self.log('\tAll exclusion tables are valid')
+        self.log('\n')
 
 
     def log_value_table_data(self) -> None:
-        self.log('\nValidating Value Tables:')
+        self.log('Validating Value Tables:')
         table_data: dict[str, dict] = self.data['table']
         shared_data: dict[str, list[str]] = table_data['shared']
         self.log('\tUnexpected Shared Tables: ',
@@ -593,12 +582,15 @@ class MeasureParser:
         if len(nonshared_data['unordered']) == 0:
             self.log('\t\tAll non-shared value tables are in the '
                      'correct order')
+        self.log('\n')
 
 
     # prints a representation of every non-shared value table in @measure
     def log_value_tables(self) -> None:
-        self.log('\n\nStandard Non-Shared Value Tables:')
+        self.log('Standard Non-Shared Value Tables:')
         for table in self.measure.value_tables:
+            if self.measure.value_tables.index(table) != 0:
+                self.log()
             self.log(f'\tTable Name: {table.name}\n'
                      f'\t\tAPI Name: {table.api_name}\n'
                      f'\t\tParameters: {table.determinants}')
@@ -606,38 +598,97 @@ class MeasureParser:
             for column in table.columns:
                 self.log(f'\t\t\tColumn Name: {column.name}\n'
                          f'\t\t\t\tAPI Name: {column.api_name}\n'
-                         f'\t\t\t\tUnit: {column.unit}\n')
+                         f'\t\t\t\tUnit: {column.unit}')
+        self.log('\n')
 
 
     # prints out every calculation in @measure' name and API name
     def log_calculations(self) -> None:
-        self.log('\nAll Calculations:')
+        self.log('All Calculations:')
         for calculation in self.measure.calculations:
+            if self.measure.calculations.index(calculation) != 0:
+                self.log()
             self.log(f'\tCalculation Name: {calculation.name}\n'
                      f'\t\tAPI Name: {calculation.api_name}\n'
                      f'\t\tUnit: {calculation.unit}\n'
-                     f'\t\tParameters: {calculation.determinants}\n')
+                     f'\t\tParameters: {calculation.determinants}')
+        self.log('\n')
+
+
+    def log_permutation_data(self) -> None:
+        self.log('Validating permutations:')
+        perm_data: dict[str, list] = self.data['permutation']
+        for perm in perm_data['invalid']:
+            reporting_name: str = perm['reporting']
+            mapped_name: str = perm['mapped_name']
+            valid_names: list[str] = perm['valid_names']
+            self.log(f'\tInvalid Permutation ({reporting_name}) - '
+                     f'{mapped_name} should be ' +
+                     (f'{valid_names[0]}' if len(valid_names) == 1
+                        else f'one of {valid_names}'))
+
+        for perm_name in perm_data['unexpected']:
+            self.log(f'\tUnexpected Permutation - {perm_name}')
+
+        if len(perm_data['invalid']) + len(perm_data['unexpected']) == 0:
+            self.log('\tAll permutations are valid')
+        self.log('\n')
 
 
     # prints out every permutation in @measure's reporting name,
     # verbose name, and mapped field
     def log_permutations(self) -> None:
-        self.log('\n\nAll Permutations:')
+        self.log('All Permutations:')
         for permutation in self.measure.permutations:
             perm_data: dict[str, str] \
                 = db.get_permutation_data(permutation.reporting_name)
 
+            if self.measure.permutations.index(permutation) != 0:
+                self.log()
             try:
                 verbose_name = perm_data['verbose']
                 self.log(f'\t{permutation.reporting_name}:\n'
                          f'\t\tVerbose Name: {verbose_name}\n'
-                         f'\t\tMapped Field: {permutation.mapped_name}\n')
+                         f'\t\tMapped Field: {permutation.mapped_name}')
             except:
                 continue
+        self.log('\n')
 
 
     def log_characterization_data(self) -> None:
-        pass
+        self.log('Parsing characterizations:')
+        char_data: dict[str, list] = self.data['characterization']
+        for err in char_data['punc_space']:
+            self.log('\tExtra space(s) detected after punctuation '
+                     f'in {err["name"]} - {err["spaces"]} space(s)')
+
+        for err in char_data['refr_space']:
+            self.log('\tExtra space(s) detected before a reference '
+                     f'in {err["name"]} - {err["spaces"]} space(s)')
+
+        for err in char_data['capitalization']:
+            word: str = err["word"]
+            capitalized: str = chr(ord(word[0]) - 32) + word[1:]
+            self.log('\tUncapitalized word detected in '
+                     f'{err["name"]} - {word} should be {capitalized}')
+
+        for err in char_data['inv_header']:
+            self.log(f'\tInvalid header in {err["name"]} - {err["tag"]}')
+
+        for err in char_data['init_header']:
+            self.log(f'\tIncorrect initial header in {err["name"]} - '
+                     f'expected h3, but detected {err["tag"]}')
+
+        for err in char_data['inc_header']:
+            prev: int = err['prev_level']
+            self.log(f'\tIncorrect header in {err["name"]} - '
+                     f'expected h{prev} or h{prev + 1}, '
+                     f'but detected {err["tag"]}')
+
+        for err_list in char_data.values():
+            if len(err_list) != 0:
+                return
+        self.log('\tAll characterizations are valid')
 
 
     # method to print to the parser's out stream

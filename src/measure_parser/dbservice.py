@@ -2,7 +2,7 @@ import sys
 import os
 import sqlite3
 from typing import Any, Optional
-from src.measure_parser.objects import Measure, Characterization
+from src.measure_parser.objects import Measure
 from src.measure_parser.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError

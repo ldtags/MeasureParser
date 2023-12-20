@@ -86,12 +86,8 @@ class CharacterizationParser(HTMLParser):
             if extra_spaces > 1:
                 self.data['punc_space'].append({
                     'name': self.characterization.name,
-                    'space': extra_spaces - 1
+                    'spaces': extra_spaces - 1
                 })
-                # self.log(self.tabs
-                #          + 'extra space(s) detected after punctuation '
-                #          f'in {self.characterization.name} - '
-                #          f'{extra_spaces - 1} spaces')
 
 
     def validate_capitalization(self, data: str) -> None:
@@ -106,12 +102,8 @@ class CharacterizationParser(HTMLParser):
             if val > 96 and val < 123:
                 self.data['capitalization'].append({
                     'name': self.characterization.name,
-                    'word': word,
-                    'capitalized': chr(ord(word[0]) - 32) + word[1:]
+                    'word': word
                 })
-                # self.log(self.tabs + 'uncapitalized word detected in '
-                #          f'{self.characterization.name} - ',
-                #          f'{word} should be {capitalized}')
 
 
     # determines how many spaces occur at the beginning of @data
@@ -171,12 +163,8 @@ class CharacterizationParser(HTMLParser):
                     = self.__get_end_spaces(self.__prev_data)
                 self.data['refr_space'].append({
                     'name': self.characterization.name,
-                    'space': extra_spaces
+                    'spaces': extra_spaces
                 })
-                # self.log(self.tabs
-                #          + 'extra space(s) detected before a reference '
-                #          f'in {self.characterization.name} '
-                #          f'- {extra_spaces} space(s)')
 
     # determines how many spaces occur at the end of @data
     #
@@ -206,8 +194,6 @@ class CharacterizationParser(HTMLParser):
                     'name': self.characterization.name,
                     'tag': tag
                 })
-                # self.log(self.tabs + 'invalid header in '
-                #          f'{self.characterization.name} - {tag}')
             return False
 
         if tag == 'h3':
@@ -219,9 +205,6 @@ class CharacterizationParser(HTMLParser):
                 'name': self.characterization.name,
                 'tag': tag
             })
-            # self.log(self.tabs + 'incorrect initial header in ',
-            #          f'{self.characterization.name} - ',
-            #          f'expected h3, but detected {tag}')
             return False
 
         level_re: re.Pattern = re.compile('[^3-5]')
@@ -236,10 +219,6 @@ class CharacterizationParser(HTMLParser):
             'prev_level': prev_level,
             'tag': tag
         })
-        # self.log(self.tabs + 'incorrect header in '
-        #          f'{self.characterization.name} - '
-        #          f'expected h{prev_level} or h{prev_level + 1}, '
-        #          f'but detected {tag}')
         return False
 
     # determines what happens when an end tag is detected
