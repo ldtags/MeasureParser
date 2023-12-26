@@ -547,29 +547,34 @@ class MeasureParser:
                  shared_data['unexpected'])
         self.log('\tMissing Shared Tables: ',
                  shared_data['missing'])
+        self.log()
 
         nonshared_data: dict[str, list[str]] = table_data['nonshared']
-        self.log('\n\tUnexpected Non-Shared Tables: ',
+        self.log('\tUnexpected Non-Shared Tables: ',
                  nonshared_data['unexpected'])
         self.log('\tMissing Non-Shared Tables: ',
                  nonshared_data['missing'])
+        self.log()
 
-        self.log('\n\tValue Table Columns:')
-        for column in table_data['column']:
-            if getattr(column, 'name', None):
-                name_err: dict[str, str] = column['name']
-                self.log(f'\t\tTable {name_err["table"]} is missing'
-                         f' column {name_err["column"]}')
-            if getattr(column, 'unit', None):
-                unit_err: dict[str, dict[str, str]]
-                self.log(f'\t\tTable {unit_err["table"]} may have an '
-                         f'incorrect unit in {unit_err["column"]}, '
-                         f'{unit_err["invalid"]} should be '
-                         f'{unit_err["valid"]}')
-        if len(table_data) == 0:
+        self.log('\tValue Table Columns:')
+        column_errs: dict[str, list] = table_data['column']
+        for err in column_errs['name']:
+            name_err: dict[str, str] = err['name']
+            self.log(f'\t\tTable {name_err["table"]} is missing'
+                     f' column {name_err["column"]}')
+
+        for err in column_errs['unit']:
+            unit_err: dict[str, dict[str, str]]
+            self.log(f'\t\tTable {unit_err["table"]} may have an '
+                     f'incorrect unit in {unit_err["column"]}, '
+                     f'{unit_err["invalid"]} should be '
+                     f'{unit_err["valid"]}')
+
+        if all(err_list for err_list in column_errs):
             self.log('\t\tAll table columns are valid')
+        self.log()
 
-        self.log('\n\tValue Table Order: ')
+        self.log('\tValue Table Order: ')
 
         for table in shared_data['unordered']:
             self.log(f'\t\t{table} is out of order')
@@ -685,10 +690,8 @@ class MeasureParser:
                      f'expected h{prev} or h{prev + 1}, '
                      f'but detected {err["tag"]}')
 
-        for err_list in char_data.values():
-            if len(err_list) != 0:
-                return
-        self.log('\tAll characterizations are valid')
+        if all(err_list for err_list in char_data):
+            self.log('\tAll characterizations are valid')
 
 
     # method to print to the parser's out stream
