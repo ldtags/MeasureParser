@@ -1,5 +1,9 @@
 import json
 from io import TextIOWrapper
+from jsonschema import (
+    validate,
+    ValidationError
+)
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
@@ -18,7 +22,8 @@ from src.measure_parser.htmlparser import CharacterizationParser
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
-    UnknownPermutationError
+    UnknownPermutationError,
+    InvalidFileError
 )
 
 class MeasureParser:
@@ -35,12 +40,15 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, validate_schema: bool):
         measure_file: TextIOWrapper = open(filepath, 'r')
-        self.measure: Measure = Measure(
-            json.loads(measure_file.read(),
-                       object_hook=lambda dict: Namespace(**dict)))
+        measure_dict: dict \
+            = json.loads(measure_file.read(),
+                         object_hook=lambda dict: Namespace(**dict))
         measure_file.close()
+        if validate_schema and not self.validate_schema(measure_dict):
+            raise InvalidFileError(filename=filepath)
+        self.measure: Measure = Measure(measure_dict)
 
         self.data: dict[str, object] = {}
 
@@ -65,6 +73,19 @@ class MeasureParser:
         except Exception as err:
             print(f'ERROR - something went wrong:\n{err}')
             return
+
+
+    def validate_schema(self, measure_dict: dict) -> bool:
+        try:
+            schema_file: TextIOWrapper \
+                = open('./measure.schema.json', 'r')
+            schema: dict = json.loads(schema_file)
+            validate(instance=measure_dict, schema=schema)
+        except OSError:
+            return False
+        except ValidationError:
+            return False
+        return True
 
 
     # specifies the control flow for the generic parsing of @measure

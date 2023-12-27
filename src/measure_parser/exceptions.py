@@ -78,3 +78,16 @@ class DatabaseContentError(Exception):
     def __init__(self, message: str='an unexpected database content error has occurred'):
         self.message: str = message
         super().__init__(self.message)
+
+
+class InvalidFileError(Exception):
+    def __init__(self, message: str=None, filename: str=None):
+        if message != None:
+            self.message = message
+        elif filename != None:
+            if '\\' in filename:
+                filename = filename[filename.index('\\') + 1:]
+            self.message = f'{filename} is not a valid eTRM measure JSON file'
+        else:
+            self.message = 'the input file is not a valid eTRM measure JSON file'
+        super().__init__(self.message)

@@ -1,0 +1,304 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://example.com/measure.schema.json",
+    "title": "eTRM Measure JSON Schema",
+    "description": "A file that describes an eTRM measure",
+    "type": "object",
+    "properties": {
+        "owned_by_user": {
+            "description": "The owner of the measure",
+            "type": "string"
+        },
+        "determinants": {
+            "description": "List of measure specific parameters",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The standard name",
+                        "type": "string"
+                    },
+                    "api_name": {
+                        "description": "The API name",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "description": "Non-shared parameter labels",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "description": "Standard name for the label",
+                                    "type": "string"
+                                },
+                                "api_name": {
+                                    "description": "API name for the label",
+                                    "type": "string"
+                                },
+                                "active": {
+                                    "description": "determines if the label is active",
+                                    "type": "boolean"
+                                },
+                                "description": {
+                                    "description": "defines the label",
+                                    "type": ["string", "null"]
+                                }
+                            }
+                        }
+                    },
+                    "description": {
+                        "description": "defines the parameter",
+                        "type": ["string", "null"]
+                    },
+                    "order": {
+                        "description": "the order of the parameter",
+                        "type": "integer"
+                    },
+                    "reference_refs": {
+                        "description": "i'm actually not too sure",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "shared_determinant_refs": {
+            "description": "Shared parameters",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "order": {
+                        "type": "integer"
+                    },
+                    "version": {
+                        "type": "object",
+                        "properties": {
+                            "version_string": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "active_labels": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": ["order", "version", "active_labels"]
+            }
+        },
+        "shared_lookup_refs": {
+            "description": "Shared value tables",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "order": {
+                        "type": "integer"
+                    },
+                    "version": {
+                        "type": "object",
+                        "properties": {
+                            "version_string": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "required": ["order", "version"]
+            }
+        },
+        "value_tables": {
+            "description": "Measure specific value tables",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "api_name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": ["string", "null"]
+                    },
+                    "order": {
+                        "type": "integer"
+                    },
+                    "determinants": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "api_name": {
+                                    "type": "string"
+                                },
+                                "unit": {
+                                    "type": "string"
+                                },
+                                "reference_refs": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "reference_refs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "calculations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "api_name": {
+                        "type": "string"
+                    },
+                    "order": {
+                        "type": "integer"
+                    },
+                    "unit": {
+                        "type": "string"
+                    },
+                    "determinants": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "reference_refs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "exclusion_tables": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "api_name": {
+                        "type": "string"
+                    },
+                    "order": {
+                        "type": "integer"
+                    },
+                    "determinants": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "values": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": ["string", "boolean"]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "ds_additional_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "users": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "MeasureID": {
+            "type": "string"
+        },
+        "MeasureVersionID": {
+            "type": "string"
+        },
+        "MeasureName": {
+            "type": "string"
+        },
+        "UseCategory": {
+            "type": "string"
+        },
+        "PALead": {
+            "type": "string"
+        },
+        "StartDate": {
+            "type": "string"
+        },
+        "EndDate": {
+            "type": ["string", "null"]
+        },
+        "Status": {
+            "type": "string"
+        }
+    },
+    "required": ["owned_by_user", "determinants"]
+}
