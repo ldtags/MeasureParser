@@ -1,4 +1,5 @@
 import json
+import os
 from io import TextIOWrapper
 from jsonschema import (
     validate,
@@ -75,17 +76,22 @@ class MeasureParser:
             return
 
 
+    # validates the input schema to ensure that it is a measure file
     def validate_schema(self, measure_dict: dict) -> bool:
+        schema_file: TextIOWrapper
+        if os.path.isfile('./resources/measure.schema.json'):
+            schema_file = open('./resources/measure.schema.json', 'r')
+        elif os.path.isfile('./measure.schema.json'):
+            schema_file = open('./measure.schema.json', 'r')
+        else:
+            return False
+
         try:
-            schema_file: TextIOWrapper \
-                = open('./measure.schema.json', 'r')
             schema: dict = json.loads(schema_file)
             validate(instance=measure_dict, schema=schema)
-        except OSError:
-            return False
+            return True
         except ValidationError:
             return False
-        return True
 
 
     # specifies the control flow for the generic parsing of @measure
