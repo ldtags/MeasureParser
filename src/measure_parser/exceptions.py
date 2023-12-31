@@ -73,12 +73,10 @@ class DatabaseConnectionError(Exception):
         self.message: str = message
         super().__init__(self.message)
 
-
 class DatabaseContentError(Exception):
     def __init__(self, message: str='an unexpected database content error has occurred'):
         self.message: str = message
         super().__init__(self.message)
-
 
 class InvalidFileError(Exception):
     def __init__(self, message: str=None, filename: str=None):
@@ -90,4 +88,9 @@ class InvalidFileError(Exception):
             self.message = f'{filename} is not a valid eTRM measure JSON file'
         else:
             self.message = 'the input file is not a valid eTRM measure JSON file'
+        super().__init__(self.message)
+
+class SchemaNotFoundError(Exception):
+    def __init__(self):
+        self.message = 'The eTRM measure JSON schema has been moved, please re-download your parser'
         super().__init__(self.message)

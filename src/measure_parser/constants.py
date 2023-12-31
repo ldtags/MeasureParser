@@ -1,5 +1,4 @@
-'''Constants used in the Cal TF Measure Parser
-'''
+'''Constants used in the Cal TF Measure Parser'''
 
 # Parameters #
 

@@ -1,13 +1,15 @@
 # MeasureParser
-A command-line driven measure parsing application
+A tool for validating eTRM measure JSON files
 
 ## Development Setup
   1. Navigate to the root directory of the application in your CLI
-  2. Run the command  *pip install -r requirements.txt*
+  2. Set up your virtual environment
+  3. Run the command  *pip install -r requirements.txt*
+  4. Start coding!
 
 ## Building the Executable
   1. Navigate to the root directory of the application in your CLI
-  2. Run the command  *PyInstaller [path to main python file] --noconfirm*
+  2. Run the command  *PyInstaller --noconfirm main.spec*
 
 ## Running the Script
   1. Navigate to the src/measure_parser directory or the location of the executable in your CLI

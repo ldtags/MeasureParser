@@ -12,7 +12,7 @@ venv/
 # pyinstaller
 build/
 dist/
-__main__.spec
+*.spec
 
 # Output
 out.txt

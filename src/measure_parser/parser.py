@@ -1,10 +1,5 @@
 import json
-import os
 from io import TextIOWrapper
-from jsonschema import (
-    validate,
-    ValidationError
-)
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
@@ -41,14 +36,12 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, filepath: str, validate_schema: bool):
+    def __init__(self, filepath: str):
         measure_file: TextIOWrapper = open(filepath, 'r')
         measure_dict: dict \
             = json.loads(measure_file.read(),
                          object_hook=lambda dict: Namespace(**dict))
         measure_file.close()
-        if validate_schema and not self.validate_schema(measure_dict):
-            raise InvalidFileError(filename=filepath)
         self.measure: Measure = Measure(measure_dict)
 
         self.data: dict[str, object] = {}
@@ -74,24 +67,6 @@ class MeasureParser:
         except Exception as err:
             print(f'ERROR - something went wrong:\n{err}')
             return
-
-
-    # validates the input schema to ensure that it is a measure file
-    def validate_schema(self, measure_dict: dict) -> bool:
-        schema_file: TextIOWrapper
-        if os.path.isfile('./resources/measure.schema.json'):
-            schema_file = open('./resources/measure.schema.json', 'r')
-        elif os.path.isfile('./measure.schema.json'):
-            schema_file = open('./measure.schema.json', 'r')
-        else:
-            return False
-
-        try:
-            schema: dict = json.loads(schema_file)
-            validate(instance=measure_dict, schema=schema)
-            return True
-        except ValidationError:
-            return False
 
 
     # specifies the control flow for the generic parsing of @measure
