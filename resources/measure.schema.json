@@ -84,7 +84,7 @@
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": { "$ref": "#/$defs/name" },
+                                "name": { "type": ["string", "null"] },
                                 "api_name": { "$ref": "#/$defs/api_name" },
                                 "unit": { "$ref": "#/$defs/unit" },
                                 "reference_refs": { "$ref": "#/$defs/reference_refs" }
