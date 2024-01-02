@@ -1,16 +1,12 @@
 import sys
-import json
-import errno
 from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
-from src.measure_parser.utils import is_etrm_measure
 from src.measure_parser.parser import MeasureParser
 from src.measure_parser.exceptions import (
     MeasureFormatError,
-    InvalidFileError,
-    SchemaNotFoundError
+    InvalidFileError
 )
 
 
@@ -44,21 +40,6 @@ def parse_arguments() -> Namespace:
         help='Select a folder to store the output file',
         default=sys.executable[0:sys.executable.rindex('\\')])
 
-    # parser_config = argparser.add_argument_group('Parser Config',
-    #     description='Optional flags that determine how the parser is run',
-    #     gooey_options={
-    #         'show_border': True
-    #     })
-
-    # parser_config.add_argument('--validate_schema',
-    #     widget='BlockCheckbox',
-    #     metavar='Validate Schema',
-    #     action=BooleanOptionalAction,
-    #     default=True,
-    #     gooey_options={
-    #         'checkbox_label': ' Validate Schema'
-    #     })
-
     return argparser.parse_args()
 
 
@@ -67,45 +48,19 @@ def parse_arguments() -> Namespace:
     program_description='Parses and validates eTRM measures'
 )
 def main() -> None:
-    args: Namespace = parse_arguments()
+    args = parse_arguments()
     filepath: str = getattr(args, 'filepath', None)
     if filepath == None:
-        print('measure JSON file not specified')
+        print('ERROR - measure JSON file not specified')
+        return
 
     outpath: str = getattr(args, 'output', None)
     if outpath == None:
-        print('output directory not specified')
-
-    validate_schema: bool = getattr(args, 'validate_schema', True)
-    try:
-        if validate_schema and not is_etrm_measure(filepath):
-            print(f'ERROR - {filepath} is either missing required '
-                  'data or is not an eTRM measure JSON file')
-            return
-    except SchemaNotFoundError as err:
-        print(f'ERROR - {err.message}')
-        return
-    except json.JSONDecodeError:
-        print('ERROR - the measure schema file has been modified, '
-              'please re-download your parser')
-        return
-    except MeasureFormatError:
-        print(f'ERROR - {filepath} is not a properly formatted JSON file')
-        return
-    except OSError as err:
-        match err.errno:
-            case errno.EPERM:
-                print(f'ERROR - {filepath} cannot be accessed')
-            case errno.ENOENT:
-                print(f'ERROR - {filepath} does not exist')
-            case _:
-                print('ERROR - an unkown I/O error has occurred while '
-                      'validating the JSON schema')
-                print_exc()
+        print('ERROR - output directory not specified')
         return
 
     try:
-        parser: MeasureParser = MeasureParser(filepath)
+        parser = MeasureParser(filepath)
         parser.parse()
         parser.log_output(outpath)
     except OSError as err:

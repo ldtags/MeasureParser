@@ -1,88 +1,48 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://example.com/measure.schema.json",
-    "title": "eTRM Measure JSON Schema",
+    "title": "eTRM Measure",
     "description": "A file that describes an eTRM measure",
     "type": "object",
     "properties": {
         "owned_by_user": {
-            "description": "The owner of the measure",
             "type": "string"
         },
         "determinants": {
-            "description": "List of measure specific parameters",
+            "description": "Measure specific (non-shared) parameter",
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "description": "The standard name",
-                        "type": "string"
-                    },
-                    "api_name": {
-                        "description": "The API name",
-                        "type": "string"
-                    },
+                    "name": { "$ref": "#/$defs/name" },
+                    "api_name": { "$ref": "#/$defs/api_name" },
                     "labels": {
-                        "description": "Non-shared parameter labels",
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": {
-                                    "description": "Standard name for the label",
-                                    "type": "string"
-                                },
-                                "api_name": {
-                                    "description": "API name for the label",
-                                    "type": "string"
-                                },
+                                "name": { "$ref": "#/$defs/name" },
+                                "api_name": { "$ref": "#/$defs/api_name" },
                                 "active": {
-                                    "description": "determines if the label is active",
                                     "type": "boolean"
                                 },
-                                "description": {
-                                    "description": "defines the label",
-                                    "type": ["string", "null"]
-                                }
+                                "description": { "$ref": "#/$defs/description" }
                             }
                         }
                     },
-                    "description": {
-                        "description": "defines the parameter",
-                        "type": ["string", "null"]
-                    },
-                    "order": {
-                        "description": "the order of the parameter",
-                        "type": "integer"
-                    },
-                    "reference_refs": {
-                        "description": "i'm actually not too sure",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
+                    "description": { "$ref": "#/$defs/description" },
+                    "order": { "$ref": "#/$defs/order" },
+                    "reference_refs": { "$ref": "#/$defs/reference_refs" }
                 }
             }
         },
         "shared_determinant_refs": {
-            "description": "Shared parameters",
+            "description": "Shared parameter",
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "order": {
-                        "type": "integer"
-                    },
-                    "version": {
-                        "type": "object",
-                        "properties": {
-                            "version_string": {
-                                "type": "string"
-                            }
-                        }
-                    },
+                    "order": { "$ref": "#/$defs/order" },
+                    "version": { "$ref": "#/$defs/version" },
                     "active_labels": {
                         "type": "array",
                         "items": {
@@ -94,73 +54,40 @@
             }
         },
         "shared_lookup_refs": {
-            "description": "Shared value tables",
+            "description": "Shared value table",
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "order": {
-                        "type": "integer"
-                    },
-                    "version": {
-                        "type": "object",
-                        "properties": {
-                            "version_string": {
-                                "type": "string"
-                            }
-                        }
-                    }
+                    "order": { "$ref": "#/$defs/order" },
+                    "version": { "$ref": "#/$defs/version" }
                 },
                 "required": ["order", "version"]
             }
         },
         "value_tables": {
-            "description": "Measure specific value tables",
+            "description": "Measure specific (non-shared) value table",
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "api_name": {
-                        "type": "string"
-                    },
+                    "name": { "$ref": "#/$defs/name" },
+                    "api_name": { "$ref": "#/$defs/api_name" },
                     "type": {
                         "type": "string"
                     },
-                    "description": {
-                        "type": ["string", "null"]
-                    },
-                    "order": {
-                        "type": "integer"
-                    },
-                    "determinants": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
+                    "description": { "$ref": "#/$defs/description" },
+                    "order": { "$ref": "#/$defs/order" },
+                    "determinants": { "$ref": "#/$defs/determinants" },
                     "columns": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": {
-                                    "type": "string"
-                                },
-                                "api_name": {
-                                    "type": "string"
-                                },
-                                "unit": {
-                                    "type": "string"
-                                },
-                                "reference_refs": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
+                                "name": { "$ref": "#/$defs/name" },
+                                "api_name": { "$ref": "#/$defs/api_name" },
+                                "unit": { "$ref": "#/$defs/unit" },
+                                "reference_refs": { "$ref": "#/$defs/reference_refs" }
                             }
                         }
                     },
@@ -173,12 +100,7 @@
                             }
                         }
                     },
-                    "reference_refs": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
+                    "reference_refs": { "$ref": "#/$defs/reference_refs" }
                 }
             }
         },
@@ -187,24 +109,11 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "api_name": {
-                        "type": "string"
-                    },
-                    "order": {
-                        "type": "integer"
-                    },
-                    "unit": {
-                        "type": "string"
-                    },
-                    "determinants": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
+                    "name": { "$ref": "#/$defs/name" },
+                    "api_name": { "$ref": "#/$defs/api_name" },
+                    "order": { "$ref": "#/$defs/order" },
+                    "unit": { "$ref": "#/$defs/unit" },
+                    "determinants": { "$ref": "#/$defs/determinants" },
                     "values": {
                         "type": "array",
                         "items": {
@@ -214,12 +123,7 @@
                             }
                         }
                     },
-                    "reference_refs": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
+                    "reference_refs": { "$ref": "#/$defs/reference_refs" }
                 }
             }
         },
@@ -228,21 +132,10 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "api_name": {
-                        "type": "string"
-                    },
-                    "order": {
-                        "type": "integer"
-                    },
-                    "determinants": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
+                    "name": { "$ref": "#/$defs/name" },
+                    "api_name": { "$ref": "#/$defs/api_name" },
+                    "order": { "$ref": "#/$defs/order" },
+                    "determinants": { "$ref": "#/$defs/determinants" },
                     "values": {
                         "type": "array",
                         "items": {
@@ -302,5 +195,32 @@
     },
     "required": ["owned_by_user", "determinants", "shared_determinant_refs",
                  "shared_lookup_refs", "value_tables", "calculations",
-                 "exclusion_tables"]
+                 "exclusion_tables"],
+    "$defs": {
+        "name": { "type": "string" },
+        "api_name": { "type": "string" },
+        "order": { "type": "integer" },
+        "unit": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "determinants": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reference_refs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "version": {
+            "type": "object",
+            "properties": {
+                "version_string": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }

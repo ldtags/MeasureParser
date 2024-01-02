@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 try:
     from types import SimpleNamespace as Namespace
@@ -6,6 +7,7 @@ except ImportError:
 
 import src.measure_parser.constants as cnst
 import src.measure_parser.dbservice as db
+from src.measure_parser.utils import is_etrm_measure
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
@@ -15,7 +17,8 @@ from src.measure_parser.exceptions import (
     MeasureFormatError,
     ColumnFormatError,
     CalculationFormatError,
-    RequiredCharacterizationError
+    RequiredCharacterizationError,
+    InvalidFileError
 )
 
 
@@ -206,7 +209,15 @@ class Measure:
                                                     characterizations
     """
 
-    def __init__(self, measure: Namespace):
+    def __init__(self, filepath: str):
+        if not is_etrm_measure(filepath):
+            raise InvalidFileError(filename=filepath)
+
+        with open(filepath, 'r') as measure_file:
+            measure: Namespace \
+                = json.loads(measure_file.read(),
+                             object_hook=lambda dict: Namespace(**dict))
+
         try:
             self.owner: str = getattr(measure, 'owned_by_user')
 

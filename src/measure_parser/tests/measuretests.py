@@ -1,12 +1,5 @@
-import json
 import unittest as ut
 
-try:
-    from types import SimpleNamespace as Namespace
-except ImportError:
-    from argparse import Namespace
-
-from src.measure_parser.utils import is_etrm_measure
 from src.measure_parser.objects import (
     Measure,
     Parameter,
@@ -17,23 +10,10 @@ from src.measure_parser.objects import (
     Column
 )
 
-def create_measure(filepath: str) -> Measure | None:
-    if not is_etrm_measure(filepath):
-        return None
-
-    try:
-        with open(filepath, 'r') as measure_file:
-            return Measure(
-                json.loads(measure_file.read(),
-                           object_hook=lambda dict: Namespace(**dict)))
-    except OSError:
-        print(filepath + ' not found')
-        return None
-
 
 class TestMeasure(ut.TestCase):
     def test_creation(self):
-        measure: Measure = create_measure('./resources/SWCR002.json')
+        measure = Measure('./resources/SWCR002.json')
         self.assertEqual(measure.owner, '')
         self.assertEqual(measure.id, 'SWCR002')
         self.assertEqual(measure.version_id, 'SWCR002-03')
@@ -92,7 +72,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_contains(self):
-        measure: Measure = create_measure('./resources/SWCR014.json')
+        measure = Measure('./resources/SWCR014.json')
         self.assertTrue(measure.contains_param('MeasAppType'))
         self.assertTrue(measure.contains_param('BldgType'))
         self.assertTrue(measure.contains_param('LightingType'))
@@ -139,7 +119,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_getters(self):
-        measure: Measure = create_measure('./resources/SWCR014.json')
+        measure = Measure('./resources/SWCR014.json')
         self.assertTrue(measure.get_shared_parameter('MeasAppType') != None)
         self.assertTrue(measure.get_shared_parameter('BldgType') != None)
         self.assertTrue(measure.get_shared_parameter('iEBldgType') != None)
@@ -168,7 +148,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_measure_queries(self):
-        measure: Measure = create_measure('./resources/SWCR002.json')
+        measure = Measure('./resources/SWCR002.json')
         self.assertTrue(measure.contains_MAT_label('NR'))
         self.assertFalse(measure.contains_MAT_label('NR', 'NC'))
         self.assertFalse(measure.contains_MAT_label('AOE'))
@@ -185,7 +165,7 @@ class TestMeasure(ut.TestCase):
         self.assertFalse(measure.is_interactive())
         self.assertEqual(measure.get_criteria(), ['REQ', 'DEF_GSIA', 'RES_NDEF', 'MAT_NCNR'])
 
-        measure = create_measure('./resources/SWCR014.json')
+        measure = Measure('./resources/SWCR014.json')
         self.assertTrue(measure.contains_MAT_label('NR', 'NC'))
         self.assertFalse(measure.is_DEER())
         self.assertFalse(measure.is_WEN())

@@ -84,7 +84,7 @@ class InvalidFileError(Exception):
             self.message = message
         elif filename != None:
             if '\\' in filename:
-                filename = filename[filename.index('\\') + 1:]
+                filename = filename[filename.rindex('\\') + 1:]
             self.message = f'{filename} is not a valid eTRM measure JSON file'
         else:
             self.message = 'the input file is not a valid eTRM measure JSON file'
@@ -93,4 +93,9 @@ class InvalidFileError(Exception):
 class SchemaNotFoundError(Exception):
     def __init__(self):
         self.message = 'The eTRM measure JSON schema has been moved, please re-download your parser'
+        super().__init__(self.message)
+
+class CorruptedSchemaError(Exception):
+    def __init__(self):
+        self.message = 'The eTRM measure JSON schema has been corrupted, please re-download your parser'
         super().__init__(self.message)

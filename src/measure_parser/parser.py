@@ -1,9 +1,4 @@
-import json
 from io import TextIOWrapper
-try:
-    from types import SimpleNamespace as Namespace
-except ImportError:
-    from argparse import Namespace
 
 import src.measure_parser.dbservice as db
 from src.measure_parser.objects import (
@@ -18,8 +13,7 @@ from src.measure_parser.htmlparser import CharacterizationParser
 from src.measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
-    UnknownPermutationError,
-    InvalidFileError
+    UnknownPermutationError
 )
 
 class MeasureParser:
@@ -37,15 +31,8 @@ class MeasureParser:
     """
 
     def __init__(self, filepath: str):
-        measure_file: TextIOWrapper = open(filepath, 'r')
-        measure_dict: dict \
-            = json.loads(measure_file.read(),
-                         object_hook=lambda dict: Namespace(**dict))
-        measure_file.close()
-        self.measure: Measure = Measure(measure_dict)
-
+        self.measure: Measure = Measure(filepath)
         self.data: dict[str, object] = {}
-
         self.out: TextIOWrapper | None = None
 
         try:
