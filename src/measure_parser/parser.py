@@ -145,8 +145,7 @@ class MeasureParser:
             'name': [],
             'unit': []
         }
-        column_dict: dict[str, list[dict]] \
-            = db.get_table_columns(measure=self.measure)
+        column_dict = db.get_table_columns(measure=self.measure)
 
         for table in self.measure.value_tables:
             for column_data in column_dict[table.api_name]:
@@ -162,7 +161,7 @@ class MeasureParser:
                     })
                     continue
     
-                column: Column = table.get_column(api_name)
+                column = table.get_column(api_name)
                 unit: str = getattr(column_data, 'unit', None)
                 if not unit == column.unit:
                     data['unit'].append({

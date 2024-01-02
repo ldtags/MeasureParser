@@ -203,8 +203,7 @@ def get_table_columns(measure: Measure=None,
 
     if measure:
         criteria: list[str] = []
-        mat_labels: list[str] \
-            = measure.get_shared_parameter('MeasAppType').labels
+        mat_labels = measure.get_shared_parameter('MeasAppType').labels
         if 'AR' in mat_labels:
             criteria.append('AR_MAT')
             if len(mat_labels) > 2:
@@ -215,6 +214,7 @@ def get_table_columns(measure: Measure=None,
             else:
                 query += ' AND '
             query += f'criteria IN {queryfy(criteria)}'
+            query += ' OR criteria IS NULL'
 
     response: list[tuple] = cursor.execute(query).fetchall()
     column_dict: dict[str, list[dict[str, str]]] = {}
