@@ -5,8 +5,7 @@ from argparse import Namespace
 
 from measureparser.parser import MeasureParser
 from measureparser.exceptions import (
-    MeasureFormatError,
-    InvalidFileError
+    MeasureFormatError
 )
 
 
@@ -62,13 +61,8 @@ def main() -> None:
         parser = MeasureParser(filepath)
         parser.parse()
         parser.log_output(outpath)
-    except OSError as err:
-        print(f'ERROR[{err.errno}] - {outpath} not found')
     except MeasureFormatError as err:
         print(f'A formatting error was encountered in {filepath}:',
-              f'\n{err.message}')
-    except InvalidFileError as err:
-        print(f'The file {filepath} is not valid:',
               f'\n{err.message}')
     except Exception as err:
         print(f'An unhandled error occurred while parsing {filepath}:',
