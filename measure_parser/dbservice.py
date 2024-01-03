@@ -7,24 +7,17 @@ try:
 except ImportError:
     from argparse import Namespace
 
-
-from measure_parser.objects import Measure
-from measure_parser.exceptions import (
+import objects as obj
+from exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
 
 # connecting the database
-# __filepath__: str \
-#     = sys.executable[0:sys.executable.rindex('\\')] + '\\database.db'
-# connection: sqlite3.Connection
-# if os.path.isfile(__filepath__):
-#     connection = sqlite3.connect(__filepath__)
-# elif os.path.isfile('database.db'):
-#     connection = sqlite3.connect('database.db')
-# else:
-#     raise DatabaseConnectionError('database file not found')
-connection = sqlite3.connect('./resources/database.db')
+__db_filepath = './resources/database.db'
+if not os.path.isfile(__db_filepath):
+    raise DatabaseConnectionError('database file not found')
+connection = sqlite3.connect(__db_filepath)
 cursor = connection.cursor()
 if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
     raise DatabaseContentError('database is empty')
@@ -38,7 +31,7 @@ if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
 #
 # Returns:
 #   list[str]   : a list of shared parameter names
-def get_param_names(measure: Measure=None) -> list[str]:
+def get_param_names(measure: obj.Measure=None) -> list[str]:
     query: str = 'SELECT api_name FROM parameters'
     if measure != None:
         query += f' WHERE criteria IN {queryfy(measure.get_criteria())}'
@@ -97,7 +90,7 @@ def get_shared_table_names(criteria: list[str]) -> list[str]:
 #
 # Returns:
 #   list[str]   : a list of value table names
-def get_table_names(measure: Measure=None,
+def get_table_names(measure: obj.Measure=None,
                     shared: bool=False,
                     nonshared: bool=False) -> list[tuple[str, int]]:
     query: str = 'SELECT api_name, ord FROM tables'
@@ -166,7 +159,7 @@ def get_table_names(measure: Measure=None,
 #   list[str]   : the filtered list of table names
 def filter_optional_tables(tables: dict[int, str],
                            table_names: list[str],
-                           measure: Measure) -> list[str]:
+                           measure: obj.Measure) -> list[str]:
     names: list[str] = table_names.copy()
 
     cursor.execute('SELECT api_name FROM tables WHERE optional = 0')
@@ -197,7 +190,7 @@ def filter_optional_tables(tables: dict[int, str],
 #           'name'      : the name of the table column
 #           'api_name'  : the api_name of the table column
 #           'unit'      : the unit of the column
-def get_table_columns(measure: Measure=None,
+def get_table_columns(measure: obj.Measure=None,
                       table_api_name: str=None
                       ) -> dict[str, list[dict[str, str]]]:
     query: str = 'SELECT table_api, name, api_name, unit FROM table_columns'

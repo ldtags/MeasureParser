@@ -3,7 +3,7 @@ from typing import Optional, TextIO
 from spellchecker import SpellChecker
 import re
 
-from measure_parser.objects import Characterization
+from objects import Characterization
 
 # Global Variables
 # spell = SpellChecker()

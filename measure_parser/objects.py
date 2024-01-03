@@ -5,13 +5,9 @@ try:
 except ImportError:
     from argparse import Namespace
 
-# from measure_parser.dbservice import (
-#     get_permutation_names,
-#     get_characterization_names
-# )
-import measure_parser.dbservice as db
-from measure_parser.utils import is_etrm_measure
-from measure_parser.exceptions import (
+import dbservice as db
+from utils import is_etrm_measure
+from exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
