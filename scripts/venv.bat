@@ -1,14 +1,12 @@
-rem This script is used for creating, activating and setting up a development environment
+@echo off
 
-if "%1"=="" (
-    set VIRTUAL_ENV=.venv
-) else (
-    set VIRTUAL_ENV=%1
-)
+rem This script is used for setting up a development environment
+
+set VIRTUAL_ENV=.venv
+if not "%1"=="" set VIRTUAL_ENV=%1
 
 cd %~dp0\..
 call python -m venv %VIRTUAL_ENV%
-call %VIRTUAL_ENV%\Scripts\activate.bat
-pip install -r requirements.txt
-
-pause
+call .\%VIRTUAL_ENV%\Scripts\activate.bat
+call pip install -r requirements.txt
+call python -m pip install --upgrade pip
