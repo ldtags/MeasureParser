@@ -3,8 +3,8 @@ from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
-from src.measure_parser.parser import MeasureParser
-from src.measure_parser.exceptions import (
+from parser import MeasureParser
+from exceptions import (
     MeasureFormatError,
     InvalidFileError
 )
@@ -18,8 +18,7 @@ def parse_arguments() -> Namespace:
     argparser: GooeyParser = GooeyParser(
         description='parser for eTRM measure JSON files')
 
-    input_paths = argparser.add_argument_group(
-        'Input Paths',
+    input_paths = argparser.add_argument_group('Input Paths',
         description='Specify the locations of the eTRM measure JSON file and output directory',
         gooey_options={
             'columns': 1,

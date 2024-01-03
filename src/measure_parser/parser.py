@@ -1,16 +1,15 @@
 from io import TextIOWrapper
 
-import src.measure_parser.dbservice as db
-from src.measure_parser.objects import (
+import dbservice as db
+from objects import (
     Measure,
     Permutation,
     ValueTable,
-    Column,
     SharedParameter,
     SharedValueTable
 )
-from src.measure_parser.htmlparser import CharacterizationParser
-from src.measure_parser.exceptions import (
+from htmlparser import CharacterizationParser
+from exceptions import (
     RequiredParameterError,
     MeasureFormatError,
     UnknownPermutationError
@@ -457,9 +456,9 @@ class MeasureParser:
 
 
     # specifies the control flow for parser logging
-    def log_output(self, filepath: str | None=None) -> None:
-        if filepath:
-            self.out = open(f'{filepath}/output-{self.measure.id}.txt', 'w+')
+    def log_output(self, dirpath: str | None=None) -> None:
+        if dirpath != None:
+            self.out = open(f'{dirpath}/output-{self.measure.id}.txt', 'w+')
 
         self.log_measure_details()
         self.log_parameter_data()
@@ -471,7 +470,7 @@ class MeasureParser:
         self.log_permutations()
         self.log_characterization_data()
 
-        if self.out:
+        if self.out != None:
             self.out.close()
             self.out = None
 

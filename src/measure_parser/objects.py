@@ -5,10 +5,9 @@ try:
 except ImportError:
     from argparse import Namespace
 
-import src.measure_parser.constants as cnst
-import src.measure_parser.dbservice as db
-from src.measure_parser.utils import is_etrm_measure
-from src.measure_parser.exceptions import (
+import dbservice as db
+from utils import is_etrm_measure
+from exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
@@ -635,10 +634,10 @@ class Measure:
 
         for label in ntg_id.labels:
             match label:
-                case (cnst.RES_DEF
-                        | cnst.COM_DEF
-                        | cnst.IND_DEF
-                        | cnst.AGRIC_DEF):
+                case ('Res-Default>2yrs'
+                        | 'Com-Default>2yrs'
+                        | 'Ind-Default>2yrs'
+                        | 'Agric-Default>2yrs'):
                     continue
                 case _:
                     return True
@@ -679,7 +678,7 @@ class Measure:
         if ntg_id == None:
             raise RequiredParameterError(name='Net to Gross Ratio ID')
 
-        return cnst.RES_DEF in ntg_id.labels
+        return 'Res-Default>2yrs' in ntg_id.labels
 
 
     # Checks if the NTGID contains the non-residential default
@@ -697,9 +696,9 @@ class Measure:
 
         for label in ntg_id.labels:
             match label:
-                case (cnst.COM_DEF
-                        | cnst.IND_DEF
-                        | cnst.AGRIC_DEF):
+                case ('Com-Default>2yrs'
+                        | 'Ind-Default>2yrs'
+                        | 'Agric-Default>2yrs'):
                     return True
                 case _:
                     continue
@@ -719,7 +718,7 @@ class Measure:
         if gsia == None:
             raise RequiredParameterError(name='GSIA ID')
 
-        return cnst.GSIA_DEF in gsia.labels
+        return 'Def-GSIA' in gsia.labels
 
 
     # Checks if the measure is an interactive measure
@@ -817,9 +816,7 @@ class Measure:
                                 ) -> list[Characterization]:
         char_list: list[Characterization] = []
         for char_name in db.get_characterization_names(measure):
-            content: str = getattr(measure, char_name, None)
-            if content == None:
-                raise RequiredCharacterizationError(name=char_name)
+            content: str = getattr(measure, char_name)
             char_list.append(Characterization(char_name, content))
         return char_list
 

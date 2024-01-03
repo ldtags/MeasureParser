@@ -8,8 +8,8 @@ except ImportError:
     from argparse import Namespace
 
 
-from .objects import Measure
-from .exceptions import (
+from objects import Measure
+from exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )

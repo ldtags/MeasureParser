@@ -1,7 +1,7 @@
 from html.parser import HTMLParser
 from typing import Optional, TextIO
 from spellchecker import SpellChecker
-from src.measure_parser.objects import Characterization
+from objects import Characterization
 import re
 
 # Global Variables
