@@ -1,15 +1,15 @@
 from io import TextIOWrapper
 
-import dbservice as db
-from objects import (
+import measure_parser.dbservice as db
+from measure_parser.objects import (
     Measure,
     Permutation,
     ValueTable,
     SharedParameter,
     SharedValueTable
 )
-from htmlparser import CharacterizationParser
-from exceptions import (
+from measure_parser.htmlparser import CharacterizationParser
+from measure_parser.exceptions import (
     RequiredParameterError,
     MeasureFormatError,
     UnknownPermutationError

@@ -2,7 +2,7 @@ import json
 import os
 from jsonschema import validate, ValidationError
 
-from exceptions import (
+from measure_parser.exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )

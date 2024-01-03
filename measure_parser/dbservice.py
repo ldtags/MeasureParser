@@ -8,23 +8,24 @@ except ImportError:
     from argparse import Namespace
 
 
-from objects import Measure
-from exceptions import (
+from measure_parser.objects import Measure
+from measure_parser.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
 
 # connecting the database
-__filepath__: str \
-    = sys.executable[0:sys.executable.rindex('\\')] + '\\database.db'
-connection: sqlite3.Connection
-if os.path.isfile(__filepath__):
-    connection = sqlite3.connect(__filepath__)
-elif os.path.isfile('database.db'):
-    connection = sqlite3.connect('database.db')
-else:
-    raise DatabaseConnectionError('database file not found')
-cursor: sqlite3.Cursor = connection.cursor()
+# __filepath__: str \
+#     = sys.executable[0:sys.executable.rindex('\\')] + '\\database.db'
+# connection: sqlite3.Connection
+# if os.path.isfile(__filepath__):
+#     connection = sqlite3.connect(__filepath__)
+# elif os.path.isfile('database.db'):
+#     connection = sqlite3.connect('database.db')
+# else:
+#     raise DatabaseConnectionError('database file not found')
+connection = sqlite3.connect('./resources/database.db')
+cursor = connection.cursor()
 if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
     raise DatabaseContentError('database is empty')
 
@@ -39,15 +40,17 @@ if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
 #   list[str]   : a list of shared parameter names
 def get_param_names(measure: Measure=None) -> list[str]:
     query: str = 'SELECT api_name FROM parameters'
-    if measure:
+    if measure != None:
         query += f' WHERE criteria IN {queryfy(measure.get_criteria())}'
     query += ' ORDER BY ord ASC'
     response: list[tuple[str,]] = cursor.execute(query).fetchall()
     param_names: list[str] = listify(response)
 
-    if measure and (measure.is_interactive()
-            and not measure.contains_param('LightingType')):
-        param_names.remove('LightingType')
+    # measure specific post-processing
+    if measure != None:
+        if (measure.is_interactive()
+                and not measure.contains_param('LightingType')):
+            param_names.remove('LightingType')
 
     return listify(response)
 

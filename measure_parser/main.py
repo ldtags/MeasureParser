@@ -3,8 +3,8 @@ from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
-from parser import MeasureParser
-from exceptions import (
+from measure_parser.parser import MeasureParser
+from measure_parser.exceptions import (
     MeasureFormatError,
     InvalidFileError
 )

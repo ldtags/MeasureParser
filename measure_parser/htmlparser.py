@@ -1,8 +1,9 @@
 from html.parser import HTMLParser
 from typing import Optional, TextIO
 from spellchecker import SpellChecker
-from objects import Characterization
 import re
+
+from measure_parser.objects import Characterization
 
 # Global Variables
 # spell = SpellChecker()
