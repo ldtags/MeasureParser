@@ -2,16 +2,17 @@ import sys
 import os
 import sqlite3
 from typing import Any, Optional
-from src.measure_parser.objects import Measure
-from src.measure_parser.exceptions import (
-    DatabaseConnectionError,
-    DatabaseContentError
-)
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
 
+
+from .objects import Measure
+from .exceptions import (
+    DatabaseConnectionError,
+    DatabaseContentError
+)
 
 # connecting the database
 __filepath__: str \
@@ -284,6 +285,14 @@ def get_all_characterization_names() -> list[str]:
     return listify(response)
 
 
+# returns a list of characterization names that have mapped values
+#
+# Parameters:
+#   measure (Namespace): a namespace representation of an eTRM measure
+#                        JSON file
+#
+# Returns:
+#   list[str]: a list of characterization names
 def get_characterization_names(measure: Namespace) -> list[str]:
     char_list: list[str] = []
     for char_name in get_all_characterization_names():
