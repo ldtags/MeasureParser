@@ -7,14 +7,14 @@ try:
 except ImportError:
     from argparse import Namespace
 
-import objects as obj
-from exceptions import (
+import measureparser.objects as obj
+from measureparser.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
 
 # connecting the database
-__db_filepath = './resources/database.db'
+__db_filepath = './measureparser/resources/database.db'
 if not os.path.isfile(__db_filepath):
     raise DatabaseConnectionError('database file not found')
 connection = sqlite3.connect(__db_filepath)

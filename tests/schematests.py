@@ -1,5 +1,5 @@
 import unittest
-from measure_parser.utils import is_etrm_measure
+from measureparser.utils import is_etrm_measure
 
 class TestSchemaValidation(unittest.TestCase):
     def test_validation(self) -> None:

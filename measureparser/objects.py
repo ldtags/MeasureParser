@@ -5,9 +5,9 @@ try:
 except ImportError:
     from argparse import Namespace
 
-import dbservice as db
-from utils import is_etrm_measure
-from exceptions import (
+import measureparser.dbservice as db
+from measureparser.utils import is_etrm_measure
+from measureparser.exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,

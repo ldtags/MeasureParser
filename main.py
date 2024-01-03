@@ -3,8 +3,8 @@ from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
-from measureparser import MeasureParser
-from exceptions import (
+from measureparser.parser import MeasureParser
+from measureparser.exceptions import (
     MeasureFormatError,
     InvalidFileError
 )
@@ -37,7 +37,7 @@ def parse_arguments() -> Namespace:
         widget='DirChooser',
         metavar='Output Location',
         help='Select a folder to store the output file',
-        default=sys.executable[0:sys.executable.rindex('\\')])
+        default=sys.executable[0:sys.executable.rindex('\\')] + '\..')
 
     return argparser.parse_args()
 

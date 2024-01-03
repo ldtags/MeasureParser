@@ -2,7 +2,7 @@ import json
 import os
 from jsonschema import validate, ValidationError
 
-from exceptions import (
+from measureparser.exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )
@@ -20,7 +20,7 @@ def is_etrm_measure(filepath: str) -> bool:
         return False
 
     try:
-        with open('./resources/measure.schema.json', 'r') as schema_file:
+        with open('./measureparser/resources/measure.schema.json', 'r') as schema_file:
             measure_schema: dict = json.loads(schema_file.read())
     except OSError:
         raise SchemaNotFoundError()

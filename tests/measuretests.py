@@ -1,6 +1,6 @@
 import unittest as ut
 
-from measure_parser.objects import (
+from measureparser.objects import (
     Measure,
     Parameter,
     SharedParameter,
