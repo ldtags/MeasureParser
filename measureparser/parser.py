@@ -1,5 +1,6 @@
 from io import TextIOWrapper
 
+import measureparser._parserdata as pd
 import measureparser.dbservice as db
 from measureparser.objects import (
     Measure,
@@ -30,8 +31,8 @@ class MeasureParser:
     """
 
     def __init__(self, filepath: str):
-        self.measure: Measure = Measure(filepath)
-        self.data: dict[str, object] = {}
+        self.measure = Measure(filepath)
+        self.data = pd.ParserData()
         self.out: TextIOWrapper | None = None
 
         try:
@@ -87,39 +88,38 @@ class MeasureParser:
 
 
     def validate_parameters(self) -> None:
-        param_data: dict[str, list[str]] = {}
-
-        param_data['nonshared'] = list(
+        self.data.parameter.nonshared = list(
             map(lambda param: param.name, self.measure.parameters))
 
         unexpected_params: list[SharedParameter] \
             = self.measure.remove_unknown_params(self.ordered_params)
-        param_data['unexpected'] = list(
+        self.data.parameter.unexpected = list(
             map(lambda param: param.version.version_string,
                 unexpected_params))
 
-        param_data['missing'] = self.validate_param_existence()
-        param_data['unordered'] = self.smart_validate_param_order()
-        self.data['parameter'] = param_data
+        self.data.parameter.missing = self.validate_param_existence()
+        self.data.parameter.unordered = self.smart_validate_param_order()
 
 
     def validate_tables(self) -> None:
         table_data: dict[str, dict] = {}
-        table_data['shared'] = self.validate_shared_tables()
+        self.validate_shared_tables()
         table_data['nonshared'] = self.validate_nonshared_tables()
         table_data['column'] = self.validate_table_columns()
         self.data['table'] = table_data
 
 
-    def validate_shared_tables(self) -> dict[str, list[str]]:
+    def validate_shared_tables(self) -> None:
         shared: dict[str, list[str]] = {}
         unexp_shared: list[SharedValueTable] \
             = self.measure.remove_unknown_shared_tables(
                 self.ordered_sha_tables)
-        shared['unexpected'] = list(
+        self.data.value_table.shared.unexpected = list(
             map(lambda table: table.version.version_string, unexp_shared))
-        shared['missing'] = self.validate_shared_table_existence()
-        shared['unordered'] = self.smart_validate_shared_table_order()
+        self.data.value_table.shared.missing \
+            = self.validate_shared_table_existence()
+        self.data.value_table.shared.missing \
+            = self.smart_validate_shared_table_order()
         return shared
 
 
@@ -477,12 +477,12 @@ class MeasureParser:
 
     # logs specific details about the measure
     def log_measure_details(self) -> None:
-        self.log('Measure Details:\n'
-                 f'\tMeasure Version ID: {self.measure.version_id}\n'
-                 f'\tMeasure Name: {self.measure.name}\n'
-                 f'\tPA Lead: {self.measure.pa_lead}\n'
-                 f'\tStart Date: {self.measure.start_date}\n'
-                 f'\tEnd Date: {self.measure.end_date}')
+        self.log('Measure Details:'
+                 f'\n\tMeasure Version ID: {self.measure.version_id}'
+                 f'\n\tMeasure Name: {self.measure.name}'
+                 f'\n\tPA Lead: {self.measure.pa_lead}'
+                 f'\n\tStart Date: {self.measure.start_date}'
+                 f'\n\tEnd Date: {self.measure.end_date}')
         self.log('\n')
 
 

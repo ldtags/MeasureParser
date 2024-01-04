@@ -100,8 +100,8 @@ class CharacterizationParser(HTMLParser):
             if word.capitalize() not in self.capitalized:
                 continue
 
-            val: int = ord(word[0])
-            if val > 96 and val < 123:
+            ascii: int = ord(word[0])
+            if ascii > 96 and ascii < 123:
                 self.data['capitalization'].append({
                     'name': self.characterization.name,
                     'word': word

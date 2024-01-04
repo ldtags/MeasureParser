@@ -10,6 +10,6 @@ __all__ = [
 ]
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
-def get_path(filename: str, directory: str='data') -> str:
+def get_path(filename: str, directory: str='resources') -> str:
     '''Returns an absolute path to a file in the package'''
     return os.path.join(_ROOT, directory, filename)
