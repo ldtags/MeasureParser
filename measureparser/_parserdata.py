@@ -1,13 +1,13 @@
 '''Classes that store data from parsing eTRM measure JSON files'''
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class GeneralValidationData():
-    unexpected: list[str] = []
-    missing: list[str] = []
-    unordered: list[str] = []
+    unexpected: list[str] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+    unordered: list[str] = field(default_factory=list)
 
 @dataclass
 class GeneralHeaderData():
@@ -22,6 +22,7 @@ class IncorrectHeaderData(GeneralHeaderData):
 class UncapitalizedNounData():
     name: str
     word: str
+    capitalized: str
 
 @dataclass
 class ExtraSpaceData():
@@ -30,23 +31,37 @@ class ExtraSpaceData():
 
 @dataclass
 class CharacterizationData():
-    punc_space: list[ExtraSpaceData] = []
-    refr_space: list[ExtraSpaceData] = []
-    capitalization: list[UncapitalizedNounData] = []
-    inv_header: list[GeneralHeaderData] = []
-    init_header: list[GeneralHeaderData] = []
-    inc_header: list[IncorrectHeaderData] = []
+    missing: list[str] = field(default_factory=list)
+    punc_space: list[ExtraSpaceData] = field(default_factory=list)
+    refr_space: list[ExtraSpaceData] = field(default_factory=list)
+    capitalization: list[UncapitalizedNounData] \
+        = field(default_factory=list)
+    inv_header: list[GeneralHeaderData] = field(default_factory=list)
+    init_header: list[GeneralHeaderData] = field(default_factory=list)
+    inc_header: list[IncorrectHeaderData] = field(default_factory=list)
+
+    def isEmpty(self) -> bool:
+        return (not self.missing
+            and not self.punc_space
+            and not self.refr_space
+            and not self.capitalization
+            and not self.inv_header
+            and not self.init_header
+            and not self.inc_header)
 
 @dataclass
 class InvalidPermutationData():
     reporting_name: str
     mapped_name: str
-    valid_names: list[str] = []
+    valid_names: list[str] = field(default_factory=list)
 
 @dataclass
 class PermutationData():
-    invalid: list[InvalidPermutationData] = []
-    unexpected: list[str] = []
+    invalid: list[InvalidPermutationData] = field(default_factory=list)
+    unexpected: list[str] = field(default_factory=list)
+
+    def isEmpty(self) -> bool:
+        return not self.invalid and not self.unexpected
 
 @dataclass
 class MissingValueTableColumnData():
@@ -62,12 +77,18 @@ class InvalidValueTableColumnUnitData():
 
 @dataclass
 class ValueTableColumnData():
-    missing: list[MissingValueTableColumnData] = []
-    invalid_unit: list[InvalidValueTableColumnUnitData] = []
+    missing: list[MissingValueTableColumnData] \
+        = field(default_factory=list)
+    invalid_unit: list[InvalidValueTableColumnUnitData] \
+        = field(default_factory=list)
+
+    def isEmpty(self) -> bool:
+        return not self.missing and not self.invalid_unit
 
 @dataclass
 class NonSharedValueTableData(GeneralValidationData):
-    column: ValueTableColumnData = ValueTableColumnData()
+    column: ValueTableColumnData \
+        = field(default_factory=ValueTableColumnData)
 
 @dataclass
 class SharedValueTableData(GeneralValidationData):
@@ -75,22 +96,29 @@ class SharedValueTableData(GeneralValidationData):
 
 @dataclass
 class ValueTableData():
-    shared: SharedValueTableData = SharedValueTableData()
-    nonshared: NonSharedValueTableData = NonSharedValueTableData()
+    shared: SharedValueTableData \
+        = field(default_factory=SharedValueTableData)
+    nonshared: NonSharedValueTableData \
+        = field(default_factory=NonSharedValueTableData)
 
 @dataclass
 class ExclusionTableData():
-    whitespace: list[str] = []
-    hyphen: list[str] = []
+    whitespace: list[str] = field(default_factory=list)
+    hyphen: list[str] = field(default_factory=list)
+
+    def isEmpty(self) -> bool:
+        return not self.whitespace and not self.hyphen
 
 @dataclass
 class ParameterData(GeneralValidationData):
-    nonshared: list[str] = []
+    nonshared: list[str] = field(default_factory=list)
 
 @dataclass
 class ParserData():
-    parameter: ParameterData = ParameterData()
-    exclusion_table: ExclusionTableData = ExclusionTableData()
-    value_table: ValueTableData = ValueTableData()
-    permutation: PermutationData = PermutationData()
-    characterization: CharacterizationData = CharacterizationData()
+    parameter: ParameterData = field(default_factory=ParameterData)
+    exclusion_table: ExclusionTableData \
+        = field(default_factory=ExclusionTableData)
+    value_table: ValueTableData = field(default_factory=ValueTableData)
+    permutation: PermutationData = field(default_factory=PermutationData)
+    characterization: CharacterizationData \
+        = field(default_factory=CharacterizationData)

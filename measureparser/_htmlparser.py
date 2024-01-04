@@ -1,10 +1,10 @@
 from html.parser import HTMLParser
-from typing import Optional, TextIO
 import re
 
 # from spellchecker import SpellChecker
 
 from measureparser.objects import Characterization
+import measureparser._parserdata as pd
 
 # Global Variables
 # spell = SpellChecker()
@@ -22,19 +22,11 @@ class CharacterizationParser(HTMLParser):
         __prev_data (str): the data that was previously encountered
     """
 
-    def __init__(self, data: dict[str, object],
-                 characterization: Optional[Characterization] = None):
-        self.data = data['characterization'] = {
-            'punc_space': [],
-            'refr_space': [],
-            'capitalization': [],
-            'inv_header': [],
-            'init_header': [],
-            'inc_header': []
-        }
-
-        self.characterization: Optional[Characterization] \
-            = characterization
+    def __init__(self,
+                 data: pd.CharacterizationData,
+                 characterization: Characterization | None = None):
+        self.data = data
+        self.characterization = characterization
         self.__prev_tag: str = ''
         self.__prev_data: str = ''
         self.capitalized: list[str] = []
@@ -86,10 +78,10 @@ class CharacterizationParser(HTMLParser):
         for sentence in sentences:
             extra_spaces: int = self.__get_start_spaces(sentence)
             if extra_spaces > 1:
-                self.data['punc_space'].append({
-                    'name': self.characterization.name,
-                    'spaces': extra_spaces - 1
-                })
+                self.data.punc_space.append(
+                    pd.ExtraSpaceData(
+                        self.characterization.name,
+                        extra_spaces - 1))
 
 
     def validate_capitalization(self, data: str) -> None:
@@ -102,10 +94,11 @@ class CharacterizationParser(HTMLParser):
 
             ascii: int = ord(word[0])
             if ascii > 96 and ascii < 123:
-                self.data['capitalization'].append({
-                    'name': self.characterization.name,
-                    'word': word
-                })
+                self.data.capitalization.append(
+                    pd.UncapitalizedNounData(
+                        self.characterization.name,
+                        word,
+                        chr(ord(word[0]) - 32) + word[1:]))
 
 
     # determines how many spaces occur at the beginning of @data
@@ -163,10 +156,10 @@ class CharacterizationParser(HTMLParser):
                     and self.__prev_data.endswith(' ')):
                 extra_spaces: int \
                     = self.__get_end_spaces(self.__prev_data)
-                self.data['refr_space'].append({
-                    'name': self.characterization.name,
-                    'spaces': extra_spaces
-                })
+                self.data.refr_space.append(
+                    pd.ExtraSpaceData(
+                        self.characterization.name,
+                        extra_spaces))
 
     # determines how many spaces occur at the end of @data
     #
@@ -192,10 +185,10 @@ class CharacterizationParser(HTMLParser):
     def validate_header(self, tag: str) -> bool:
         if re.fullmatch('^h[3-5]$', tag) == None:
             if self.characterization != None:
-                self.data['inv_header'].append({
-                    'name': self.characterization.name,
-                    'tag': tag
-                })
+                self.data.inv_header.append(
+                    pd.GeneralHeaderData(
+                        self.characterization.name,
+                        tag))
             return False
 
         if tag == 'h3':
@@ -203,10 +196,10 @@ class CharacterizationParser(HTMLParser):
             return True
 
         if self.__prev_tag == '':
-            self.data['init_header'].append({
-                'name': self.characterization.name,
-                'tag': tag
-            })
+            self.data.init_header.append(
+                pd.GeneralHeaderData(
+                    self.characterization.name,
+                    tag))
             return False
 
         level_re: re.Pattern = re.compile('[^3-5]')
@@ -216,11 +209,11 @@ class CharacterizationParser(HTMLParser):
             self.__prev_tag = tag
             return True
 
-        self.data['inc_header'].append({
-            'name': self.characterization.name,
-            'prev_level': prev_level,
-            'tag': tag
-        })
+        self.data.inc_header.append(
+            pd.IncorrectHeaderData(
+                self.characterization.name,
+                tag,
+                prev_level))
         return False
 
     # determines what happens when an end tag is detected
