@@ -10,6 +10,6 @@ set SCHEMA_FILE=measureparser\data\measure.schema.json
 
 cd %~dp0\..
 call pyinstaller --clean --noconsole -y -n "%SPEC_NAME%"^
- --add-data="%DB_FILE%;measureparser/resources"^
- --add-data="%SCHEMA_FILE%;measureparser/resources"^
+ --add-data="%DB_FILE%;measureparser/data"^
+ --add-data="%SCHEMA_FILE%;measureparser/data"^
  main.py
