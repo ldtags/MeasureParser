@@ -1,7 +1,8 @@
 from html.parser import HTMLParser
 from typing import Optional, TextIO
-from spellchecker import SpellChecker
 import re
+
+# from spellchecker import SpellChecker
 
 from measureparser.objects import Characterization
 

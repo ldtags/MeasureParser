@@ -6,6 +6,7 @@ try:
 except ImportError:
     from argparse import Namespace
 
+from . import get_path
 import measureparser.objects as obj
 from measureparser.exceptions import (
     DatabaseConnectionError,
@@ -13,10 +14,10 @@ from measureparser.exceptions import (
 )
 
 # connecting the database
-__db_filepath = './measureparser/resources/database.db'
-if not os.path.isfile(__db_filepath):
-    raise DatabaseConnectionError('database file not found')
-connection = sqlite3.connect(__db_filepath)
+DB_PATH = get_path('database.db')
+if not os.path.isfile(DB_PATH):
+    raise DatabaseConnectionError(f'{DB_PATH} is not a valid database')
+connection = sqlite3.connect(DB_PATH)
 cursor = connection.cursor()
 if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
     raise DatabaseContentError('database is empty')

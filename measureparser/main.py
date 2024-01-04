@@ -8,7 +8,6 @@ from measureparser.exceptions import (
     MeasureFormatError
 )
 
-
 # parses the command line arguments in sys.argv
 #
 # Returns:
