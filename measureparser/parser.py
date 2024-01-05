@@ -33,13 +33,13 @@ class MeasureParser:
 
         try:
             self.ordered_params: list[str] \
-                = db.get_param_names(measure=self.measure)
+                = db.get_param_api_names(measure=self.measure)
 
             self.ordered_val_tables: list[str] \
-                = db.get_table_names(measure=self.measure, nonshared=True)
+                = db.get_table_api_names(measure=self.measure, nonshared=True)
 
             self.ordered_sha_tables: list[str] \
-                = db.get_table_names(measure=self.measure, shared=True)
+                = db.get_table_api_names(measure=self.measure, shared=True)
         except RequiredParameterError as err:
             print('ERROR - the measure is missing required information\n', 
                   err)
@@ -107,6 +107,7 @@ class MeasureParser:
                     self.ordered_val_tables)))
         nonshared_data.missing = self.validate_value_table_existence()
         nonshared_data.unordered = self.smart_validate_value_table_order()
+        self.validate_standard_table_names()
         self.validate_table_columns()
 
 
@@ -142,6 +143,18 @@ class MeasureParser:
                             column.unit,
                             unit))
                     continue
+
+
+    # validates that all nonshared value tables have the correct standard name
+    def validate_standard_table_names(self) -> None:
+        name_map = db.get_standard_table_names(self.measure)
+        for table in self.measure.value_tables:
+            std_name = name_map.get(table.api_name)
+            if std_name == None:
+                continue
+            if table.name != std_name:
+                self.data.value_table.nonshared.invalid_name.append(
+                    pd.StdValueTableNameData(table.name, std_name))
 
 
     # validates that all shared value tables names in @ordered_sha_tables
@@ -457,9 +470,8 @@ class MeasureParser:
         self.log('\tParameter Order:')
         for param_name in param_data.unordered:
             self.log(f'\t\t{param_name} is out of order')
-        if len(param_data.unordered) == 0:
-            self.log(
-                '\t\tAll shared parameters are in the correct order')
+        if param_data.unordered == []:
+            self.log('\t\tAll shared parameters are in the correct order')
         self.log('\n')
 
 
@@ -496,10 +508,18 @@ class MeasureParser:
                  nonshared_data.missing)
         self.log()
 
+        self.log('\tValue Table Names:')
+        for err in nonshared_data.invalid_name:
+            self.log(f'\t\tTable {err.table_name} should be named '
+                     f'{err.correct_name}')
+        if nonshared_data.invalid_name == []:
+            self.log('\t\tAll value table names are correct')
+        self.log()
+
         self.log('\tValue Table Columns:')
         for err in nonshared_data.column.missing:
-            self.log(f'\t\tTable {err.table_name} is missing'
-                     f' column {err.column_name}')
+            self.log(f'\t\tTable {err.table_name} is missing '
+                     f'column {err.column_name}')
 
         for err in nonshared_data.column.invalid_unit:
             self.log(f'\t\tTable {err.table_name} may have an '
@@ -514,13 +534,13 @@ class MeasureParser:
 
         for table in shared_data.unordered:
             self.log(f'\t\t{table} is out of order')
-        if len(shared_data.unordered) == 0:
+        if shared_data.unordered == []:
             self.log('\t\tAll shared value tables are in the '
                      'correct order')
 
         for table in nonshared_data.unordered:
             self.log(f'\t\t{table} is out of order')
-        if len(nonshared_data.unordered) == 0:
+        if nonshared_data.unordered == []:
             self.log('\t\tAll non-shared value tables are in the '
                      'correct order')
         self.log('\n')

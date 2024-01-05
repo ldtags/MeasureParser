@@ -41,13 +41,13 @@ class CharacterizationData():
     inc_header: list[IncorrectHeaderData] = field(default_factory=list)
 
     def isEmpty(self) -> bool:
-        return (not self.missing
-            and not self.punc_space
-            and not self.refr_space
-            and not self.capitalization
-            and not self.inv_header
-            and not self.init_header
-            and not self.inc_header)
+        return (self.missing == []
+            and self.punc_space == []
+            and self.refr_space == []
+            and self.capitalization == []
+            and self.inv_header == []
+            and self.init_header == []
+            and self.inc_header == [])
 
 @dataclass
 class InvalidPermutationData():
@@ -61,7 +61,7 @@ class PermutationData():
     unexpected: list[str] = field(default_factory=list)
 
     def isEmpty(self) -> bool:
-        return not self.invalid and not self.unexpected
+        return self.invalid == [] and self.unexpected == []
 
 @dataclass
 class MissingValueTableColumnData():
@@ -77,18 +77,22 @@ class InvalidValueTableColumnUnitData():
 
 @dataclass
 class ValueTableColumnData():
-    missing: list[MissingValueTableColumnData] \
-        = field(default_factory=list)
+    missing: list[MissingValueTableColumnData] = field(default_factory=list)
     invalid_unit: list[InvalidValueTableColumnUnitData] \
         = field(default_factory=list)
 
     def isEmpty(self) -> bool:
-        return not self.missing and not self.invalid_unit
+        return self.missing == [] and self.invalid_unit == []
+
+@dataclass
+class StdValueTableNameData():
+    table_name: str
+    correct_name: str
 
 @dataclass
 class NonSharedValueTableData(GeneralValidationData):
-    column: ValueTableColumnData \
-        = field(default_factory=ValueTableColumnData)
+    invalid_name: list[StdValueTableNameData] = field(default_factory=list)
+    column: ValueTableColumnData = field(default_factory=ValueTableColumnData)
 
 @dataclass
 class SharedValueTableData(GeneralValidationData):
@@ -96,8 +100,7 @@ class SharedValueTableData(GeneralValidationData):
 
 @dataclass
 class ValueTableData():
-    shared: SharedValueTableData \
-        = field(default_factory=SharedValueTableData)
+    shared: SharedValueTableData = field(default_factory=SharedValueTableData)
     nonshared: NonSharedValueTableData \
         = field(default_factory=NonSharedValueTableData)
 
@@ -107,7 +110,7 @@ class ExclusionTableData():
     hyphen: list[str] = field(default_factory=list)
 
     def isEmpty(self) -> bool:
-        return not self.whitespace and not self.hyphen
+        return self.whitespace == [] and self.hyphen == []
 
 @dataclass
 class ParameterData(GeneralValidationData):

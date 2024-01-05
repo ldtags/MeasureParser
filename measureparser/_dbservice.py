@@ -31,7 +31,7 @@ if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
 #
 # Returns:
 #   list[str]   : a list of shared parameter names
-def get_param_names(measure: obj.Measure=None) -> list[str]:
+def get_param_api_names(measure: obj.Measure | None = None) -> list[str]:
     query: str = 'SELECT api_name FROM parameters'
     if measure != None:
         query += f' WHERE criteria IN {queryfy(measure.get_criteria())}'
@@ -56,7 +56,7 @@ def get_param_names(measure: obj.Measure=None) -> list[str]:
 #
 # Returns:
 #   list[str]   : the list of non-shared value table names
-def get_value_table_names(criteria: list[str]) -> list[str]:
+def get_value_table_api_names(criteria: list[str]) -> list[str]:
     query: str = 'SELECT api_name FROM tables WHERE shared = 0'
     query += ' AND criteria IN ' + queryfy(criteria)
     query += ' ORDER BY ord ASC'
@@ -72,7 +72,7 @@ def get_value_table_names(criteria: list[str]) -> list[str]:
 #
 # Returns:
 #   list[str]   : the list of shared value table names
-def get_shared_table_names(criteria: list[str]) -> list[str]:
+def get_shared_table_api_names(criteria: list[str]) -> list[str]:
     query: str = 'SELECT api_name FROM tables WHERE shared != 0'
     query += ' AND criteria IN ' + queryfy(criteria)
     query += ' ORDER BY ord ASC'
@@ -90,12 +90,12 @@ def get_shared_table_names(criteria: list[str]) -> list[str]:
 #
 # Returns:
 #   list[str]   : a list of value table names
-def get_table_names(measure: obj.Measure=None,
-                    shared: bool=False,
-                    nonshared: bool=False) -> list[tuple[str, int]]:
+def get_table_api_names(measure: obj.Measure | None = None,
+                        shared: bool = False,
+                        nonshared: bool = False) -> list[str]:
     query: str = 'SELECT api_name, ord FROM tables'
 
-    if measure or shared or nonshared:
+    if measure != None or shared or nonshared:
         query += ' WHERE '
 
     shared_vals: list[int] = []
@@ -106,11 +106,11 @@ def get_table_names(measure: obj.Measure=None,
 
     if shared or nonshared:
         query += f'shared IN {queryfy(shared_vals)}'
-        if measure:
+        if measure != None:
             query += ' AND '
 
     criteria: list[str] = []
-    if measure:
+    if measure != None:
         criteria = measure.get_criteria()
         query += f'criteria IN {queryfy(criteria)}'
 
@@ -119,7 +119,7 @@ def get_table_names(measure: obj.Measure=None,
     tables: dict[int, str] \
         = {table[1]: table[0] for table in cursor.fetchall()}
 
-    if measure:
+    if measure != None:
         # adding tables that can either be shared or non-shared
         # these tables are currently all optional, regardless of
         #   how they are defined in the database
@@ -142,10 +142,30 @@ def get_table_names(measure: obj.Measure=None,
     for index in sorted(tables):
         table_names.append(tables[index])
 
-    if measure:
+    if measure != None:
         table_names = filter_optional_tables(tables, table_names, measure)
 
     return table_names
+
+
+# queries for nonshared value table standard names
+#
+# Parameters:
+#   measure (Measure): a measure object used for specifying
+#                      which tables to query for
+#
+# Returns:
+#   dict[str, str]: table api_names mapped to the standard name
+def get_standard_table_names(measure: obj.Measure | None = None
+                             ) -> dict[str, str]:
+    standard_names: dict[str, str] = {}
+    query = 'SELECT api_name, name FROM tables WHERE shared = 0'
+    if measure != None:
+        query += f' AND criteria IN {queryfy(measure.get_criteria())}'
+    response: list[tuple[str, str]] = cursor.execute(query).fetchall()
+    for names in response:
+        standard_names[names[0]] = names[1]
+    return standard_names
 
 
 # filters out optional tables that don't exist in the measure
@@ -190,15 +210,15 @@ def filter_optional_tables(tables: dict[int, str],
 #           'name'      : the name of the table column
 #           'api_name'  : the api_name of the table column
 #           'unit'      : the unit of the column
-def get_table_columns(measure: obj.Measure=None,
-                      table_api_name: str=None
+def get_table_columns(measure: obj.Measure | None = None,
+                      table_api_name: str | None = None
                       ) -> dict[str, list[dict[str, str]]]:
     query: str = 'SELECT table_api, name, api_name, unit FROM table_columns'
 
-    if table_api_name:
+    if table_api_name != None:
         query += f' WHERE table_api = {table_api_name}'
 
-    if measure:
+    if measure != None:
         criteria: list[str] = []
         mat_labels = measure.get_shared_parameter('MeasAppType').labels
         if 'AR' in mat_labels:
