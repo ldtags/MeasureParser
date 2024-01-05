@@ -110,7 +110,7 @@ class CharacterizationParser(HTMLParser):
     #   int: the amount of spaces that occur at the beginning of @data
     def __get_start_spaces(self, data: str) -> int:
         count: int = 0
-        while len(data) > 0 and data[0] == ' ':
+        while data != '' and data[0] == ' ':
             count += 1
             data = data[1:]
         return count
@@ -140,26 +140,22 @@ class CharacterizationParser(HTMLParser):
         if not re.fullmatch('h[0-57-9]$', tag) == None:
             self.validate_header(tag)
 
-        self.check_ref_spacing(attrs)
+        attr_map: dict[str, str | None] = dict(attrs)
+
+        if 'data-etrmreference' in attr_map:
+            self.check_ref_spacing()
 
     # validates that all references have only one space before them
-    #
-    # Parameters:
-    #   attrs (list[tuple[str, str | None]]): the list of tag attributes
-    def check_ref_spacing(self,
-                          attrs: list[tuple[str, str | None]]) -> None:
+    def check_ref_spacing(self) -> None:
         if self.characterization == None:
             return
 
-        for attr, value in attrs:
-            if (attr == 'data-etrmreference'
-                    and self.__prev_data.endswith(' ')):
-                extra_spaces: int \
-                    = self.__get_end_spaces(self.__prev_data)
-                self.data.refr_space.append(
-                    pd.ExtraSpaceData(
-                        self.characterization.name,
-                        extra_spaces))
+        if self.__prev_data.endswith(' '):
+            spaces = self.__get_end_spaces(self.__prev_data)
+            self.data.refr_space.append(
+                pd.ExtraSpaceData(
+                    self.characterization.name,
+                    spaces))
 
     # determines how many spaces occur at the end of @data
     #
