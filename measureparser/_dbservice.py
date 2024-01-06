@@ -7,8 +7,8 @@ except ImportError:
     from argparse import Namespace
 
 from . import get_path
-import measureparser.objects as obj
-from measureparser.exceptions import (
+from .measure import Measure
+from .exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
@@ -31,7 +31,7 @@ if len(cursor.execute('SELECT name FROM sqlite_master').fetchall()) < 1:
 #
 # Returns:
 #   list[str]   : a list of shared parameter names
-def get_param_api_names(measure: obj.Measure | None = None) -> list[str]:
+def get_param_api_names(measure: Measure | None = None) -> list[str]:
     query: str = 'SELECT api_name FROM parameters'
     if measure != None:
         query += f' WHERE criteria IN {queryfy(measure.get_criteria())}'
@@ -90,7 +90,7 @@ def get_shared_table_api_names(criteria: list[str]) -> list[str]:
 #
 # Returns:
 #   list[str]   : a list of value table names
-def get_table_api_names(measure: obj.Measure | None = None,
+def get_table_api_names(measure: Measure | None = None,
                         shared: bool = False,
                         nonshared: bool = False) -> list[str]:
     query: str = 'SELECT api_name, ord FROM tables'
@@ -156,7 +156,7 @@ def get_table_api_names(measure: obj.Measure | None = None,
 #
 # Returns:
 #   dict[str, str]: table api_names mapped to the standard name
-def get_standard_table_names(measure: obj.Measure | None = None
+def get_standard_table_names(measure: Measure | None = None
                              ) -> dict[str, str]:
     standard_names: dict[str, str] = {}
     query = 'SELECT api_name, name FROM tables WHERE shared = 0'
@@ -179,7 +179,7 @@ def get_standard_table_names(measure: obj.Measure | None = None
 #   list[str]   : the filtered list of table names
 def filter_optional_tables(tables: dict[int, str],
                            table_names: list[str],
-                           measure: obj.Measure) -> list[str]:
+                           measure: Measure) -> list[str]:
     names: list[str] = table_names.copy()
 
     cursor.execute('SELECT api_name FROM tables WHERE optional = 0')
@@ -210,7 +210,7 @@ def filter_optional_tables(tables: dict[int, str],
 #           'name'      : the name of the table column
 #           'api_name'  : the api_name of the table column
 #           'unit'      : the unit of the column
-def get_table_columns(measure: obj.Measure | None = None,
+def get_table_columns(measure: Measure | None = None,
                       table_api_name: str | None = None
                       ) -> dict[str, list[dict[str, str]]]:
     query: str = 'SELECT table_api, name, api_name, unit FROM table_columns'
@@ -316,6 +316,14 @@ def get_characterization_names(measure: Namespace) -> list[str]:
         if content != None:
             char_list.append(char_name)
     return char_list
+
+
+def get_embedded_table_map() -> dict[str, str]:
+    pass
+
+
+def get_static_table_map() -> dict[str, str]:
+    pass
 
 
 # generates a list that is understood by SQL

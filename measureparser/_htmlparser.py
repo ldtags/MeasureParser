@@ -3,8 +3,8 @@ import re
 
 # from spellchecker import SpellChecker
 
-from measureparser.objects import Characterization
 import measureparser._parserdata as pd
+from .measure import Characterization
 
 # Global Variables
 # spell = SpellChecker()

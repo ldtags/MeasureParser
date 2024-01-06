@@ -2,12 +2,12 @@ from io import TextIOWrapper
 
 import measureparser._parserdata as pd
 import measureparser._dbservice as db
-from measureparser.objects import (
+from ._htmlparser import CharacterizationParser
+from .measure import (
     Measure,
     Permutation
 )
-from measureparser._htmlparser import CharacterizationParser
-from measureparser.exceptions import (
+from .exceptions import (
     RequiredParameterError,
     UnknownPermutationError
 )

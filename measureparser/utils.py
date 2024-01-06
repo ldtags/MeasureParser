@@ -4,7 +4,7 @@ import os
 from jsonschema import validate, ValidationError
 
 from . import get_path
-from measureparser.exceptions import (
+from .exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )
@@ -43,3 +43,4 @@ def is_etrm_measure(filepath: str) -> bool:
         return True
     except ValidationError:
         return False
+

@@ -4,13 +4,13 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class GeneralValidationData():
+class GeneralValidationData:
     unexpected: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
     unordered: list[str] = field(default_factory=list)
 
 @dataclass
-class GeneralHeaderData():
+class GeneralHeaderData:
     name: str
     tag: str
 
@@ -19,18 +19,18 @@ class IncorrectHeaderData(GeneralHeaderData):
     prev_level: int
 
 @dataclass
-class UncapitalizedNounData():
+class UncapitalizedNounData:
     name: str
     word: str
     capitalized: str
 
 @dataclass
-class ExtraSpaceData():
+class ExtraSpaceData:
     name: str
     spaces: int
 
 @dataclass
-class CharacterizationData():
+class CharacterizationData:
     missing: list[str] = field(default_factory=list)
     punc_space: list[ExtraSpaceData] = field(default_factory=list)
     refr_space: list[ExtraSpaceData] = field(default_factory=list)
@@ -50,13 +50,13 @@ class CharacterizationData():
             and self.inc_header == [])
 
 @dataclass
-class InvalidPermutationData():
+class InvalidPermutationData:
     reporting_name: str
     mapped_name: str
     valid_names: list[str] = field(default_factory=list)
 
 @dataclass
-class PermutationData():
+class PermutationData:
     invalid: list[InvalidPermutationData] = field(default_factory=list)
     unexpected: list[str] = field(default_factory=list)
 
@@ -64,19 +64,19 @@ class PermutationData():
         return self.invalid == [] and self.unexpected == []
 
 @dataclass
-class MissingValueTableColumnData():
+class MissingValueTableColumnData:
     table_name: str
     column_name: str
 
 @dataclass
-class InvalidValueTableColumnUnitData():
+class InvalidValueTableColumnUnitData:
     table_name: str
     column_name: str
     mapped_unit: str
     correct_unit: str
 
 @dataclass
-class ValueTableColumnData():
+class ValueTableColumnData:
     missing: list[MissingValueTableColumnData] = field(default_factory=list)
     invalid_unit: list[InvalidValueTableColumnUnitData] \
         = field(default_factory=list)
@@ -85,7 +85,7 @@ class ValueTableColumnData():
         return self.missing == [] and self.invalid_unit == []
 
 @dataclass
-class StdValueTableNameData():
+class StdValueTableNameData:
     table_name: str
     correct_name: str
 
@@ -99,13 +99,13 @@ class SharedValueTableData(GeneralValidationData):
     pass
 
 @dataclass
-class ValueTableData():
+class ValueTableData:
     shared: SharedValueTableData = field(default_factory=SharedValueTableData)
     nonshared: NonSharedValueTableData \
         = field(default_factory=NonSharedValueTableData)
 
 @dataclass
-class ExclusionTableData():
+class ExclusionTableData:
     whitespace: list[str] = field(default_factory=list)
     hyphen: list[str] = field(default_factory=list)
 
@@ -117,7 +117,7 @@ class ParameterData(GeneralValidationData):
     nonshared: list[str] = field(default_factory=list)
 
 @dataclass
-class ParserData():
+class ParserData:
     parameter: ParameterData = field(default_factory=ParameterData)
     exclusion_table: ExclusionTableData \
         = field(default_factory=ExclusionTableData)

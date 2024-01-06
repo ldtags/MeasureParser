@@ -1,13 +1,10 @@
-import os
+'''eTRM Measure JSON Parser'''
 
-__all__ = [
-    'dbservice',
-    'exceptions',
-    'htmlparser',
-    'parser',
-    'objects',
-    'utils'
-]
+__author__ = 'Liam Tangney'
+__version__ = '1.1.0'
+__all__ = ['parser']
+
+import os
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 def get_path(filename: str, directory: str='resources') -> str:
