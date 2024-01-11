@@ -8,4 +8,6 @@ from .static import (
     StaticValueTable
 )
 
-from .htmlparser import CharacterizationParser
+from .htmlparser import (
+    CharacterizationParser
+)

@@ -1,6 +1,6 @@
 import json
 
-class EmbeddedData:
+class EmbeddedTag:
     def __init__(self, obj_info: dict):
         self.id = obj_info.get('id')
         self.title: str = obj_info.get('title')
@@ -15,7 +15,7 @@ class EmbeddedData:
         return obj_info
 
 
-class EmbeddedValueTable(EmbeddedData):
+class EmbeddedValueTable(EmbeddedTag):
     def __init__(self, embedded_table: str):
         table_info: dict = json.loads(embedded_table,
                                       object_hook=self._embedded_decoder)
@@ -30,7 +30,7 @@ class EmbeddedValueTable(EmbeddedData):
         return getattr(vt_conf, 'cids', [])
 
 
-class EmbeddedReference(EmbeddedData):
+class EmbeddedReference(EmbeddedTag):
     def __init__(self, embedded_reference: str):
         reference_info: dict = json.loads(embedded_reference,
                                           object_hook=self._embedded_decoder)
@@ -45,7 +45,7 @@ class EmbeddedReference(EmbeddedData):
         return obj_info
 
 
-class EmbeddedCalculation(EmbeddedData):
+class EmbeddedCalculation(EmbeddedTag):
     def __init__(self, embedded_calculation: str):
         calculation_info: dict \
             = json.loads(embedded_calculation,

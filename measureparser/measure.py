@@ -1,13 +1,10 @@
 import json
-from typing import Optional
 try:
     from types import SimpleNamespace as Namespace
 except ImportError:
     from argparse import Namespace
 
-import measureparser._dbservice as db
-from measureparser.utils import is_etrm_measure
-from measureparser.exceptions import (
+from .exceptions import (
     RequiredParameterError,
     VersionFormatError,
     ParameterFormatError,
@@ -33,7 +30,7 @@ class Permutation:
     """
     def __init__(self,
                  reporting_name: str,
-                 mapped_name: Optional[str],
+                 mapped_name: str | None,
                  derivation: str = 'mapped'):
         self.reporting_name: str = reporting_name
         self.mapped_name: str = mapped_name
@@ -108,7 +105,7 @@ class ParameterLabel:
             self.name: str = getattr(label, 'name')
             self.api_name: str = getattr(label, 'api_name')
             self.active: bool = getattr(label, 'active')
-            self.description: Optional[str] \
+            self.description: str | None \
                 = getattr(label, 'description')
         except Exception as err:
             raise err
@@ -209,6 +206,7 @@ class Measure:
     """
 
     def __init__(self, filepath: str):
+        from .utils import is_etrm_measure
         if not is_etrm_measure(filepath):
             raise InvalidFileError(filename=filepath)
 
@@ -254,9 +252,9 @@ class Measure:
             self.status: str = getattr(measure, 'Status')
 
             self.characterizations: list[Characterization] \
-                = self.__get_characterizations(measure)
+                = _get_characterizations(measure)
             self.permutations: list[Permutation] \
-                = self.__get_permutations(measure)
+                = _get_permutations(measure)
         except AttributeError:
             raise MeasureFormatError()
         except RequiredCharacterizationError as err:
@@ -345,7 +343,8 @@ class Measure:
     # Returns:
     #   SharedParameter: The desired parameter
     #   None: If no parameter with a name matching @param_name exists 
-    def get_shared_parameter(self, param_name: str) -> Optional[SharedParameter]:
+    def get_shared_parameter(self, param_name: str
+                             ) -> (SharedParameter | None):
         for param in self.shared_parameters:
             if param.version.version_string == param_name:
                 return param
@@ -360,7 +359,7 @@ class Measure:
     # Returns:
     #   ValueTable: The desired non-shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_value_table(self, table_name: str) -> Optional[ValueTable]:
+    def get_value_table(self, table_name: str) -> (ValueTable | None):
         for table in self.value_tables:
             if table.api_name == table_name:
                 return table
@@ -375,8 +374,7 @@ class Measure:
     # Returns:
     #   SharedValueTable: The desired shared value table
     #   None: If no value table with a name matching @table_name exists
-    def get_shared_table(self,
-                         table_name: str) -> Optional[SharedValueTable]:
+    def get_shared_table(self, table_name: str) -> (SharedValueTable | None):
         for table in self.shared_tables:
             if table.version.version_string == table_name:
                 return table
@@ -391,7 +389,7 @@ class Measure:
     # Returns:
     #   SharedValueTable: The desired permutation
     #   None: If no permutation with a name matching @perm_name exists
-    def get_permutation(self, perm_name: str) -> Optional[Permutation]:
+    def get_permutation(self, perm_name: str) -> (Permutation | None):
         for permutation in self.permutations:
             if permutation.reporting_name == perm_name:
                 return permutation
@@ -804,34 +802,37 @@ class Measure:
         return criteria
 
 
-    # returns a list of all characterizations found in @measure
-    #
-    # Parameters:
-    #   measure (Namespace): the namespace representation of a measure
-    #
-    # Returns:
-    #   list[Characterization]: the list of characterizations found in
-    #                           @measure
-    def __get_characterizations(self, measure: Namespace
-                                ) -> list[Characterization]:
-        char_list: list[Characterization] = []
-        for char_name in db.get_characterization_names(measure):
-            content: str = getattr(measure, char_name)
-            char_list.append(Characterization(char_name, content))
-        return char_list
+# returns a list of all characterizations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Characterization]: the list of characterizations found in
+#                           @measure
+def _get_characterizations(measure: Namespace) -> list[Characterization]:
+    from ._dbservice import get_characterization_names
+
+    char_list: list[Characterization] = []
+    for char_name in get_characterization_names(measure):
+        content: str = getattr(measure, char_name)
+        char_list.append(Characterization(char_name, content))
+    return char_list
 
 
-    # returns a list of all permutations found in @measure
-    #
-    # Parameters:
-    #   measure (Namespace): the namespace representation of a measure
-    #
-    # Returns:
-    #   list[Permutation]: the list of permutations found in @measure
-    def __get_permutations(self, measure: Namespace) -> list[Permutation]:
-        perm_list: list[Permutation] = []
-        for perm_name in db.get_permutation_names():
-            verbose_name = getattr(measure, perm_name, None)
-            if verbose_name != None:
-                perm_list.append(Permutation(perm_name, verbose_name))
-        return perm_list
+# returns a list of all permutations found in @measure
+#
+# Parameters:
+#   measure (Namespace): the namespace representation of a measure
+#
+# Returns:
+#   list[Permutation]: the list of permutations found in @measure
+def _get_permutations(measure: Namespace) -> list[Permutation]:
+    from ._dbservice import get_permutation_names
+
+    perm_list: list[Permutation] = []
+    for perm_name in get_permutation_names():
+        verbose_name = getattr(measure, perm_name, None)
+        if verbose_name != None:
+            perm_list.append(Permutation(perm_name, verbose_name))
+    return perm_list

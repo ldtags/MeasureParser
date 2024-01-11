@@ -2,7 +2,7 @@ from io import TextIOWrapper
 
 import measureparser._parserdata as pd
 import measureparser._dbservice as db
-from ._htmlparser import CharacterizationParser
+from .htmlparser import CharacterizationParser
 from .measure import (
     Measure,
     Permutation
@@ -337,7 +337,7 @@ class MeasureParser:
 
     # returns the valid name for @permutation
     #
-    # Paramters:
+    # Parameters:
     #   permutation (Permutation): the permutation being validated
     #
     # Returns:
@@ -419,7 +419,7 @@ class MeasureParser:
         parser = CharacterizationParser(self.data.characterization)
         for char_name in db.get_all_characterization_names():
             if self.measure.get_characterization(char_name) == None:
-                self.data.characterization.missing.append(char_name)
+                self.data.characterization[char_name].missing = True
         for characterization in self.measure.characterizations:
             print(f'\tparsing {characterization.name}')
             parser.parse(characterization)
@@ -487,7 +487,7 @@ class MeasureParser:
         for table_name in exclusion_data.hyphen:
             self.log('\t\t\tWarning: Incorrect amount of hyphens '
                      f'in {table_name}')
-        if exclusion_data.isEmpty():
+        if exclusion_data.is_empty():
             self.log('\tAll exclusion tables are valid')
         self.log('\n')
 
@@ -526,7 +526,7 @@ class MeasureParser:
                      f'incorrect unit in {err.column_name}, '
                      f'{err.mapped_unit} should be {err.correct_unit}')
 
-        if nonshared_data.column.isEmpty():
+        if nonshared_data.column.is_empty():
             self.log('\t\tAll table columns are valid')
         self.log()
 
@@ -587,7 +587,7 @@ class MeasureParser:
         for perm_name in self.data.permutation.unexpected:
             self.log(f'\tUnexpected Permutation - {perm_name}')
 
-        if self.data.permutation.isEmpty():
+        if self.data.permutation.is_empty():
             self.log('\tAll permutations are valid')
         self.log('\n')
 
@@ -614,32 +614,66 @@ class MeasureParser:
 
     def log_characterization_data(self) -> None:
         self.log('Parsing characterizations:')
-        for err in self.data.characterization.punc_space:
-            self.log('\tExtra space(s) detected after punctuation '
-                     f'in {err.name} - {err.spaces} space(s)')
+        for name, data in self.data.characterization.items():
+            if data.is_empty():
+                continue
 
-        for err in self.data.characterization.refr_space:
-            self.log('\tExtra space(s) detected before a reference '
-                     f'in {err.name} - {err.spaces} space(s)')
+            if data.missing:
+                self.log(f'\tMissing Characterization: {name}')
+                continue
 
-        for err in self.data.characterization.capitalization:
-            self.log(f'\tUncapitalized word detected in {err.name} - '
-                     f'{err.word} should be {err.capitalized}')
+            self.log(f'\t{name}:')
 
-        for err in self.data.characterization.inv_header:
-            self.log(f'\tInvalid header in {err.name} - {err.tag}')
+            if data.initial_header != 'h3':
+                self.log('\t\tInvalid initial header, '
+                         f'{data.initial_header} should be h3')
 
-        for err in self.data.characterization.init_header:
-            self.log(f'\tIncorrect initial header in {err.name} - '
-                     f'expected h3, but detected {err.tag}')
+            for err in data.invalid_headers:
+                self.log('\t\tInvalid header order, '
+                         f'{err.tag} should not follow h{err.prev_level}')
 
-        for err in self.data.characterization.inc_header:
-            prev = err.prev_level
-            self.log(f'\tIncorrect header in {err.name} - '
-                     f'expected h{prev} or h{prev + 1}, '
-                     f'but detected {err["tag"]}')
+            for title, references in data.references.reference_map.items():
+                for ref in references:
+                    if ref.title.missing:
+                        self.log('A reference is missing a static title')
 
-        if self.data.characterization.isEmpty():
+                    if ref.spacing.leading != -1:
+                        spaces = ref.spacing.leading
+                        self.log('Extra whitespace detected before reference '
+                                 f'[{title}] - {spaces} space(s)')
+
+                    if ref.spacing.trailing != -1:
+                        spaces = ref.spacing.trailing
+                        self.log('Extra whitespace detected after reference '
+                                 f'[{title}] - {spaces} space(s)')
+
+                    if ref.title.spacing.leading != -1:
+                        spaces = ref.title.spacing.leading
+                        self.log('Extra whitespace detected before a '
+                                 f'reference title [{title}] - '
+                                 f'{spaces} space(s)')
+
+                    if ref.title.spacing.trailing != -1:
+                        spaces = ref.title.spacing.trailing
+                        self.log('Extra whitespace detected after a '
+                                 f'reference title [{title}] - '
+                                 f'{spaces} space(s)')
+
+            for sentence_data in data.sentences:
+                if sentence_data.leading != -1:
+                    spaces = sentence_data.leading
+                    tol = 0 if sentence_data.initial or spaces == 0 else 1
+                    self.log('Extra whitespace detected before a sentence - '
+                             f'{spaces - tol} space(s) before '
+                             f'sentence [{sentence_data.sentence}]')
+
+                if sentence_data.trailing != -1:
+                    spaces = sentence_data.trailing
+                    self.log('Extra whitespace detected before punctuation - '
+                             f'{spaces} space(s) in sentence '
+                             f'[{sentence_data.sentence}]')
+
+        if all(cd.is_empty() for cd in self.data.characterization.values()):
             self.log('\tAll characterizations are valid')
 
 

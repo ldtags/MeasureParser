@@ -1,9 +1,7 @@
 import json
 import os
 
-from jsonschema import validate, ValidationError
-
-from . import get_path
+from .measure import Characterization
 from .exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
@@ -18,6 +16,10 @@ from .exceptions import (
 #   bool: true if @filepath points to a correctly formatted eTRM
 #         measure JSON file, false otherwise
 def is_etrm_measure(filepath: str) -> bool:
+    '''Validates that the given file is an eTRM measure JSON file'''
+    from jsonschema import validate, ValidationError
+    from . import get_path
+
     if not os.path.isfile(filepath):
         return False
 
@@ -44,3 +46,19 @@ def is_etrm_measure(filepath: str) -> bool:
     except ValidationError:
         return False
 
+
+def visualize_html(characterizations: list[Characterization],
+                   id: str | None = None) -> None:
+    '''Formats and writes the given characterizations to an output file'''
+    from bs4 import BeautifulSoup
+
+    id_format = f'-{id}' if id != None else ''
+    with open(f'visualized{id_format}.txt', 'w') as out:
+        for char in characterizations:
+            soup = BeautifulSoup(char.content, 'html.parser')
+            out.write(f'{char.name}:\n')
+            try:
+                out.write(soup.prettify())
+            except UnicodeEncodeError:
+                out.write('\tUnicodeEncodeError encountered\n')
+            out.write('\n')

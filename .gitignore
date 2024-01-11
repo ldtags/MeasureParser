@@ -25,3 +25,4 @@ database.db-journal
 measures/
 tested/
 /measure.json
+visualized-*.txt

@@ -6,6 +6,19 @@ __all__ = ['parser']
 
 import os
 
+from .measure import (
+    Measure,
+    ValueTable,
+    SharedValueTable,
+    Parameter,
+    SharedParameter,
+    ExclusionTable,
+    Calculation,
+    Characterization,
+    Permutation
+)
+
+
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 def get_path(filename: str, directory: str='resources') -> str:
     '''Returns an absolute path to a file in the package'''
