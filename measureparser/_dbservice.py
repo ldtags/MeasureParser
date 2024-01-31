@@ -213,25 +213,21 @@ def filter_optional_tables(tables: dict[int, str],
 def get_table_columns(measure: Measure | None = None,
                       table_api_name: str | None = None
                       ) -> dict[str, list[dict[str, str]]]:
-    query: str = 'SELECT table_api, name, api_name, unit FROM table_columns'
+    query = 'SELECT table_api, name, api_name, unit FROM table_columns'
 
     if table_api_name != None:
         query += f' WHERE table_api = {table_api_name}'
 
     if measure != None:
-        criteria: list[str] = []
-        mat_labels = measure.get_shared_parameter('MeasAppType').labels
-        if 'AR' in mat_labels:
-            criteria.append('AR_MAT')
-            if len(mat_labels) > 2:
-                criteria.append('MAT+AR')
+        criteria = measure.get_table_column_criteria()
+        if not table_api_name:
+            query += ' WHERE '
+        else:
+            query += ' AND '
+        query += 'criteria IS NULL'
+
         if len(criteria) > 0:
-            if not table_api_name:
-                query += ' WHERE '
-            else:
-                query += ' AND '
-            query += f'criteria IN {queryfy(criteria)}'
-            query += ' OR criteria IS NULL'
+            query += f' OR criteria IN {queryfy(criteria)}'
 
     response: list[tuple] = cursor.execute(query).fetchall()
     column_dict: dict[str, list[dict[str, str]]] = {}
@@ -257,8 +253,8 @@ def get_table_columns(measure: Measure | None = None,
 #       permutations in this format are specified as:
 #           (reporting_name, verbose_name, valid_name)
 def get_permutations() -> list[tuple[str, str, Optional[str]]]:
-    query: str = 'SELECT reporting_name, verbose_name, valid_name'
-    query += ' FROM permutations'
+    query = 'SELECT reporting_name, verbose_name, valid_name'
+    query += ' FROM permutation_names'
     response = cursor.execute(query).fetchall()
     return listify(response)
 
@@ -276,7 +272,7 @@ def get_permutations() -> list[tuple[str, str, Optional[str]]]:
 #           {'verbose'  : str
 #            'valid'    : str}
 def get_permutation_data(reporting_name: str) -> dict[str, str]:
-    query: str = 'SELECT verbose_name, valid_name FROM permutations'
+    query = 'SELECT verbose_name, valid_name FROM permutation_names'
     query += f' WHERE reporting_name = \"{reporting_name}\"'
     response = cursor.execute(query).fetchall()
     response_list: list[str] = listify(response)
@@ -287,15 +283,21 @@ def get_permutation_data(reporting_name: str) -> dict[str, str]:
             'valid': response_list[1] if len(response_list) > 1 else None}
 
 
+def get_permutation_map(measure: Measure) -> dict[str, list[str]]:
+    query = 'SELECT reporting_name, object_api FROM permutation_objects '
+    query += f'WHERE criteria IS NULL OR criteria IN {queryfy()}'
+    
+
+
 def get_permutation_names() -> list[str]:
-    query: str = 'SELECT reporting_name FROM permutations'
+    query = 'SELECT reporting_name FROM permutation_names'
     cursor.execute(query)
     response: list[tuple[str,]] = cursor.fetchall()
     return listify(response)
 
 
 def get_all_characterization_names() -> list[str]:
-    query: str = 'SELECT name FROM characterizations'
+    query = 'SELECT name FROM characterizations'
     cursor.execute(query)
     response: list[tuple[str,]] = cursor.fetchall()
     return listify(response)

@@ -88,7 +88,7 @@ class MeasureParser:
             map(lambda param: param.version.version_string,
                 self.measure.remove_unknown_params(self.ordered_params)))
         self.data.parameter.missing = self.validate_param_existence()
-        self.data.parameter.unordered = self.smart_validate_param_order()
+        self.data.parameter.unordered = self.validate_param_order()
 
 
     def validate_tables(self) -> None:
@@ -98,7 +98,7 @@ class MeasureParser:
                 self.measure.remove_unknown_shared_tables(
                     self.ordered_sha_tables)))
         shared_data.missing = self.validate_shared_table_existence()
-        shared_data.unordered = self.smart_validate_shared_table_order()
+        shared_data.unordered = self.validate_shared_table_order()
 
         nonshared_data = self.data.value_table.nonshared
         nonshared_data.unexpected = list(
@@ -106,7 +106,7 @@ class MeasureParser:
                 self.measure.remove_unknown_value_tables(
                     self.ordered_val_tables)))
         nonshared_data.missing = self.validate_value_table_existence()
-        nonshared_data.unordered = self.smart_validate_value_table_order()
+        nonshared_data.unordered = self.validate_value_table_order()
         self.validate_standard_table_names()
         self.validate_table_columns()
 
@@ -120,9 +120,17 @@ class MeasureParser:
         column_dict = db.get_table_columns(measure=self.measure)
 
         for table in self.measure.value_tables:
-            for column_info in column_dict[table.api_name]:
-                name: str = getattr(column_info, 'name', None)
-                api_name: str = getattr(column_info, 'api_name', None)
+            table_columns: list[dict[str, str]] | None \
+                = column_dict.get(table.api_name)
+            if table_columns == None:
+                continue
+
+            for column_info in table_columns:
+                if column_info == None:
+                    continue
+
+                name: str = column_info.get('name')
+                api_name: str | None = column_info.get('api_name')
                 if api_name == None:
                     continue
 
@@ -134,7 +142,10 @@ class MeasureParser:
                     continue
 
                 column = table.get_column(api_name)
-                unit: str = getattr(column_info, 'unit', None)
+                unit: str | None = column_info.get('unit')
+                if unit == None:
+                    continue
+
                 if not unit == column.unit:
                     column_data.invalid_unit.append(
                         pd.InvalidValueTableColumnUnitData(
@@ -200,22 +211,7 @@ class MeasureParser:
         return missing_params
 
 
-    # validates that all parameters in @measure are in the same order as
-    # the parameters represented by @ordered_params
-    def validate_param_order(self) -> bool:
-        param_names: list[str] = list(
-            filter(lambda name: self.measure.contains_param(name),
-                   self.ordered_params))
-        for param in self.measure.shared_parameters:
-            index: int = param_names.index(param.version.version_string)
-            if param.order != (index + 1):
-                self.log('\t\tShared parameters may be out of order, '
-                         'please review the QA/QC guidelines')
-                return False
-        return True
-
-
-    def smart_validate_param_order(self) -> list[str]:
+    def validate_param_order(self) -> list[str]:
         unordered_params: list[str] = []
         ordered_params: list[str] = list(
             filter(lambda name: self.measure.contains_param(name),
@@ -239,23 +235,7 @@ class MeasureParser:
         return unordered_params
 
 
-    # validates that all non-shared value tables in @measure are in the
-    # same order as the non-shared value tables represented by
-    # @ordered_val_tables
-    def validate_value_table_order(self) -> bool:
-        table_names: list[str] = list(
-            filter(lambda name: self.measure.contains_value_table(name),
-                   self.ordered_val_tables))
-        for table in self.measure.value_tables:
-            index: int = table_names.index(table.api_name)
-            if table.order != (index + 1):
-                self.log(f'\t\tNon-shared value tables may be out of '
-                         'order, please review the QA/QC guidelines')
-                return False
-        return True
-
-
-    def smart_validate_value_table_order(self) -> list[str]:
+    def validate_value_table_order(self) -> list[str]:
         unordered_tables: list[str] = []
         ordered_tables: list[str] = list(
             filter(lambda name: self.measure.contains_value_table(name),
@@ -278,23 +258,7 @@ class MeasureParser:
         return unordered_tables
 
 
-    # validates that all shared value tables in @measure are in the same
-    # order as the non-shared value tables represented by
-    # @ordered_val_tables
-    def validate_shared_table_order(self) -> bool:
-        table_names: list[str] = list(
-            filter(lambda name: self.measure.contains_shared_table(name),
-                   self.ordered_sha_tables))
-        for table in self.measure.shared_tables:
-            index: int = table_names.index(table.version.version_string)
-            if table.order != (index + 1):
-                self.log('\t\tShared value tables may be out of order, '
-                         'please review the QA/QC guidelines')
-                return False
-        return True
-
-
-    def smart_validate_shared_table_order(self) -> list[str]:
+    def validate_shared_table_order(self) -> list[str]:
         unordered_tables: list[str] = []
         ordered_tables: list[str] = list(
             filter(lambda name: self.measure.contains_shared_table(name),
@@ -429,6 +393,8 @@ class MeasureParser:
     def log_output(self, dirpath: str | None = None) -> None:
         if dirpath != None:
             self.out = open(f'{dirpath}/output-{self.measure.id}.txt', 'w+')
+        else:
+            self.log('\n')
 
         self.log_measure_details()
         self.log_parameter_data()
@@ -468,10 +434,13 @@ class MeasureParser:
                  param_data.missing)
         self.log()
         self.log('\tParameter Order:')
-        for param_name in param_data.unordered:
-            self.log(f'\t\t{param_name} is out of order')
+        # for param_name in param_data.unordered:
+        #     self.log(f'\t\t{param_name} is out of order')
         if param_data.unordered == []:
             self.log('\t\tAll shared parameters are in the correct order')
+        else:
+            self.log('\t\tShared parameters may be out of order, '
+                     'please review the QA/QC guidelines')
         self.log('\n')
 
 
@@ -527,22 +496,28 @@ class MeasureParser:
                      f'{err.mapped_unit} should be {err.correct_unit}')
 
         if nonshared_data.column.is_empty():
-            self.log('\t\tAll table columns are valid')
+            self.log('\t\tAll value table columns are valid')
         self.log()
 
         self.log('\tValue Table Order: ')
 
-        for table in shared_data.unordered:
-            self.log(f'\t\t{table} is out of order')
+        # for table in shared_data.unordered:
+        #     self.log(f'\t\t{table} is out of order')
         if shared_data.unordered == []:
             self.log('\t\tAll shared value tables are in the '
                      'correct order')
+        else:
+            self.log('\t\tShared value tables may be out of order, '
+                     'please review the QA/QC guidelines')
 
-        for table in nonshared_data.unordered:
-            self.log(f'\t\t{table} is out of order')
+        # for table in nonshared_data.unordered:
+        #     self.log(f'\t\t{table} is out of order')
         if nonshared_data.unordered == []:
             self.log('\t\tAll non-shared value tables are in the '
                      'correct order')
+        else:
+             self.log('\t\tNon-shared value tables may be out of '
+                      'order, please review the QA/QC guidelines')
         self.log('\n')
 
 
@@ -630,32 +605,32 @@ class MeasureParser:
 
             for err in data.invalid_headers:
                 self.log('\t\tInvalid header order, '
-                         f'{err.tag} should not follow h{err.prev_level}')
+                         f'{err.tag} should not directly follow h{err.prev_level}')
 
             for title, references in data.references.reference_map.items():
                 for ref in references:
                     if ref.title.missing:
-                        self.log('A reference is missing a static title')
+                        self.log('\t\tA reference is missing a static title')
 
                     if ref.spacing.leading != -1:
                         spaces = ref.spacing.leading
-                        self.log('Extra whitespace detected before reference '
+                        self.log('\t\tWhitespace detected before reference '
                                  f'[{title}] - {spaces} space(s)')
 
                     if ref.spacing.trailing != -1:
                         spaces = ref.spacing.trailing
-                        self.log('Extra whitespace detected after reference '
+                        self.log('\t\tWhitespace detected after reference '
                                  f'[{title}] - {spaces} space(s)')
 
                     if ref.title.spacing.leading != -1:
                         spaces = ref.title.spacing.leading
-                        self.log('Extra whitespace detected before a '
+                        self.log('\t\tWhitespace detected before a '
                                  f'reference title [{title}] - '
                                  f'{spaces} space(s)')
 
                     if ref.title.spacing.trailing != -1:
                         spaces = ref.title.spacing.trailing
-                        self.log('Extra whitespace detected after a '
+                        self.log('\t\tWhitespace detected after a '
                                  f'reference title [{title}] - '
                                  f'{spaces} space(s)')
 
@@ -663,15 +638,16 @@ class MeasureParser:
                 if sentence_data.leading != -1:
                     spaces = sentence_data.leading
                     tol = 0 if sentence_data.initial or spaces == 0 else 1
-                    self.log('Extra whitespace detected before a sentence - '
+                    self.log('\t\tExtra whitespace detected before a sentence - '
                              f'{spaces - tol} space(s) before '
                              f'sentence [{sentence_data.sentence}]')
 
                 if sentence_data.trailing != -1:
                     spaces = sentence_data.trailing
-                    self.log('Extra whitespace detected before punctuation - '
+                    self.log('\t\tExtra whitespace detected before punctuation - '
                              f'{spaces} space(s) in sentence '
                              f'[{sentence_data.sentence}]')
+            self.log()
 
         if all(cd.is_empty() for cd in self.data.characterization.values()):
             self.log('\tAll characterizations are valid')

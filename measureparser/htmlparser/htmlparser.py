@@ -1,11 +1,11 @@
+import re
+
 from bs4 import (
     BeautifulSoup,
     Tag,
     ResultSet,
     NavigableString
 )
-
-import re
 
 from .embedded import (
     EmbeddedReference
@@ -50,26 +50,26 @@ class CharacterizationParser():
 
         soup = BeautifulSoup(self.characterization.content, 'html.parser')
         self.validate_header_order(soup)
-        self.validate_sentence_spacing(soup)
+        # self.validate_sentence_spacing(soup)
         self.validate_reference_tags(soup)
 
-        name = self.characterization.name
-        EMBEDDED_TABLE_MAP = db.get_embedded_table_map()
-        if name in EMBEDDED_TABLE_MAP:
-            self.validate_embedded_table(soup, EMBEDDED_TABLE_MAP[name])
+        # name = self.characterization.name
+        # EMBEDDED_TABLE_MAP = db.get_embedded_table_map()
+        # if name in EMBEDDED_TABLE_MAP:
+        #     self.validate_embedded_table(soup, EMBEDDED_TABLE_MAP[name])
 
-        STATIC_TABLE_MAP = db.get_static_table_map()
-        if name in STATIC_TABLE_MAP:
-            self.validate_static_table(soup, STATIC_TABLE_MAP[name])
+        # STATIC_TABLE_MAP = db.get_static_table_map()
+        # if name in STATIC_TABLE_MAP:
+        #     self.validate_static_table(soup, STATIC_TABLE_MAP[name])
 
     def validate_header_order(self, soup: BeautifulSoup) -> None:
-        '''Validates that all headers in the characterization follow
-            the order of `h3 -> h4 -> h5`
+        '''Validates that all headers that appear in the characterization
+            follow the order `h3 -> h4 -> h5`
         '''
         if self.data == None:
             return
 
-        headers: ResultSet[Tag] = soup.find_all(r'^h[3-5]$')
+        headers: ResultSet[Tag] = soup.find_all(re.compile('^h[3-5]$'))
         if headers == []:
             return
 
@@ -142,13 +142,14 @@ class CharacterizationParser():
             return
 
         reference_tags: ResultSet[Tag] \
-            = soup.find_all(attr={'data-etrmreference': True})
+            = soup.find_all(attrs={'data-etrmreference': True})
         for reference_tag in reference_tags:
             tag_data = pd.ReferenceTagData(
                 spacing=validate_tag_spacing(reference_tag),
                 title=validate_static_title(reference_tag))
-            title = _get_static_title(reference_tag, clean=True)
-            self.data.references.get(title).append(tag_data)
+            if not tag_data.is_empty():
+                title = _get_static_title(reference_tag, clean=True)
+                self.data.references.get(title).append(tag_data)
 
     def validate_embedded_calculation(self, soup: BeautifulSoup) -> None:
         pass
@@ -212,17 +213,15 @@ def validate_static_title(embedded_tag: Tag) -> pd.TitleData:
     title = _get_static_title(embedded_tag)
     if title == None:
         title_data.missing = True
-        return
+        return title_data
 
     initial_spaces = _get_leading_spaces(title)
     if initial_spaces != 0:
         title_data.spacing.leading = initial_spaces
-        pass
 
     trailing_spaces = _get_trailing_spaces(title)
     if trailing_spaces != 0:
         title_data.spacing.trailing = trailing_spaces
-        pass
 
     return title_data
 

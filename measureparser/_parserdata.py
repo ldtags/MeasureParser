@@ -21,14 +21,14 @@ class SpacingData:
 
 @dataclass
 class SentenceSpacingData(SpacingData):
-    sentence: str
+    sentence: str = ''
     initial: bool = False
 
 
 @dataclass
 class TitleData:
     missing: bool = False
-    spacing: SpacingData
+    spacing: SpacingData = field(default_factory=SpacingData)
 
     def is_empty(self) -> bool:
         return self.missing == False and self.spacing.is_empty()
@@ -73,7 +73,7 @@ class CharacterizationData:
     missing: bool = False
     initial_header: str = 'h3'
     invalid_headers: list[InvalidHeaderData] = field(default_factory=list)
-    references: ReferenceData
+    references: ReferenceData = field(default_factory=ReferenceData)
     sentences: list[SentenceSpacingData] = field(default_factory=list)
 
     def is_empty(self) -> bool:

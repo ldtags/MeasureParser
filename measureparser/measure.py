@@ -320,6 +320,17 @@ class Measure:
         return False
 
 
+    def contains_calculation(self, calc_name: str) -> bool:
+        for calculation in self.calculations:
+            if calculation.api_name == calc_name:
+                return True
+
+            if calculation.name == calc_name:
+                return True
+
+        return False
+
+
     # Checks if the measure contains a permutation associated with
     # @perm_name
     #
@@ -800,6 +811,62 @@ class Measure:
             criteria.append('ET')
 
         return criteria
+
+
+    def get_table_column_criteria(self) -> list[str]:
+        criteria: list[str] = []
+
+        mat = self.get_shared_parameter('MeasAppType')
+        if 'AR' in mat.labels:
+            criteria.append('AR_MAT')
+            if len(mat.labels) > 2:
+                criteria.append('AR_M_MAT')
+
+        deliv = self.get_shared_parameter('DelivType')
+        if 'UpDeemed' in deliv.labels:
+            if len(deliv.labels) > 2:
+                criteria.append('UD_M_DT')
+
+        return criteria
+
+
+    def get_permutation_criteria(self) -> list[str]:
+        criteria: list[str] = []
+
+        mat = self.get_shared_parameter('MeasAppType')
+        if 'AR' in mat.labels:
+            criteria.append('AR_MAT')
+            if len(mat.labels) == 1:
+                criteria.append('O_AR_MAT')
+            else:
+                criteria.append('M_AR_MAT')
+        else:
+            criteria.append('N_AR_MAT')
+
+        if 'AOE' in mat.labels:
+            criteria.append('AOE_MAT')
+        else:
+            criteria.append('N_AOE_MAT')
+
+        if 'AR' in mat.labels and 'AOE' in mat.labels:
+            criteria.append('AR_AOE_MAT')
+            if len(mat.labels) == 2:
+                criteria.append('O_AR_AOE_MAT')
+            else:
+                criteria.append('M_AR_AOE_MAT')
+        else:
+            criteria.append('N_AR_AOE_MAT')
+
+        if self.is_GSIA_default():
+            criteria.append('DEF_GSIA')
+
+        criteria.append('PK_DMND')
+        criteria.append('ELCT_SVG')
+        criteria.append('GAS_SVG')
+        criteria.append('FBLC') # maybe in costs value table? ask chau
+
+
+
 
 
 # returns a list of all characterizations found in @measure
