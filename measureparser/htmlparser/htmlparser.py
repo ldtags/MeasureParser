@@ -49,9 +49,10 @@ class CharacterizationParser():
             return
 
         soup = BeautifulSoup(self.characterization.content, 'html.parser')
-        self.validate_header_order(soup)
+        root = soup.find('html')
+        self.validate_header_order(root)
         # self.validate_sentence_spacing(soup)
-        self.validate_reference_tags(soup)
+        self.validate_reference_tags(root)
 
         # name = self.characterization.name
         # EMBEDDED_TABLE_MAP = db.get_embedded_table_map()
@@ -62,14 +63,14 @@ class CharacterizationParser():
         # if name in STATIC_TABLE_MAP:
         #     self.validate_static_table(soup, STATIC_TABLE_MAP[name])
 
-    def validate_header_order(self, soup: BeautifulSoup) -> None:
+    def validate_header_order(self, element: Tag) -> None:
         '''Validates that all headers that appear in the characterization
             follow the order `h3 -> h4 -> h5`
         '''
         if self.data == None:
             return
 
-        headers: ResultSet[Tag] = soup.find_all(re.compile('^h[3-5]$'))
+        headers: ResultSet[Tag] = element.find_all(re.compile('^h[3-5]$'))
         if headers == []:
             return
 
@@ -95,12 +96,12 @@ class CharacterizationParser():
     # searches for paragraphs by the <p> tag
     # splits sentences in those paragraphs by '.'
     # this also validates some reference tag spacing as a side effect
-    def validate_sentence_spacing(self, soup: BeautifulSoup) -> None:
+    def validate_sentence_spacing(self, element: Tag) -> None:
         '''Validates that all sentences are seperated by only one space'''
         if self.data == None:
             return
 
-        paragraphs: ResultSet[Tag] = soup.find_all('p')
+        paragraphs: ResultSet[Tag] = element.find_all('p')
         for paragraph in paragraphs:
             text = paragraph.get_text()
             if text == '' or '.' not in text:
@@ -134,7 +135,7 @@ class CharacterizationParser():
     def validate_embedded_reference(self, reference_tag: Tag) -> None:
         pass
 
-    def validate_reference_tags(self, soup: BeautifulSoup) -> None:
+    def validate_reference_tags(self, element: Tag) -> None:
         '''Validates the spacing around reference tags and reference
             titles
         '''
@@ -142,7 +143,7 @@ class CharacterizationParser():
             return
 
         reference_tags: ResultSet[Tag] \
-            = soup.find_all(attrs={'data-etrmreference': True})
+            = element.find_all(attrs={'data-etrmreference': True})
         for reference_tag in reference_tags:
             tag_data = pd.ReferenceTagData(
                 spacing=validate_tag_spacing(reference_tag),
@@ -155,10 +156,10 @@ class CharacterizationParser():
         pass
 
     def validate_embedded_table(self,
-                                soup: BeautifulSoup,
+                                element: Tag,
                                 table_name: str) -> None:
         embedded_table_tags: ResultSet[Tag] \
-            = soup.find_all('div', attrs={'data-etrmvaluetable': True})
+            = element.find_all('div', attrs={'data-etrmvaluetable': True})
         if embedded_table_tags == []:
             # no embedded value tables exist
             return
@@ -182,10 +183,10 @@ class CharacterizationParser():
             return
 
     def validate_static_table(self,
-                              soup: BeautifulSoup,
+                              element: Tag,
                               table_name: str) -> None:
         table_header: Tag | None = None
-        headers: list[Tag] = soup.find_all('h6')
+        headers: list[Tag] = element.find_all('h6')
         for header in headers:
             if table_name in header.descendants:
                 table_header = header

@@ -389,8 +389,13 @@ class MeasureParser:
             parser.parse(characterization)
 
 
-    # specifies the control flow for parser logging
     def log_output(self, dirpath: str | None = None) -> None:
+        '''Specifies the control flow for logging parsed measure data.
+        
+        Params:
+            dirpath `str | None` : path of output file or `None` for standard output
+        '''
+
         if dirpath != None:
             self.out = open(f'{dirpath}/output-{self.measure.id}.txt', 'w+')
         else:
@@ -411,8 +416,17 @@ class MeasureParser:
             self.out = None
 
 
-    # logs specific details about the measure
     def log_measure_details(self) -> None:
+        '''Logs measure identification details.
+        
+        Measure Details:
+            - Version ID
+            - Name
+            - PA Lead
+            - Start Date
+            - End Date
+        '''
+
         self.log('Measure Details:'
                  f'\n\tMeasure Version ID: {self.measure.version_id}'
                  f'\n\tMeasure Name: {self.measure.name}'
@@ -423,6 +437,13 @@ class MeasureParser:
 
 
     def log_parameter_data(self) -> None:
+        '''Logs all measure specific parameters and invalid measure parameter data.
+        
+        Invalid Parameter data:
+            - Unexpected parameters
+            - Missing parameters
+        '''
+
         param_data = self.data.parameter
         self.log('Validating Parameters:')
         self.log('\tMeasure Specific Parameters: ',
@@ -445,6 +466,17 @@ class MeasureParser:
 
 
     def log_exclusion_table_data(self) -> None:
+        '''Logs all measure exclusion tables and invalid exclusion table data.
+
+        Exclusion Table data:
+            - Name
+            - Parameters
+
+        Invalid Exclusion Table data:
+            - Whitespace in name
+            - Incorrect amount of hyphens in name
+        '''
+
         self.log('Validating Exclusion Tables:')
         for table in self.measure.exclusion_tables:
             self.log(f'\tTable Name: {table.name}\n',
@@ -462,6 +494,21 @@ class MeasureParser:
 
 
     def log_value_table_data(self) -> None:
+        '''Logs parsed invalid shared and non-shared value table data to
+        the output file.
+        
+        General data:
+            - Unexpected shared/non-shared value tables
+            - Missing shared/non-shared value tables
+            - Value Table order
+
+        Non-Shared Value Table specific data:
+            - Name
+            - Columns
+                - Name
+                - Unit
+        '''
+
         self.log('Validating Value Tables:')
         shared_data = self.data.value_table.shared
         self.log('\tUnexpected Shared Tables: ',
@@ -521,8 +568,19 @@ class MeasureParser:
         self.log('\n')
 
 
-    # prints a representation of every non-shared value table in @measure
     def log_value_tables(self) -> None:
+        '''Logs all measure non-shared value tables to the output file.
+        
+        Non-Shared Value Table data:
+            - Name
+            - API name
+            - Parameters
+            - Columns
+                - Name
+                - API name
+                - Unit
+        '''
+
         self.log('Standard Non-Shared Value Tables:')
         for table in self.measure.value_tables:
             if self.measure.value_tables.index(table) != 0:
@@ -538,8 +596,16 @@ class MeasureParser:
         self.log('\n')
 
 
-    # prints out every calculation in @measure' name and API name
     def log_calculations(self) -> None:
+        '''Logs all measure calculations to the output file.
+        
+        Calculation data:
+            - Name
+            - API name
+            - Unit
+            - Parameters
+        '''
+
         self.log('All Calculations:')
         for calculation in self.measure.calculations:
             if self.measure.calculations.index(calculation) != 0:
@@ -552,6 +618,15 @@ class MeasureParser:
 
 
     def log_permutation_data(self) -> None:
+        '''Logs parsed invalid permutation data to the output file.
+
+        General data:
+            - Unexpected permutation
+
+        Permutation specific data:
+            - Incorrect mapped field
+        '''
+
         self.log('Validating permutations:')
         for err in self.data.permutation.invalid:
             self.log(f'\tInvalid Permutation ({err.reporting_name}) - '
@@ -567,9 +642,15 @@ class MeasureParser:
         self.log('\n')
 
 
-    # prints out every permutation in @measure's reporting name,
-    # verbose name, and mapped field
     def log_permutations(self) -> None:
+        '''Logs all measure permutations to the output file.
+        
+        Permutation data:
+            - Reporting name
+            - Verbose name
+            - Mapped field
+        '''
+
         self.log('All Permutations:')
         for permutation in self.measure.permutations:
             perm_data = db.get_permutation_data(
@@ -588,6 +669,17 @@ class MeasureParser:
 
 
     def log_characterization_data(self) -> None:
+        '''Logs parsed invalid charaterization data to the output file.
+        
+        General data:
+            - Missing characterizations
+        
+        Characterization specific data:
+            - Header order (h3 -> h4 -> h5)
+            - Reference tag spacing and required content
+            - Sentence and punctuation spacing
+        '''
+
         self.log('Parsing characterizations:')
         for name, data in self.data.characterization.items():
             if data.is_empty():
@@ -653,9 +745,10 @@ class MeasureParser:
             self.log('\tAll characterizations are valid')
 
 
-    # method to print to the parser's out stream
-    #
-    # Parameters:
-    #   *object : the object being printed
     def log(self, *values: object) -> None:
+        '''Logs data to the defined output stream.
+        
+        Params:
+            values (*object) : content being logged
+        '''
         print(*values, file=self.out)
