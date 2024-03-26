@@ -1,0 +1,60 @@
+{
+    "cdf": {
+        "objInfo": {
+            "id": null,
+            "title": "cdf",
+            "ctype_id": 7,
+            "verbose_name": "Value Table",
+            "verbose_name_plural": "Value Tables",
+            "change_url": "/panels/core/lookup/44694/change/"
+        },
+        "objDeleted": false
+    },
+
+    "emergingtech": {
+        "objInfo": {
+            "id": null,
+            "title": "emergingtech",
+            "ctype_id": 7,
+            "verbose_name": "Value Table",
+            "verbose_name_plural": "Value Tables",
+            "change_url": "/panels/core/lookup/199879/change/",
+            "api_name_unique": "emergingtech",
+            "vt_conf": {
+                "ver": 1,
+                "cids": [
+                    "projectNumber",
+                    "programFundingYear"
+                ]
+            }
+        },
+        "objDeleted": false
+    },
+
+    "r1848": {
+        "objInfo": {
+            "id": null,
+            "title": "r1848",
+            "ctype_id": 15,
+            "verbose_name": "reference",
+            "verbose_name_plural": "references",
+            "change_url": "/panels/core/reference/2207/change/",
+            "preview_url": "/panels/core/reference/2207/preview/"
+        },
+        "refType": "label",
+        "objDeleted": false
+    },
+
+    "ues_yrkhw": {
+        "objInfo": {
+            "id": null,
+            "title": "ues_yrkwh",
+            "ctype_id": 7,
+            "verbose_name": "Value Table",
+            "verbose_name_plural": "Value Tables",
+            "change_url": "/panels/core/lookup/83637/change/",
+            "api_name_unique": "ues_yrkwh"
+        },
+        "objDeleted": false
+    }
+}

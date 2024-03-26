@@ -1,8 +1,9 @@
-import sys
 from traceback import print_exc
+
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
+from measureparser import _ROOT
 from measureparser.parser import MeasureParser
 from measureparser.exceptions import (
     MeasureFormatError
@@ -35,7 +36,7 @@ def parse_arguments() -> Namespace:
         widget='DirChooser',
         metavar='Output Location',
         help='Select a folder to store the output file',
-        default=sys.executable[0:sys.executable.rindex('\\')] + '\..')
+        default=_ROOT[0:_ROOT.rindex('\\')])
 
     return argparser.parse_args()
 
@@ -46,12 +47,12 @@ def parse_arguments() -> Namespace:
 )
 def main() -> None:
     args = parse_arguments()
-    filepath: str = getattr(args, 'filepath', None)
+    filepath: str | None = getattr(args, 'filepath', None)
     if filepath == None:
         print('ERROR - measure JSON file not specified')
         return
 
-    outpath: str = getattr(args, 'output', None)
+    outpath: str | None = getattr(args, 'output', None)
     if outpath == None:
         print('ERROR - output directory not specified')
         return
