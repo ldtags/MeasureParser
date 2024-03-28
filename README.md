@@ -25,13 +25,3 @@ Simplify the development environment setup process by running this batch script.
 
 ### build
 Build the Measure Parser executable by running this script. The resulting build will be found in the newly-created **dist** directory as a folder named **parser**.
-
-## Building the Executable
-  1. Navigate to the root directory of the application in your CLI
-  2. Build the executable by running the command *pyinstaller parser.spec*
-
-## Running the Script
-  1. Navigate to the measure_parser directory or the location of the executable in your CLI
-  2. Execute main with the file path to the eTRM measure JSON file as an argument
-
-When built, the executable will be in the main folder in the newly created directory *dist*
