@@ -1,5 +1,8 @@
 # MeasureParser
-A tool for validating eTRM measure JSON files
+Make eTRM measure QA/QC simple with this tool!
+
+## Overview
+The Measure Parser is a Python-based application that aims to automate eTRM measure QA/QC.
 
 ## Development Setup
   1. Navigate to the root directory of the application in your CLI
