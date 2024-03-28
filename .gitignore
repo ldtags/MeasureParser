@@ -20,6 +20,7 @@ output-*.txt
 
 # Database
 database.db-journal
+database.ini
 
 # Testing Items
 measures/
