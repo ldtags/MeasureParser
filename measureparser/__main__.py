@@ -1,5 +1,4 @@
 from traceback import print_exc
-import gooey
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
