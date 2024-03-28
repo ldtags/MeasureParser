@@ -1,16 +1,25 @@
-# MeasureParser
+# Measure Parser
 Make eTRM measure QA/QC simple with this tool!
 
 ## Overview
 The Measure Parser is a Python-based application that aims to automate eTRM measure QA/QC.
 
-## Using the Measure Parser
+Various Batch scripts are provided in the **scripts** directory which simplify the setup and execution processes.
 
-## Development Setup
-  1. Navigate to the root directory of the application in your CLI
-  2. Set up your virtual environment
-  3. Run the command  *pip install -r requirements.txt*
-  4. Start coding!
+## OS Support
+Currently, the Measure Parser only supports Windows 10/11. There are no plans to provide support to Unix-based systems in the near future.
+
+## Upcoming Features
+As of March 27th, 2024, this tool is under development. New enhancements are on the way!
+
+Enhancements in development:
+- Permutation QA/QC Support
+  - The existing permutation QA/QC macro will be implemented into the Measure Parser, placing all of your QA/QC tools in one location!
+- Direct eTRM connection
+  - Instead of being forced to process the JSON file of a measure, users will be able to select a measure to be parsed by entering its version ID.
+
+## Setting Up a Dev Environment
+
 
 ## Building the Executable
   1. Navigate to the root directory of the application in your CLI
