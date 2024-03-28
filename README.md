@@ -22,6 +22,7 @@ Enhancements in development:
 ### setup
 Simplify the development environment setup process by running this batch script. A Python virtual environment, named .venv, will be created at the root of this project directory. All dependencies will be installed from the **requirements.txt** file.
 
+
 ### build
 Build the Measure Parser executable by running this script. The resulting build will be found in the newly-created **dist** directory as a folder named **parser**.
 
