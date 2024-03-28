@@ -1,5 +1,5 @@
 from traceback import print_exc
-
+import gooey
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
@@ -17,14 +17,31 @@ def parse_arguments() -> Namespace:
     argparser: GooeyParser = GooeyParser(
         description='parser for eTRM measure JSON files')
 
-    input_paths = argparser.add_argument_group('Input Paths',
-        description='Specify the locations of the eTRM measure JSON file and output directory',
+    input_group = argparser.add_argument_group(
+        title='Measure Source',
+        description='Specify the eTRM measure source',
         gooey_options={
-            'columns': 1,
-            'show_underline': True
+            'columns': 2,
+            'show_border': True
         })
 
-    input_paths.add_argument('filepath',
+    conn_group = input_group.add_argument_group(
+        title='eTRM Connection',
+        description='Measure Version ID and eTRM auth token',
+        gooey_options={
+            'columns': 1,
+            'show_border': True
+        })
+
+    conn_group.add_argument('version_id',
+        metavar='Measure Version ID',
+        help='Version ID of the desired eTRM measure')
+
+    conn_group.add_argument('auth_token',
+        metavar='eTRM Auth Token',
+        help='Enter an eTRM authorization token')
+
+    input_group.add_argument('filepath',
         widget='FileChooser',
         metavar='Measure JSON File',
         help='Select an eTRM measure JSON file',
@@ -32,7 +49,10 @@ def parse_arguments() -> Namespace:
             'wildcard': 'JSON file (*.json)|*.json'
         })
 
-    input_paths.add_argument('output',
+    input_group.add_argument('password',
+        metavar='eTRM Password')
+
+    argparser.add_argument('output',
         widget='DirChooser',
         metavar='Output Location',
         help='Select a folder to store the output file',
@@ -48,9 +68,7 @@ def parse_arguments() -> Namespace:
 def main() -> None:
     args = parse_arguments()
     filepath: str | None = getattr(args, 'filepath', None)
-    if filepath == None:
-        print('ERROR - measure JSON file not specified')
-        return
+    
 
     outpath: str | None = getattr(args, 'output', None)
     if outpath == None:
