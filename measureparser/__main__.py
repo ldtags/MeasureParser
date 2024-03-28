@@ -70,8 +70,13 @@ def parse_arguments() -> Namespace:
 )
 def main() -> None:
     args = parse_arguments()
-    filepath: str | None = getattr(args, 'filepath', None)
-    
+    msr_filepath: str | None = getattr(args, 'filepath', None)
+    msr_version: str | None = getattr(args, 'version_id', None)
+    auth_token: str | None = getattr(args, 'auth_token', None)
+    if not (msr_filepath or (msr_version and auth_token)):
+        print('ERROR - either path to measure JSON file or eTRM auth token'
+                + ' and measure version ID required.')
+        return
 
     out_dirpath: str | None = getattr(args, 'output', None)
     if out_dirpath == None:
@@ -79,18 +84,17 @@ def main() -> None:
         return
 
     try:
-        parser = MeasureParser(filepath)
+        parser = MeasureParser(msr_filepath)
         parser.parse()
         parser.log_output(out_dirpath)
         return
     except KeyboardInterrupt as err:
         print('Measure parsing interrupted')
     except MeasureFormatError as err:
-        print(f'A formatting error was encountered in {filepath}:',
-              f'\n{err.message}')
+        print(f'A formatting error was encountered:\n{err.message}')
     except Exception as err:
-        print(f'An unhandled error occurred while parsing {filepath}:',
-              f'\n{err.__class__.__name__}: {err}')
+        print('An unhandled error occurred while parsing:\n',
+              f'{err.__class__.__name__}: {err}')
         print_exc()
 
     parser.clear()
