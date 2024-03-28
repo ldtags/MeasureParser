@@ -12,10 +12,10 @@ Currently, the Measure Parser only supports Windows 10/11. There are no plans to
 ## Upcoming Features
 As of March 27th, 2024, this tool is under development. New enhancements are on the way!
 
-Enhancements in development:
-- Permutation QA/QC Support
+Enhancements and Bug Fixes:
+- [ ] Permutation QA/QC Support
   - The existing permutation QA/QC macro will be implemented into the Measure Parser, placing all of your QA/QC tools in one location!
-- Direct eTRM connection
+- [ ] Direct eTRM connection
   - Instead of being forced to process the JSON file of a measure, users will be able to select a measure to be parsed by entering its version ID.
 
 ## Batch Scripts
