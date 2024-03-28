@@ -1,3 +1,4 @@
+import os
 from io import TextIOWrapper
 
 import measureparser._parserdata as pd
@@ -752,3 +753,10 @@ class MeasureParser:
             values (*object) : content being logged
         '''
         print(*values, file=self.out)
+
+
+    def clear(self) -> None:
+        if self.out != None:
+            out_filepath = os.path.abspath(self.out.name)
+            if os.path.exists(out_filepath):
+                os.remove(out_filepath)

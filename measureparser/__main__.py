@@ -1,3 +1,4 @@
+import signal
 from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
@@ -34,11 +35,13 @@ def parse_arguments() -> Namespace:
 
     conn_group.add_argument('version_id',
         metavar='Measure Version ID',
-        help='Version ID of the desired eTRM measure')
+        help='Version ID of the desired eTRM measure',
+        type=str)
 
     conn_group.add_argument('auth_token',
         metavar='eTRM Auth Token',
-        help='Enter an eTRM authorization token')
+        help='Enter an eTRM authorization token',
+        type=str)
 
     input_group.add_argument('filepath',
         widget='FileChooser',
@@ -62,22 +65,26 @@ def parse_arguments() -> Namespace:
 
 @Gooey (
     program_name='eTRM Measure Parser',
-    program_description='Parses and validates eTRM measures'
+    program_description='Parses and validates eTRM measures',
+    shutdown_signal=signal.CTRL_C_EVENT
 )
 def main() -> None:
     args = parse_arguments()
     filepath: str | None = getattr(args, 'filepath', None)
     
 
-    outpath: str | None = getattr(args, 'output', None)
-    if outpath == None:
+    out_dirpath: str | None = getattr(args, 'output', None)
+    if out_dirpath == None:
         print('ERROR - output directory not specified')
         return
 
     try:
         parser = MeasureParser(filepath)
         parser.parse()
-        parser.log_output(outpath)
+        parser.log_output(out_dirpath)
+        return
+    except KeyboardInterrupt as err:
+        print('Measure parsing interrupted')
     except MeasureFormatError as err:
         print(f'A formatting error was encountered in {filepath}:',
               f'\n{err.message}')
@@ -85,6 +92,8 @@ def main() -> None:
         print(f'An unhandled error occurred while parsing {filepath}:',
               f'\n{err.__class__.__name__}: {err}')
         print_exc()
+
+    parser.clear()
 
 
 if __name__ == '__main__':
