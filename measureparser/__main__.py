@@ -1,12 +1,24 @@
+import os
+import sys
 import signal
 from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
 from measureparser import _ROOT
+from measureparser._utils import perror
 from measureparser.parser import MeasureParser
-from measureparser.exceptions import (
-    MeasureFormatError
+from measureparser.dbservice import (
+    BaseDatabase,
+    LocalDatabase,
+    ETRMDatabase
+)
+from measureparser._exceptions import (
+    ParserError,
+    MeasureFormatError,
+    DatabaseError,
+    DatabaseConnectionError,
+    InvalidFileError
 )
 
 # parses the command line arguments in sys.argv
@@ -33,9 +45,9 @@ def parse_arguments() -> Namespace:
             'show_border': True
         })
 
-    conn_group.add_argument('version_id',
-        metavar='Measure Version ID',
-        help='Version ID of the desired eTRM measure',
+    conn_group.add_argument('msr_id',
+        metavar='Measure ID',
+        help='ID of the desired eTRM measure (Example: SWHC002-03)',
         type=str)
 
     conn_group.add_argument('auth_token',
@@ -58,7 +70,7 @@ def parse_arguments() -> Namespace:
         widget='DirChooser',
         metavar='Output Location',
         help='Select a folder to store the output file',
-        default=_ROOT[0:_ROOT.rindex('\\')])
+        default=_ROOT[0:_ROOT.rindex(os.pathsep)])
 
     return argparser.parse_args()
 
@@ -71,34 +83,57 @@ def parse_arguments() -> Namespace:
 def main() -> None:
     args = parse_arguments()
     msr_filepath: str | None = getattr(args, 'filepath', None)
-    msr_version: str | None = getattr(args, 'version_id', None)
+    msr_id: str | None = getattr(args, 'msr_id', None)
     auth_token: str | None = getattr(args, 'auth_token', None)
-    if not (msr_filepath or (msr_version and auth_token)):
-        print('ERROR - either path to measure JSON file or eTRM auth token'
-                + ' and measure version ID required.')
+    if not (msr_filepath or (msr_id and auth_token)):
+        perror('Input Error:\nEither path to measure JSON file or eTRM'
+                + ' auth token and measure version ID required.')
         return
 
     out_dirpath: str | None = getattr(args, 'output', None)
     if out_dirpath == None:
-        print('ERROR - output directory not specified')
+        perror('Input Error:\nOutput directory not specified')
+        return
+
+    database: BaseDatabase | None = None
+    msr_source: str | None = None
+    try:
+        if (msr_id and auth_token):
+            database = ETRMDatabase(auth_token)
+            msr_source = msr_id
+        elif msr_filepath:
+            database = LocalDatabase()
+            msr_source = msr_filepath
+        else:
+            raise DatabaseConnectionError('No database source specified')
+    except DatabaseError as err:
+        perror(f'Database Error:\n{err.message}')
         return
 
     try:
-        parser = MeasureParser(msr_filepath)
-        parser.parse()
-        parser.log_output(out_dirpath)
-        return
-    except KeyboardInterrupt as err:
-        print('Measure parsing interrupted')
+        measure = database.get_measure(msr_source)
     except MeasureFormatError as err:
-        print(f'A formatting error was encountered:\n{err.message}')
-    except Exception as err:
-        print('An unhandled error occurred while parsing:\n',
-              f'{err.__class__.__name__}: {err}')
-        print_exc()
+        perror(f'Measure Format Error:\n{err.message}')
+        return
+    except InvalidFileError as err:
+        perror(f'Invalid File Error:\n{err.message}')
+        return
 
-    parser.clear()
+    try:
+        parser = MeasureParser(database)
+        parser.parse(measure)
+        parser.log_output(out_dirpath)
+    except ParserError as err:
+        perror(f'Parser Error:\n{err.message}')
+        return
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print('Measure parsing interrupted')
+    except Exception as err:
+        perror('An unhandled error occurred while parsing measure:\n',
+              f'{err.__class__.__name__}: {err}')
+        print_exc(file=sys.stderr)

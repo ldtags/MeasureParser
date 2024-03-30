@@ -1,17 +1,28 @@
 import os
 from io import TextIOWrapper
 
-import measureparser._parserdata as pd
-import measureparser._dbservice as db
+from .parserdata import (
+    ParserData,
+    MissingValueTableColumnData,
+    InvalidValueTableColumnUnitData,
+    StdValueTableNameData,
+    InvalidPermutationData
+)
+from .dbservice import (
+    BaseDatabase,
+    LocalDatabase,
+    ETRMDatabase
+)
 from .htmlparser import CharacterizationParser
 from .measure import (
     Measure,
     Permutation
 )
-from .exceptions import (
+from ._exceptions import (
     RequiredParameterError,
-    UnknownPermutationError
+    MeasureContentError
 )
+
 
 class MeasureParser:
     """The parser for eTRM measure JSON files
@@ -27,20 +38,23 @@ class MeasureParser:
                                         all valid shared value tables
     """
 
-    def __init__(self, filepath: str):
-        self.measure = Measure(filepath)
-        self.data = pd.ParserData()
+    def __init__(self, database: BaseDatabase):
+        self.db: BaseDatabase = database
+        self.data: ParserData = ParserData()
         self.out: TextIOWrapper | None = None
+        self.ordered_params: list[str] = []
+        self.ordered_val_tables: list[str] = []
+        self.ordered_sha_tables: list[str] = []
 
         try:
             self.ordered_params: list[str] \
-                = db.get_param_api_names(measure=self.measure)
+                = self.db.get_param_api_names(measure=self.measure)
 
             self.ordered_val_tables: list[str] \
-                = db.get_table_api_names(measure=self.measure, nonshared=True)
+                = self.db.get_table_api_names(measure=self.measure, nonshared=True)
 
             self.ordered_sha_tables: list[str] \
-                = db.get_table_api_names(measure=self.measure, shared=True)
+                = self.db.get_table_api_names(measure=self.measure, shared=True)
         except RequiredParameterError as err:
             print('ERROR - the measure is missing required information\n', 
                   err)
@@ -51,15 +65,11 @@ class MeasureParser:
 
 
     # specifies the control flow for the generic parsing of @measure
-    def parse(self) -> None:
-        if self.measure == None:
-            print('ERROR - measure parser requires a measure to parse')
-            return
-
-        print(f'starting to parse measure {self.measure.id}\n')
+    def parse(self, measure: Measure) -> None:
+        print(f'starting to parse measure {measure.id}\n')
 
         print('validating parameters')
-        self.validate_parameters()
+        self.validate_parameters(measure)
         print('finished validating parameters\n')
 
         print('validating exclusion tables')
@@ -78,25 +88,25 @@ class MeasureParser:
         self.parse_characterizations()
         print('finished parsing characterizations\n')
 
-        print(f'finished parsing measure {self.measure.id}')
+        print(f'finished parsing measure {measure.id}')
 
 
-    def validate_parameters(self) -> None:
+    def validate_parameters(self, measure: Measure) -> None:
         self.data.parameter.nonshared = list(
-            map(lambda param: param.name, self.measure.parameters))
+            map(lambda param: param.name, measure.parameters))
 
         self.data.parameter.unexpected = list(
             map(lambda param: param.version.version_string,
-                self.measure.remove_unknown_params(self.ordered_params)))
+                measure.remove_unknown_params(self.ordered_params)))
         self.data.parameter.missing = self.validate_param_existence()
         self.data.parameter.unordered = self.validate_param_order()
 
 
-    def validate_tables(self) -> None:
+    def validate_tables(self, measure: Measure) -> None:
         shared_data = self.data.value_table.shared
         shared_data.unexpected = list(
             map(lambda table: table.version.version_string,
-                self.measure.remove_unknown_shared_tables(
+                measure.remove_unknown_shared_tables(
                     self.ordered_sha_tables)))
         shared_data.missing = self.validate_shared_table_existence()
         shared_data.unordered = self.validate_shared_table_order()
@@ -104,7 +114,7 @@ class MeasureParser:
         nonshared_data = self.data.value_table.nonshared
         nonshared_data.unexpected = list(
             map(lambda table: table.name,
-                self.measure.remove_unknown_value_tables(
+                measure.remove_unknown_value_tables(
                     self.ordered_val_tables)))
         nonshared_data.missing = self.validate_value_table_existence()
         nonshared_data.unordered = self.validate_value_table_order()
@@ -118,7 +128,7 @@ class MeasureParser:
     #   bool    : true if all columns are valid, false otherwise 
     def validate_table_columns(self) -> None:
         column_data = self.data.value_table.nonshared.column
-        column_dict = db.get_table_columns(measure=self.measure)
+        column_dict = self.db.get_table_columns(measure=self.measure)
 
         for table in self.measure.value_tables:
             table_columns: list[dict[str, str]] | None \
@@ -137,7 +147,7 @@ class MeasureParser:
 
                 if not table.contains_column(api_name):
                     column_data.missing.append(
-                        pd.MissingValueTableColumnData(
+                        MissingValueTableColumnData(
                             table.name,
                             name or api_name))
                     continue
@@ -149,7 +159,7 @@ class MeasureParser:
 
                 if not unit == column.unit:
                     column_data.invalid_unit.append(
-                        pd.InvalidValueTableColumnUnitData(
+                        InvalidValueTableColumnUnitData(
                             table.name,
                             name or api_name,
                             column.unit,
@@ -159,14 +169,14 @@ class MeasureParser:
 
     # validates that all nonshared value tables have the correct standard name
     def validate_standard_table_names(self) -> None:
-        name_map = db.get_standard_table_names(self.measure)
+        name_map = self.db.get_standard_table_names(self.measure)
         for table in self.measure.value_tables:
             std_name = name_map.get(table.api_name)
             if std_name == None:
                 continue
             if table.name != std_name:
                 self.data.value_table.nonshared.invalid_name.append(
-                    pd.StdValueTableNameData(table.name, std_name))
+                    StdValueTableNameData(table.name, std_name))
 
 
     # validates that all shared value tables names in @ordered_sha_tables
@@ -292,11 +302,11 @@ class MeasureParser:
                 mapped_name: str = permutation.mapped_name
                 if mapped_name not in valid_names:
                     self.data.permutation.invalid.append(
-                        pd.InvalidPermutationData(
+                        InvalidPermutationData(
                             permutation.reporting_name,
                             mapped_name,
                             valid_names))
-            except UnknownPermutationError as err:
+            except MeasureContentError as err:
                 self.data.permutation.unexpected.append(err.name)
 
 
@@ -309,9 +319,10 @@ class MeasureParser:
     #   str : the valid name of @permutation
     def get_valid_perm_names(self, permutation: Permutation) -> list[str]:
         reporting_name: str = permutation.reporting_name
-        data: dict[str, str] = db.get_permutation_data(reporting_name)
+        data: dict[str, str] = self.db.get_permutation_data(reporting_name)
         if data['verbose'] == '':
-            raise UnknownPermutationError(name=reporting_name)
+            raise MeasureContentError(
+                f'The permutation name [{reporting_name}] is unknown')
 
         valid_name: str = data['valid']
         if valid_name == None:
@@ -382,7 +393,7 @@ class MeasureParser:
     # in @measure
     def parse_characterizations(self) -> None:
         parser = CharacterizationParser(self.data.characterization)
-        for char_name in db.get_all_characterization_names():
+        for char_name in self.db.get_all_characterization_names():
             if self.measure.get_characterization(char_name) == None:
                 self.data.characterization[char_name].missing = True
         for characterization in self.measure.characterizations:
@@ -654,7 +665,7 @@ class MeasureParser:
 
         self.log('All Permutations:')
         for permutation in self.measure.permutations:
-            perm_data = db.get_permutation_data(
+            perm_data = self.db.get_permutation_data(
                 permutation.reporting_name)
 
             if self.measure.permutations.index(permutation) != 0:

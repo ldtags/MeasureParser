@@ -1,11 +1,33 @@
 import json
 import os
+import sys
 
+from . import _ROOT
 from .measure import Characterization
-from .exceptions import (
+from ._exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )
+
+
+def json_obj(filepath: str) -> object:
+    '''Creates a JSON object from the JSON file at `filepath`.'''
+
+    _obj: object | None = None
+    with open(filepath, 'r') as json_file:
+        _obj = json.load(json_file)
+
+    if _obj == None:
+        raise OSError()
+
+    return _obj
+
+
+def resource_path(filename: str) -> str:
+    '''Returns an absolute path to a resource file in the package.'''
+
+    return os.path.join(_ROOT, 'resources', filename)
+
 
 # validates that the given filepath leads to an eTRM measure JSON file
 #
@@ -15,30 +37,18 @@ from .exceptions import (
 # Returns:
 #   bool: true if @filepath points to a correctly formatted eTRM
 #         measure JSON file, false otherwise
-def is_etrm_measure(filepath: str) -> bool:
-    '''Validates that the given file is an eTRM measure JSON file'''
-    from jsonschema import validate, ValidationError
-    from . import get_path
+def is_etrm_measure(measure_json: object) -> bool:
+    '''Validates that the given file is an eTRM measure JSON file.'''
 
-    if not os.path.isfile(filepath):
-        return False
+    from jsonschema import validate, ValidationError
 
     try:
-        SCHEMA_PATH = get_path('measure.schema.json')
-        with open(SCHEMA_PATH, 'r') as schema_file:
-            measure_schema: dict = json.loads(schema_file.read())
+        schema_path = resource_path('measure.schema.json')
+        measure_schema = json_obj(schema_path)
     except OSError:
         raise SchemaNotFoundError()
     except json.JSONDecodeError:
         raise CorruptedSchemaError()
-
-    try:
-        with open(filepath, 'r') as measure_file:
-            measure_json: dict = json.loads(measure_file.read())
-    except OSError as err:
-        raise err
-    except json.JSONDecodeError:
-        return False
 
     try:
         validate(instance=measure_json, schema=measure_schema)
@@ -50,6 +60,7 @@ def is_etrm_measure(filepath: str) -> bool:
 def visualize_html(characterizations: list[Characterization],
                    id: str | None = None) -> None:
     '''Formats and writes the given characterizations to an output file'''
+
     from bs4 import BeautifulSoup
 
     id_format = f'-{id}' if id != None else ''
@@ -62,3 +73,13 @@ def visualize_html(characterizations: list[Characterization],
             except UnicodeEncodeError:
                 out.write('\tUnicodeEncodeError encountered\n')
             out.write('\n')
+
+
+def perror(*values: object):
+    """Logs data to the defined output stream.
+    
+    Params:
+        values `*object` : content being logged
+    """
+
+    print(*values, file=sys.stderr)

@@ -10,8 +10,8 @@ from bs4 import (
 from .embedded import (
     EmbeddedReference
 )
-import measureparser._dbservice as db
-import measureparser._parserdata as pd
+import measureparser.dbservice._dbservice as db
+import measureparser.parserdata as pd
 from measureparser.measure import (
     Characterization
 )

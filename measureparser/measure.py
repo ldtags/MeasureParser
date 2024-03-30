@@ -1,59 +1,52 @@
 import json
-try:
-    from types import SimpleNamespace as Namespace
-except ImportError:
-    from argparse import Namespace
+from types import SimpleNamespace
 
-from .exceptions import (
-    RequiredParameterError,
-    VersionFormatError,
-    ParameterFormatError,
-    ValueTableFormatError,
-    SharedTableFormatError,
+from .dbservice import BaseDatabase
+from ._exceptions import (
     MeasureFormatError,
-    ColumnFormatError,
-    CalculationFormatError,
-    RequiredCharacterizationError,
+    RequiredContentError,
     InvalidFileError
 )
 
 
 class Characterization:
-    """the representation of a characterization
-    """
+    """Class representation of a characterization."""
+
     def __init__(self, name: str, content: str):
         self.name: str = name
         self.content: str = content
 
+
 class Permutation:
-    """the representation of a permutation
-    """
+    """Class representation of a measure permutation."""
+
     def __init__(self,
                  reporting_name: str,
                  mapped_name: str | None,
                  derivation: str = 'mapped'):
         self.reporting_name: str = reporting_name
-        self.mapped_name: str = mapped_name
+        self.mapped_name: str | None = mapped_name
         self.derivation: str = derivation
 
+
 class Column:
-    """the representation of a column
-    """
-    def __init__(self, column: Namespace):
+    """Class representation of a measure specific value table column."""
+
+    def __init__(self, column: object):
         try:
             self.name: str = getattr(column, 'name')
             self.api_name: str = getattr(column, 'api_name')
             self.unit: str = getattr(column, 'unit')
             self.reference_refs: list = getattr(column, 'reference_refs')
         except AttributeError:
-            raise ColumnFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='column')
+
 
 class Version:
-    """the representation of a version
+    """Class representation of a measure non-specific table/parameter version.
     """
-    def __init__(self, version: Namespace):
+
+    def __init__(self, version: object):
         try:
             version_string: str = getattr(version, 'version_string')
             if version_string.index('-') != -1:
@@ -61,27 +54,27 @@ class Version:
             else:
                 self.version_string = version_string
         except AttributeError:
-            raise VersionFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='version')
+
 
 class ExclusionTable:
-    """defines a measure exclusion table
-    """
-    def __init__(self, table: Namespace):
+    """Class representation of a measure exclusion table."""
+
+    def __init__(self, table: object):
         try:
             self.name: str = getattr(table, 'name')
             self.api_name: str = getattr(table, 'api_name')
             self.order: int = getattr(table, 'order')
             self.determinants: list[str] = getattr(table, 'determinants')
             self.values: list[list[str | bool]] = getattr(table, 'values')
-        except Exception as err:
-            raise err
+        except AttributeError:
+            raise MeasureFormatError(field='exclusion table')
+
 
 class Calculation:
-    """contains data related to a calculation
-    """
-    def __init__(self, calculation: Namespace):
+    """Class representation of a measure calculation."""
+
+    def __init__(self, calculation: object):
         try:
             self.name: str = getattr(calculation, 'name')
             self.api_name: str = getattr(calculation, 'api_name')
@@ -93,27 +86,27 @@ class Calculation:
             self.reference_refs: list \
                 = getattr(calculation, 'reference_refs')
         except AttributeError:
-            raise CalculationFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='calculation')
+
 
 class ParameterLabel:
-    """a label found in a measure specific parameter
-    """
-    def __init__(self, label: Namespace):
+    """Class representation of a measure specific parameter label."""
+
+    def __init__(self, label: object):
         try:
             self.name: str = getattr(label, 'name')
             self.api_name: str = getattr(label, 'api_name')
             self.active: bool = getattr(label, 'active')
             self.description: str | None \
                 = getattr(label, 'description')
-        except Exception as err:
-            raise err
+        except AttributeError:
+            raise MeasureFormatError(field='parameter label')
+
 
 class Parameter:
-    """contains data related to a measure specific parameter
-    """
-    def __init__(self, param: Namespace):
+    """Class representation of a measure specific parameter."""
+
+    def __init__(self, param: object):
         try:
             self.name: str = getattr(param, 'name')
             self.api_name: str = getattr(param, 'api_name')
@@ -124,27 +117,27 @@ class Parameter:
             self.order: int = getattr(param, 'order')
             self.reference_refs: list[str] \
                 = getattr(param, 'reference_refs')
-        except Exception as err:
-            raise err
+        except AttributeError:
+            raise MeasureFormatError(field='measure specific parameter')
+
 
 class SharedParameter:
-    """contains data related to a shared parameter
-    """
-    def __init__(self, param: Namespace):
+    """Class representation of a measure non-specific parameter."""
+
+    def __init__(self, param: object):
         try:
             self.order: int = getattr(param, 'order')
-            version: Namespace = getattr(param, 'version')
+            version: SimpleNamespace = getattr(param, 'version')
             self.version: Version = Version(version)
             self.labels: list[str] = getattr(param, 'active_labels')
         except AttributeError:
-            raise ParameterFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='measure non-specific parameter')
+
 
 class ValueTable:
-    """contains data related to a measure specific value table
-    """
-    def __init__(self, value_table: Namespace):
+    """Class representation of a measure specific value table."""
+
+    def __init__(self, value_table: object):
         try:
             self.name: str = getattr(value_table, 'name')
             self.api_name: str = getattr(value_table, 'api_name')
@@ -159,9 +152,7 @@ class ValueTable:
             self.reference_refs: list \
                 = getattr(value_table, 'reference_refs')
         except AttributeError:
-            raise ValueTableFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='measure specific value table')
 
     def contains_column(self, api_name: str) -> bool:
         for column in self.columns:
@@ -175,92 +166,76 @@ class ValueTable:
                 return column
         return None
 
-class SharedValueTable:
-    """contains data related to a shared value table
-    """
 
-    def __init__(self, shared_table: Namespace):
+class SharedValueTable:
+    """Class representation of a measure non-specific value table."""
+
+    def __init__(self, shared_table: object):
         try:
             self.order: int = getattr(shared_table, 'order')
-            version: Namespace = getattr(shared_table, 'version')
+            version: SimpleNamespace = getattr(shared_table, 'version')
             self.version: Version = Version(version)
         except AttributeError:
-            raise SharedTableFormatError()
-        except Exception as err:
-            raise err
+            raise MeasureFormatError(field='measure non-specific value table')
+
 
 class Measure:
-    """a measure built from data in an eTRM measure JSON file
-    
-    Attributes:
-        owner (str): the listed owner of the measure
-        params (list[SharedParameter]): the list of parameters
-        shared_tables (list[SharedValueTable]): the list of shared
-                                                value tables
-        value_tables (list[ValueTable]): the list of non-shared value
-                                         tables
-        calculations (list[Calculation]): the list of calculations
-        permutations (list[Permutation]): the list of permutations
-        characterizations (list[Characterization]): the list of
-                                                    characterizations
+    """Class representation of an eTRM measure.
+
+    Contains all fields from an eTRM measure JSON file and methods for
+    querying measure data and information.
     """
 
-    def __init__(self, filepath: str):
-        from .utils import is_etrm_measure
-        if not is_etrm_measure(filepath):
-            raise InvalidFileError(filename=filepath)
-
-        with open(filepath, 'r') as measure_file:
-            measure: Namespace \
-                = json.loads(measure_file.read(),
-                             object_hook=lambda dict: Namespace(**dict))
+    def __init__(self, measure_json: object, db_source: BaseDatabase):
+        from ._utils import is_etrm_measure
+        if not is_etrm_measure(measure_json):
+            raise InvalidFileError()
 
         try:
-            self.owner: str = getattr(measure, 'owned_by_user')
+            self.owner: str = getattr(measure_json, 'owned_by_user')
+            self.id: str = getattr(measure_json, 'MeasureID')
+            self.version_id: str = getattr(measure_json, 'MeasureVersionID')
+            self.name: str = getattr(measure_json, 'MeasureName')
+            self.use_category: str = getattr(measure_json, 'UseCategory')
+            self.pa_lead: str = getattr(measure_json, 'PALead')
+            self.start_date: str = getattr(measure_json, 'StartDate')
+            self.end_date: str = getattr(measure_json, 'EndDate', 'None')
+            self.status: str = getattr(measure_json, 'Status')
+        except AttributeError:
+            raise MeasureFormatError(field='measure')
 
+        try:
             self.parameters: list[Parameter] = list(
                 map(lambda param: Parameter(param),
-                    getattr(measure, 'determinants')))
+                    getattr(measure_json, 'determinants')))
 
             self.shared_parameters: list[SharedParameter] = list(
                 map(lambda param: SharedParameter(param),
-                    getattr(measure, 'shared_determinant_refs')))
+                    getattr(measure_json, 'shared_determinant_refs')))
 
             self.shared_tables: list[SharedValueTable] = list(
                 map(lambda table: SharedValueTable(table),
-                    getattr(measure, 'shared_lookup_refs')))
+                    getattr(measure_json, 'shared_lookup_refs')))
 
             self.value_tables: list[ValueTable] = list(
                 map(lambda table: ValueTable(table),
-                    getattr(measure, 'value_tables')))
+                    getattr(measure_json, 'value_tables')))
 
             self.calculations: list[Calculation] = list(
                 map(lambda calc: Calculation(calc),
-                    getattr(measure, 'calculations')))
+                    getattr(measure_json, 'calculations')))
 
             self.exclusion_tables: list[ExclusionTable] = list(
                 map(lambda table: ExclusionTable(table),
-                    getattr(measure, 'exclusion_tables')))
-
-            self.id: str = getattr(measure, 'MeasureID')
-            self.version_id: str = getattr(measure, 'MeasureVersionID')
-            self.name: str = getattr(measure, 'MeasureName')
-            self.use_category: str = getattr(measure, 'UseCategory')
-            self.pa_lead: str = getattr(measure, 'PALead')
-            self.start_date: str = getattr(measure, 'StartDate')
-            self.end_date: str = getattr(measure, 'EndDate', 'None')
-            self.status: str = getattr(measure, 'Status')
-
-            self.characterizations: list[Characterization] \
-                = _get_characterizations(measure)
-            self.permutations: list[Permutation] \
-                = _get_permutations(measure)
+                    getattr(measure_json, 'exclusion_tables')))
         except AttributeError:
             raise MeasureFormatError()
-        except RequiredCharacterizationError as err:
-            raise MeasureFormatError(err.message)
-        except Exception as err:
-            raise err
+
+        self.characterizations: list[Characterization] \
+            = db_source.get_characterizations(measure_json)
+
+        self.permutations: list[Permutation] \
+            = db_source.get_permutations(measure_json)
 
 
     # Checks if the measure contains a parameter associated with
@@ -516,7 +491,7 @@ class Measure:
     def contains_MAT_label(self, *labels: str) -> bool:
         version = self.get_shared_parameter('MeasAppType')
         if version == None:
-            raise RequiredParameterError(name='Measure Application Type')
+            raise RequiredContentError(name='Measure Application Type')
 
         for label in labels:
             if label not in version.labels:
@@ -536,7 +511,7 @@ class Measure:
     def is_DEER(self) -> bool:
         version = self.get_shared_parameter('version')
         if version == None:
-            raise RequiredParameterError(name='Version')
+            raise RequiredContentError(name='Version')
 
         for label in version.labels:
             if 'DEER' in label:
@@ -578,7 +553,7 @@ class Measure:
     def is_deemed(self) -> bool:
         delivery_table = self.get_shared_parameter('DelivType')
         if delivery_table == None:
-            raise RequiredParameterError(name='Delivery Type')
+            raise RequiredContentError(name='Delivery Type')
 
         return ('DnDeemDI' in delivery_table.labels
                 or ('DnDeemed' in delivery_table.labels
@@ -596,7 +571,7 @@ class Measure:
     def is_fuel_sub(self) -> bool:
         meas_impact_type = self.get_shared_parameter('MeasImpactType')
         if meas_impact_type == None:
-            raise RequiredParameterError(name='Measure Impact Type')
+            raise RequiredContentError(name='Measure Impact Type')
 
         for label in meas_impact_type.labels:
             if 'FuelSub' in label:
@@ -616,11 +591,11 @@ class Measure:
     def is_sector_default(self) -> bool:
         sector = self.get_shared_parameter('Sector')
         if sector == None:
-            raise RequiredParameterError(name='Sector')
+            raise RequiredContentError(name='Sector')
 
         ntg_id = self.get_shared_parameter('NTGID')
         if ntg_id == None:
-            raise RequiredParameterError(name='Net to Gross Ratio ID')
+            raise RequiredContentError(name='Net to Gross Ratio ID')
 
         sectors = list(map(lambda sector: sector + '-Default',
                            sector.labels))
@@ -639,7 +614,7 @@ class Measure:
     def requires_ntg_version(self) -> bool:
         ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
-            raise RequiredParameterError(name='Net to Gross Ratio ID')
+            raise RequiredContentError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
             match label:
@@ -666,7 +641,7 @@ class Measure:
         upstream_flag: SharedParameter \
             = self.get_shared_parameter('DelivType')
         if upstream_flag == None:
-            raise RequiredParameterError(name='Upstream Flag')
+            raise RequiredContentError(name='Upstream Flag')
 
         labels: list[str] = upstream_flag.labels
         if len(labels) < 2:
@@ -685,7 +660,7 @@ class Measure:
     def is_res_default(self) -> bool:
         ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
-            raise RequiredParameterError(name='Net to Gross Ratio ID')
+            raise RequiredContentError(name='Net to Gross Ratio ID')
 
         return 'Res-Default>2yrs' in ntg_id.labels
 
@@ -701,7 +676,7 @@ class Measure:
     def is_nonres_default(self) -> bool:
         ntg_id: SharedParameter = self.get_shared_parameter('NTGID')
         if ntg_id == None:
-            raise RequiredParameterError(name='Net to Gross Ratio ID')
+            raise RequiredContentError(name='Net to Gross Ratio ID')
 
         for label in ntg_id.labels:
             match label:
@@ -725,7 +700,7 @@ class Measure:
     def is_GSIA_default(self) -> bool:
         gsia: SharedParameter = self.get_shared_parameter('GSIAID')
         if gsia == None:
-            raise RequiredParameterError(name='GSIA ID')
+            raise RequiredContentError(name='GSIA ID')
 
         return 'Def-GSIA' in gsia.labels
 
@@ -864,42 +839,3 @@ class Measure:
         criteria.append('ELCT_SVG')
         criteria.append('GAS_SVG')
         criteria.append('FBLC') # maybe in costs value table? ask chau
-
-
-
-
-
-# returns a list of all characterizations found in @measure
-#
-# Parameters:
-#   measure (Namespace): the namespace representation of a measure
-#
-# Returns:
-#   list[Characterization]: the list of characterizations found in
-#                           @measure
-def _get_characterizations(measure: Namespace) -> list[Characterization]:
-    from ._dbservice import get_characterization_names
-
-    char_list: list[Characterization] = []
-    for char_name in get_characterization_names(measure):
-        content: str = getattr(measure, char_name)
-        char_list.append(Characterization(char_name, content))
-    return char_list
-
-
-# returns a list of all permutations found in @measure
-#
-# Parameters:
-#   measure (Namespace): the namespace representation of a measure
-#
-# Returns:
-#   list[Permutation]: the list of permutations found in @measure
-def _get_permutations(measure: Namespace) -> list[Permutation]:
-    from ._dbservice import get_permutation_names
-
-    perm_list: list[Permutation] = []
-    for perm_name in get_permutation_names():
-        verbose_name = getattr(measure, perm_name, None)
-        if verbose_name != None:
-            perm_list.append(Permutation(perm_name, verbose_name))
-    return perm_list
