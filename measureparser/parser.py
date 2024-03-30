@@ -1,6 +1,15 @@
 import os
 from io import TextIOWrapper
 
+
+from .dbservice import (
+    BaseDatabase
+)
+from .htmlparser import CharacterizationParser
+from .measure import (
+    Measure,
+    Permutation
+)
 from .parserdata import (
     ParserData,
     MissingValueTableColumnData,
@@ -8,18 +17,9 @@ from .parserdata import (
     StdValueTableNameData,
     InvalidPermutationData
 )
-from .dbservice import (
-    BaseDatabase,
-    LocalDatabase,
-    ETRMDatabase
-)
-from .htmlparser import CharacterizationParser
-from .measure import (
-    Measure,
-    Permutation
-)
+from .logger import MeasureDataLogger
 from ._exceptions import (
-    RequiredParameterError,
+    ParserError,
     MeasureContentError
 )
 
@@ -39,54 +39,59 @@ class MeasureParser:
     """
 
     def __init__(self, database: BaseDatabase):
+        if not (BaseDatabase in database.__mro__):
+            raise ParserError('Parser database must extend BaseDatabase')
+
         self.db: BaseDatabase = database
-        self.data: ParserData = ParserData()
-        self.out: TextIOWrapper | None = None
+        self.data: ParserData | None = None
+        self.measure: Measure | None = None
         self.ordered_params: list[str] = []
         self.ordered_val_tables: list[str] = []
         self.ordered_sha_tables: list[str] = []
 
-        try:
-            self.ordered_params: list[str] \
-                = self.db.get_param_api_names(measure=self.measure)
+    def clear_measure(self):
+        self.measure = None
+        self.ordered_params = []
+        self.ordered_val_tables = []
+        self.ordered_sha_tables = []
+        self.data = None
 
-            self.ordered_val_tables: list[str] \
-                = self.db.get_table_api_names(measure=self.measure, nonshared=True)
-
-            self.ordered_sha_tables: list[str] \
-                = self.db.get_table_api_names(measure=self.measure, shared=True)
-        except RequiredParameterError as err:
-            print('ERROR - the measure is missing required information\n', 
-                  err)
-            return
-        except Exception as err:
-            print(f'ERROR - something went wrong:\n{err}')
-            return
-
+    def set_measure(self, measure: Measure):
+        self.measure = measure
+        self.ordered_params = self.db.get_param_api_names(measure=measure)
+        self.ordered_val_tables = self.db.get_table_api_names(measure=measure,
+                                                              nonshared=True)
+        self.ordered_sha_tables = self.db.get_table_api_names(measure=measure,
+                                                              shared=True)
+        self.data = ParserData()
 
     # specifies the control flow for the generic parsing of @measure
-    def parse(self, measure: Measure) -> None:
+    def parse(self, measure: Measure) -> ParserData:
+        self.set_measure(measure)
+
         print(f'starting to parse measure {measure.id}\n')
+        try:
+            print('validating parameters\n')
+            self.validate_parameters()
 
-        print('validating parameters')
-        self.validate_parameters(measure)
-        print('finished validating parameters\n')
+            print('validating exclusion tables\n')
+            self.validate_exclusion_tables()
 
-        print('validating exclusion tables')
-        self.validate_exclusion_tables()
-        print('finished validating exclusion tables\n')
+            print('validating value tables\n')
+            self.validate_tables()
 
-        print('validating tables')
-        self.validate_tables()
-        print('finished validating tables\n')
+            print('validating permutations\n')
+            self.validate_permutations()
 
-        print('validating permutations')
-        self.validate_permutations()
-        print('finished validating permutations\n')
-
-        print('parsing characterizations')
-        self.parse_characterizations()
-        print('finished parsing characterizations\n')
+            print('parsing characterizations\n')
+            self.parse_characterizations()
+        except ParserError as err:
+            raise err
+        except Exception as err:
+            raise ParserError('Unexpected error occurred while parsing') \
+                from err
+        finally:
+            self.clear_measure()
 
         print(f'finished parsing measure {measure.id}')
 
@@ -128,7 +133,7 @@ class MeasureParser:
     #   bool    : true if all columns are valid, false otherwise 
     def validate_table_columns(self) -> None:
         column_data = self.data.value_table.nonshared.column
-        column_dict = self.db.get_table_columns(measure=self.measure)
+        column_dict = self.db.get_table_columns()
 
         for table in self.measure.value_tables:
             table_columns: list[dict[str, str]] | None \
@@ -401,17 +406,31 @@ class MeasureParser:
             parser.parse(characterization)
 
 
-    def log_output(self, dirpath: str | None = None) -> None:
+    def log_output(self,
+                   dir_path: str | None = None,
+                   file_name: str | None = None):
         '''Specifies the control flow for logging parsed measure data.
         
         Params:
-            dirpath `str | None` : path of output file or `None` for standard output
+            dir_path `str | None` : path of output file or `None` for standard output
         '''
 
-        if dirpath != None:
-            self.out = open(f'{dirpath}/output-{self.measure.id}.txt', 'w+')
+        out: str | None = None
+        if dir_path != None:
+            if file_name == None:
+                file_name = 'parser-output'
+            out = os.path.join(dir_path, f'{file_name}.txt')
+        elif file_name != None:
+            raise ParserError(
+                'No output directory path provided with file name')
         else:
             self.log('\n')
+
+        if self.data == None:
+            raise ParserError('Parser data is required to log output')
+
+        with MeasureDataLogger(out) as _logger:
+            _logger.log_data()
 
         self.log_measure_details()
         self.log_parameter_data()
@@ -426,83 +445,6 @@ class MeasureParser:
         if self.out != None:
             self.out.close()
             self.out = None
-
-
-    def log_measure_details(self) -> None:
-        '''Logs measure identification details.
-        
-        Measure Details:
-            - Version ID
-            - Name
-            - PA Lead
-            - Start Date
-            - End Date
-        '''
-
-        self.log('Measure Details:'
-                 f'\n\tMeasure Version ID: {self.measure.version_id}'
-                 f'\n\tMeasure Name: {self.measure.name}'
-                 f'\n\tPA Lead: {self.measure.pa_lead}'
-                 f'\n\tStart Date: {self.measure.start_date}'
-                 f'\n\tEnd Date: {self.measure.end_date}')
-        self.log('\n')
-
-
-    def log_parameter_data(self) -> None:
-        '''Logs all measure specific parameters and invalid measure parameter data.
-        
-        Invalid Parameter data:
-            - Unexpected parameters
-            - Missing parameters
-        '''
-
-        param_data = self.data.parameter
-        self.log('Validating Parameters:')
-        self.log('\tMeasure Specific Parameters: ',
-                 param_data.nonshared)
-        self.log()
-        self.log('\tUnexpected Shared Parameters: ',
-                 param_data.unexpected)
-        self.log('\tMissing Shared Parameters: ',
-                 param_data.missing)
-        self.log()
-        self.log('\tParameter Order:')
-        # for param_name in param_data.unordered:
-        #     self.log(f'\t\t{param_name} is out of order')
-        if param_data.unordered == []:
-            self.log('\t\tAll shared parameters are in the correct order')
-        else:
-            self.log('\t\tShared parameters may be out of order, '
-                     'please review the QA/QC guidelines')
-        self.log('\n')
-
-
-    def log_exclusion_table_data(self) -> None:
-        '''Logs all measure exclusion tables and invalid exclusion table data.
-
-        Exclusion Table data:
-            - Name
-            - Parameters
-
-        Invalid Exclusion Table data:
-            - Whitespace in name
-            - Incorrect amount of hyphens in name
-        '''
-
-        self.log('Validating Exclusion Tables:')
-        for table in self.measure.exclusion_tables:
-            self.log(f'\tTable Name: {table.name}\n',
-                     f'\t\tParameters: {table.determinants}\n')
-        exclusion_data = self.data.exclusion_table
-        for table_name in exclusion_data.whitespace:
-            self.log('\t\t\tWarning: Whitespace(s) detected in '
-                     f'{table_name}, please remove the whitespace(s)')
-        for table_name in exclusion_data.hyphen:
-            self.log('\t\t\tWarning: Incorrect amount of hyphens '
-                     f'in {table_name}')
-        if exclusion_data.is_empty():
-            self.log('\tAll exclusion tables are valid')
-        self.log('\n')
 
 
     def log_value_table_data(self) -> None:
