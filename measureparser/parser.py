@@ -18,31 +18,20 @@ from .parserdata import (
     InvalidPermutationData
 )
 from .logger import MeasureDataLogger
-from ._exceptions import (
+from .exceptions import (
     ParserError,
     MeasureContentError
 )
 
 
 class MeasureParser:
-    """The parser for eTRM measure JSON files
-
-    Attributes:
-        measure (Measure): an object containing data from the measure file
-        out (Optional[TextIO]): a file stream for the log file
-        ordered_params (list[str]): an ordered list of the names of all
-                                    valid parameters
-        ordered_val_tables (list[str]): an ordered list of the names of
-                                        all valid non-shared value tables
-        ordered_sha_tables (list[str]): an ordered list of the names of
-                                        all valid shared value tables
-    """
+    """Data validation parser for eTRM measures."""
 
     def __init__(self, database: BaseDatabase):
         if not (BaseDatabase in database.__mro__):
             raise ParserError('Parser database must extend BaseDatabase')
 
-        self.db: BaseDatabase = database
+        self.db = database
         self.data: ParserData | None = None
         self.measure: Measure | None = None
         self.ordered_params: list[str] = []
@@ -409,11 +398,7 @@ class MeasureParser:
     def log_output(self,
                    dir_path: str | None = None,
                    file_name: str | None = None):
-        '''Specifies the control flow for logging parsed measure data.
-        
-        Params:
-            dir_path `str | None` : path of output file or `None` for standard output
-        '''
+        """Specifies the control flow for logging parsed measure data."""
 
         out: str | None = None
         if dir_path != None:
@@ -424,292 +409,10 @@ class MeasureParser:
             raise ParserError(
                 'No output directory path provided with file name')
         else:
-            self.log('\n')
+            print('\n')
 
         if self.data == None:
             raise ParserError('Parser data is required to log output')
 
-        with MeasureDataLogger(out) as _logger:
+        with MeasureDataLogger(self.measure, self.db, out) as _logger:
             _logger.log_data()
-
-        self.log_measure_details()
-        self.log_parameter_data()
-        self.log_exclusion_table_data()
-        self.log_value_table_data()
-        self.log_value_tables()
-        self.log_calculations()
-        self.log_permutation_data()
-        self.log_permutations()
-        self.log_characterization_data()
-
-        if self.out != None:
-            self.out.close()
-            self.out = None
-
-
-    def log_value_table_data(self) -> None:
-        '''Logs parsed invalid shared and non-shared value table data to
-        the output file.
-        
-        General data:
-            - Unexpected shared/non-shared value tables
-            - Missing shared/non-shared value tables
-            - Value Table order
-
-        Non-Shared Value Table specific data:
-            - Name
-            - Columns
-                - Name
-                - Unit
-        '''
-
-        self.log('Validating Value Tables:')
-        shared_data = self.data.value_table.shared
-        self.log('\tUnexpected Shared Tables: ',
-                 shared_data.unexpected)
-        self.log('\tMissing Shared Tables: ',
-                 shared_data.missing)
-        self.log()
-
-        nonshared_data = self.data.value_table.nonshared
-        self.log('\tUnexpected Non-Shared Tables: ',
-                 nonshared_data.unexpected)
-        self.log('\tMissing Non-Shared Tables: ',
-                 nonshared_data.missing)
-        self.log()
-
-        self.log('\tValue Table Names:')
-        for err in nonshared_data.invalid_name:
-            self.log(f'\t\tTable {err.table_name} should be named '
-                     f'{err.correct_name}')
-        if nonshared_data.invalid_name == []:
-            self.log('\t\tAll value table names are correct')
-        self.log()
-
-        self.log('\tValue Table Columns:')
-        for err in nonshared_data.column.missing:
-            self.log(f'\t\tTable {err.table_name} is missing '
-                     f'column {err.column_name}')
-
-        for err in nonshared_data.column.invalid_unit:
-            self.log(f'\t\tTable {err.table_name} may have an '
-                     f'incorrect unit in {err.column_name}, '
-                     f'{err.mapped_unit} should be {err.correct_unit}')
-
-        if nonshared_data.column.is_empty():
-            self.log('\t\tAll value table columns are valid')
-        self.log()
-
-        self.log('\tValue Table Order: ')
-
-        # for table in shared_data.unordered:
-        #     self.log(f'\t\t{table} is out of order')
-        if shared_data.unordered == []:
-            self.log('\t\tAll shared value tables are in the '
-                     'correct order')
-        else:
-            self.log('\t\tShared value tables may be out of order, '
-                     'please review the QA/QC guidelines')
-
-        # for table in nonshared_data.unordered:
-        #     self.log(f'\t\t{table} is out of order')
-        if nonshared_data.unordered == []:
-            self.log('\t\tAll non-shared value tables are in the '
-                     'correct order')
-        else:
-             self.log('\t\tNon-shared value tables may be out of '
-                      'order, please review the QA/QC guidelines')
-        self.log('\n')
-
-
-    def log_value_tables(self) -> None:
-        '''Logs all measure non-shared value tables to the output file.
-        
-        Non-Shared Value Table data:
-            - Name
-            - API name
-            - Parameters
-            - Columns
-                - Name
-                - API name
-                - Unit
-        '''
-
-        self.log('Standard Non-Shared Value Tables:')
-        for table in self.measure.value_tables:
-            if self.measure.value_tables.index(table) != 0:
-                self.log()
-            self.log(f'\tTable Name: {table.name}\n'
-                     f'\t\tAPI Name: {table.api_name}\n'
-                     f'\t\tParameters: {table.determinants}')
-            self.log('\t\tColumns:')
-            for column in table.columns:
-                self.log(f'\t\t\tColumn Name: {column.name}\n'
-                         f'\t\t\t\tAPI Name: {column.api_name}\n'
-                         f'\t\t\t\tUnit: {column.unit}')
-        self.log('\n')
-
-
-    def log_calculations(self) -> None:
-        '''Logs all measure calculations to the output file.
-        
-        Calculation data:
-            - Name
-            - API name
-            - Unit
-            - Parameters
-        '''
-
-        self.log('All Calculations:')
-        for calculation in self.measure.calculations:
-            if self.measure.calculations.index(calculation) != 0:
-                self.log()
-            self.log(f'\tCalculation Name: {calculation.name}\n'
-                     f'\t\tAPI Name: {calculation.api_name}\n'
-                     f'\t\tUnit: {calculation.unit}\n'
-                     f'\t\tParameters: {calculation.determinants}')
-        self.log('\n')
-
-
-    def log_permutation_data(self) -> None:
-        '''Logs parsed invalid permutation data to the output file.
-
-        General data:
-            - Unexpected permutation
-
-        Permutation specific data:
-            - Incorrect mapped field
-        '''
-
-        self.log('Validating permutations:')
-        for err in self.data.permutation.invalid:
-            self.log(f'\tInvalid Permutation ({err.reporting_name}) - '
-                     f'{err.mapped_name} should be ' +
-                     (f'{err.valid_names[0]}' if len(err.valid_names) == 1
-                        else f'one of {err.valid_names}'))
-
-        for perm_name in self.data.permutation.unexpected:
-            self.log(f'\tUnexpected Permutation - {perm_name}')
-
-        if self.data.permutation.is_empty():
-            self.log('\tAll permutations are valid')
-        self.log('\n')
-
-
-    def log_permutations(self) -> None:
-        '''Logs all measure permutations to the output file.
-        
-        Permutation data:
-            - Reporting name
-            - Verbose name
-            - Mapped field
-        '''
-
-        self.log('All Permutations:')
-        for permutation in self.measure.permutations:
-            perm_data = self.db.get_permutation_data(
-                permutation.reporting_name)
-
-            if self.measure.permutations.index(permutation) != 0:
-                self.log()
-            try:
-                verbose_name = perm_data['verbose']
-                self.log(f'\t{permutation.reporting_name}:\n'
-                         f'\t\tVerbose Name: {verbose_name}\n'
-                         f'\t\tMapped Field: {permutation.mapped_name}')
-            except:
-                continue
-        self.log('\n')
-
-
-    def log_characterization_data(self) -> None:
-        '''Logs parsed invalid charaterization data to the output file.
-        
-        General data:
-            - Missing characterizations
-        
-        Characterization specific data:
-            - Header order (h3 -> h4 -> h5)
-            - Reference tag spacing and required content
-            - Sentence and punctuation spacing
-        '''
-
-        self.log('Parsing characterizations:')
-        for name, data in self.data.characterization.items():
-            if data.is_empty():
-                continue
-
-            if data.missing:
-                self.log(f'\tMissing Characterization: {name}')
-                continue
-
-            self.log(f'\t{name}:')
-
-            if data.initial_header != 'h3':
-                self.log('\t\tInvalid initial header, '
-                         f'{data.initial_header} should be h3')
-
-            for err in data.invalid_headers:
-                self.log('\t\tInvalid header order, '
-                         f'{err.tag} should not directly follow h{err.prev_level}')
-
-            for title, references in data.references.reference_map.items():
-                for ref in references:
-                    if ref.title.missing:
-                        self.log('\t\tA reference is missing a static title')
-
-                    if ref.spacing.leading != -1:
-                        spaces = ref.spacing.leading
-                        self.log('\t\tWhitespace detected before reference '
-                                 f'[{title}] - {spaces} space(s)')
-
-                    if ref.spacing.trailing != -1:
-                        spaces = ref.spacing.trailing
-                        self.log('\t\tWhitespace detected after reference '
-                                 f'[{title}] - {spaces} space(s)')
-
-                    if ref.title.spacing.leading != -1:
-                        spaces = ref.title.spacing.leading
-                        self.log('\t\tWhitespace detected before a '
-                                 f'reference title [{title}] - '
-                                 f'{spaces} space(s)')
-
-                    if ref.title.spacing.trailing != -1:
-                        spaces = ref.title.spacing.trailing
-                        self.log('\t\tWhitespace detected after a '
-                                 f'reference title [{title}] - '
-                                 f'{spaces} space(s)')
-
-            for sentence_data in data.sentences:
-                if sentence_data.leading != -1:
-                    spaces = sentence_data.leading
-                    tol = 0 if sentence_data.initial or spaces == 0 else 1
-                    self.log('\t\tExtra whitespace detected before a sentence - '
-                             f'{spaces - tol} space(s) before '
-                             f'sentence [{sentence_data.sentence}]')
-
-                if sentence_data.trailing != -1:
-                    spaces = sentence_data.trailing
-                    self.log('\t\tExtra whitespace detected before punctuation - '
-                             f'{spaces} space(s) in sentence '
-                             f'[{sentence_data.sentence}]')
-            self.log()
-
-        if all(cd.is_empty() for cd in self.data.characterization.values()):
-            self.log('\tAll characterizations are valid')
-
-
-    def log(self, *values: object) -> None:
-        '''Logs data to the defined output stream.
-        
-        Params:
-            values (*object) : content being logged
-        '''
-        print(*values, file=self.out)
-
-
-    def clear(self) -> None:
-        if self.out != None:
-            out_filepath = os.path.abspath(self.out.name)
-            if os.path.exists(out_filepath):
-                os.remove(out_filepath)

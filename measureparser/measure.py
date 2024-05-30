@@ -2,7 +2,7 @@ import json
 from types import SimpleNamespace
 
 from .dbservice import BaseDatabase
-from ._exceptions import (
+from .exceptions import (
     MeasureFormatError,
     RequiredContentError,
     InvalidFileError
@@ -187,7 +187,7 @@ class Measure:
     """
 
     def __init__(self, measure_json: object, db_source: BaseDatabase):
-        from ._utils import is_etrm_measure
+        from .utils import is_etrm_measure
         if not is_etrm_measure(measure_json):
             raise InvalidFileError()
 

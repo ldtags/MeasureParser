@@ -18,7 +18,7 @@ from .measure import (
     Permutation
 )
 
-from ._utils import (
+from .utils import (
     json_obj,
     resource_path,
     is_etrm_measure

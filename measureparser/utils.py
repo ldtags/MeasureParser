@@ -4,7 +4,7 @@ import sys
 
 from . import _ROOT
 from .measure import Characterization
-from ._exceptions import (
+from .exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )

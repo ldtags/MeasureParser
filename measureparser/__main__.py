@@ -6,14 +6,14 @@ from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
 from measureparser import _ROOT
-from measureparser._utils import perror
+from measureparser.utils import perror
 from measureparser.parser import MeasureParser
 from measureparser.dbservice import (
     BaseDatabase,
     LocalDatabase,
     ETRMDatabase
 )
-from measureparser._exceptions import (
+from measureparser.exceptions import (
     ParserError,
     MeasureFormatError,
     DatabaseError,
