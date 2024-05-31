@@ -21,6 +21,7 @@ from measureparser.exceptions import (
     InvalidFileError
 )
 
+
 # parses the command line arguments in sys.argv
 #
 # Returns:
@@ -78,6 +79,7 @@ def parse_arguments() -> Namespace:
 @Gooey (
     program_name='eTRM Measure Parser',
     program_description='Parses and validates eTRM measures',
+    navigation='TABBED',
     shutdown_signal=signal.CTRL_C_EVENT
 )
 def main() -> None:

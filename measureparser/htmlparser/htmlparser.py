@@ -1,5 +1,4 @@
 import re
-
 from bs4 import (
     BeautifulSoup,
     Tag,
@@ -7,14 +6,14 @@ from bs4 import (
     NavigableString
 )
 
-from .embedded import (
-    EmbeddedReference
-)
-import measureparser.dbservice._dbservice as db
 import measureparser.parserdata as pd
-from measureparser.measure import (
+from measureparser.models import (
     Characterization
 )
+from measureparser.htmlparser.models import (
+    EmbeddedReference
+)
+
 
 class CharacterizationParser():
     '''A parser that validates data found in eTRM measure characterizations

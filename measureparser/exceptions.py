@@ -1,4 +1,4 @@
-from dbservice._exceptions import *
+from measureparser.dbservice.exceptions import *
 
 
 class ParserError(Exception):

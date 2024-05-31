@@ -1,18 +1,17 @@
+from __future__ import annotations
 import re
 import json
 import requests
-from typing import Optional, Self
+from typing import Optional, Self, TYPE_CHECKING
 from argparse import Namespace
 
-from dbservice.basedb import BaseDatabase
-from dbservice._exceptions import (
-    DatabaseConnectionError,
+from measureparser.dbservice.basedb import BaseDatabase
+from measureparser.dbservice.exceptions import (
     DatabaseContentError
 )
-from measureparser import (
-    Measure,
-    is_etrm_measure
-)
+
+if TYPE_CHECKING:
+    from measureparser.models import Measure
 
 
 def __sanitize_auth_token(auth_token: str) -> str:
@@ -54,7 +53,7 @@ class ETRMDatabase(BaseDatabase):
     def __exit__(self):
         self.close()
 
-    def get_measure(self, measure_id: str) -> Measure:
+    def get_measure(self, measure_id: str) -> object:
         statewide_id, version_id = __sanitize_measure_id(measure_id)
         _url = f'{self.api_url}/{statewide_id}/{version_id}'
         response = requests.get(_url)
@@ -63,7 +62,7 @@ class ETRMDatabase(BaseDatabase):
         except json.JSONDecodeError:
             raise DatabaseContentError(f'Invalid data received from {_url}')
 
-        return Measure(response_json, self)
+        return response_json
 
 
     def get_param_api_names(self, measure: Measure | None = None) -> list[str]:

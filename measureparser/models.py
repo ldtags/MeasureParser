@@ -1,8 +1,7 @@
-import json
 from types import SimpleNamespace
 
-from .dbservice import BaseDatabase
-from .exceptions import (
+from measureparser.dbservice import BaseDatabase
+from measureparser.exceptions import (
     MeasureFormatError,
     RequiredContentError,
     InvalidFileError
@@ -232,7 +231,7 @@ class Measure:
             raise MeasureFormatError()
 
         self.characterizations: list[Characterization] \
-            = db_source.get_characterizations(measure_json)
+            = db_source.get_characterization_names(measure_json)
 
         self.permutations: list[Permutation] \
             = db_source.get_permutations(measure_json)

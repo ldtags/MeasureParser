@@ -1,8 +1,14 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Optional, TYPE_CHECKING, TypeVar
 from argparse import Namespace
 
-from ..measure import Measure, Characterization, Permutation
+if TYPE_CHECKING:
+    from measureparser.models import Measure
+
+
+_T = TypeVar('_T')
+
 
 class BaseDatabase(metaclass=ABCMeta):
     """Base class for database interaction.
@@ -10,47 +16,8 @@ class BaseDatabase(metaclass=ABCMeta):
     Specifies which database methods are required by the Measure Parser.
     """
 
-    def get_characterizations(self,
-                              measure_json: object
-                             ) -> list[Characterization]:
-        """Retrieves a list of all characterizations in `measure`.
-
-        Parameters:
-            measure `object` : eTRM measure JSON object
-
-        Returns:
-            `list[Characterization]` : all characterizations in `measure`
-
-        """
-
-        char_list: list[Characterization] = []
-        for char_name in self.get_characterization_names(measure_json):
-            content: str | None = getattr(measure_json, char_name, None)
-            if content != None:
-                char_list.append(Characterization(char_name, content))
-
-        return char_list
-
-    def get_permutations(self, measure_json: object) -> list[Permutation]:
-        """Retrieves a list of all permutations found in `measure`.
-        
-        Parameters:
-            measure `object` : eTRM measure JSON object
-        
-        Returns:
-            `list[Permutation]` : all permutations in `measure`
-        """
-
-        perm_list: list[Permutation] = []
-        for perm_name in self.get_permutation_names():
-            verbose_name = getattr(measure_json, perm_name, None)
-            if verbose_name != None:
-                perm_list.append(Permutation(perm_name, verbose_name))
-
-        return perm_list
-
     @abstractmethod
-    def get_measure(self, *args) -> Measure:
+    def get_measure(self, *args) -> object:
         ...
 
     @abstractmethod
@@ -111,3 +78,43 @@ class BaseDatabase(metaclass=ABCMeta):
     @abstractmethod
     def get_characterization_names(self, measure: Namespace) -> list[str]:
         ...
+
+def queryfy(elements: list[str | int]) -> str:
+    '''Generates a list that is understood by the SQL interpreter.'''
+
+    query_list: str = '('
+    length: int = len(elements)
+    for i, element in enumerate(elements):
+        match element:
+            case str():
+                query_list += '\"' + element + '\"'
+            case int():
+                query_list += str(element)
+            case _:
+                raise RuntimeError(f'Object type [{str(type(element))}]'
+                                    ' is not supported by queryfy')
+
+        if i != length - 1:
+            query_list += ', '
+
+    query_list += ')'
+    return query_list
+
+
+def listify(tuples: list[tuple[_T]]) -> list[_T]:
+    '''Generates a list of the first elements of each tuple in `tuples`.'''
+
+    if type(tuples) is not list:
+        return []
+
+    if len(tuples) == 0:
+        return []
+
+    first = tuples[0]
+    if type(first) is not tuple:
+        return []
+
+    if len(first) == 0:
+        return []
+
+    return [element[0] for element in tuples]

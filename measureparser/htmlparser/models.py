@@ -1,4 +1,6 @@
 import json
+from bs4 import Tag
+
 
 class EmbeddedTag:
     def __init__(self, obj_info: dict):
@@ -53,4 +55,8 @@ class EmbeddedCalculation(EmbeddedTag):
         super().__init__(calculation_info)
         self.api_name_unique: str | None \
             = calculation_info.get('api_name_unique')
-        
+
+
+class StaticValueTable:
+    def __init__(self, static_table: Tag):
+        pass

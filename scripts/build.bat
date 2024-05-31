@@ -13,4 +13,4 @@ call pyinstaller --clean --noconsole -y -n "%EXEC_NAME%"^
  --icon=assets/app.ico^
  --add-data="%DB_FILE%;measureparser/resources"^
  --add-data="%SCHEMA_FILE%;measureparser/resources"^
- measureparser/__main__.py
+ cli.py

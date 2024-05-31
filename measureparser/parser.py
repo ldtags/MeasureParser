@@ -1,24 +1,22 @@
 import os
-from io import TextIOWrapper
 
-
-from .dbservice import (
-    BaseDatabase
-)
-from .htmlparser import CharacterizationParser
-from .measure import (
+from measureparser.logger import MeasureDataLogger
+from measureparser.models import (
     Measure,
     Permutation
 )
-from .parserdata import (
+from measureparser.dbservice import (
+    BaseDatabase
+)
+from measureparser.htmlparser import CharacterizationParser
+from measureparser.parserdata import (
     ParserData,
     MissingValueTableColumnData,
     InvalidValueTableColumnUnitData,
     StdValueTableNameData,
     InvalidPermutationData
 )
-from .logger import MeasureDataLogger
-from .exceptions import (
+from measureparser.exceptions import (
     ParserError,
     MeasureContentError
 )

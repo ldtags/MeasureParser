@@ -2,9 +2,8 @@ import json
 import os
 import sys
 
-from . import _ROOT
-from .measure import Characterization
-from .exceptions import (
+from measureparser import _ROOT
+from measureparser.exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
 )
@@ -55,24 +54,6 @@ def is_etrm_measure(measure_json: object) -> bool:
         return True
     except ValidationError:
         return False
-
-
-def visualize_html(characterizations: list[Characterization],
-                   id: str | None = None) -> None:
-    '''Formats and writes the given characterizations to an output file'''
-
-    from bs4 import BeautifulSoup
-
-    id_format = f'-{id}' if id != None else ''
-    with open(f'visualized{id_format}.txt', 'w') as out:
-        for char in characterizations:
-            soup = BeautifulSoup(char.content, 'html.parser')
-            out.write(f'{char.name}:\n')
-            try:
-                out.write(soup.prettify())
-            except UnicodeEncodeError:
-                out.write('\tUnicodeEncodeError encountered\n')
-            out.write('\n')
 
 
 def perror(*values: object):

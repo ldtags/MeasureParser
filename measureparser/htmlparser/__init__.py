@@ -1,11 +1,7 @@
-from .embedded import (
+from .models import (
     EmbeddedValueTable,
     EmbeddedReference,
     EmbeddedCalculation
-)
-
-from .static import (
-    StaticValueTable
 )
 
 from .htmlparser import (

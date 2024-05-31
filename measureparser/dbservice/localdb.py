@@ -1,22 +1,22 @@
+from __future__ import annotations
 import os
 import sqlite3
-from typing import Optional, final
+from typing import Optional, final, TYPE_CHECKING
 from argparse import Namespace
 
-from .basedb import BaseDatabase
-from._utils import (
+from measureparser import utils
+from measureparser.dbservice.basedb import (
+    BaseDatabase,
     queryfy,
     listify
 )
-from ._exceptions import (
+from measureparser.dbservice.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
-from .. import (
-    resource_path,
-    json_obj,
-    Measure
-)
+
+if TYPE_CHECKING:
+    from measureparser.models import Measure
 
 
 class LocalDatabase(BaseDatabase):
@@ -25,7 +25,7 @@ class LocalDatabase(BaseDatabase):
     def __init__(self,
                  db_name: str = 'database.db',
                  db_dir: str = 'resources'):
-        self.path = resource_path(db_name, db_dir)
+        self.path = utils.resource_path(db_name, db_dir)
         if not os.path.isfile(self.path):
             raise DatabaseConnectionError(f'{self.path} is not a valid database')
 
@@ -45,8 +45,8 @@ class LocalDatabase(BaseDatabase):
         self.close()
 
     @final
-    def get_measure(self, path_to_json: str) -> Measure:
-        return Measure(json_obj(path_to_json), self)
+    def get_measure(self, path_to_json: str) -> object:
+        return utils.json_obj(path_to_json)
 
     @final
     def get_param_api_names(self, measure: Measure | None = None) -> list[str]:
