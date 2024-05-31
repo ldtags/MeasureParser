@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from measureparser.dbservice import BaseDatabase
-from measureparser.exceptions import (
+from src.dbservice import BaseDatabase
+from src.exceptions import (
     MeasureFormatError,
     RequiredContentError,
     InvalidFileError

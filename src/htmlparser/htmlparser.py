@@ -6,11 +6,11 @@ from bs4 import (
     NavigableString
 )
 
-import measureparser.parserdata as pd
-from measureparser.models import (
+import src.parserdata as pd
+from src.models import (
     Characterization
 )
-from measureparser.htmlparser.models import (
+from src.htmlparser.models import (
     EmbeddedReference
 )
 

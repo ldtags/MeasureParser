@@ -1,14 +1,14 @@
 """Measure Parser database interaction layer"""
 
-from measureparser.dbservice.localdb import (
+from src.dbservice.localdb import (
     LocalDatabase
 )
 
-from measureparser.dbservice.etrmdb import (
+from src.dbservice.etrmdb import (
     ETRMDatabase
 )
 
-from measureparser.dbservice.basedb import (
+from src.dbservice.basedb import (
     BaseDatabase
 )
 

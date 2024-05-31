@@ -1,9 +1,9 @@
 import sys
 from typing import Self
 
-from measureparser.models import Measure
-from measureparser.dbservice import BaseDatabase
-from measureparser.parserdata import (
+from src.models import Measure
+from src.dbservice import BaseDatabase
+from src.parserdata import (
     ParserData
 )
 

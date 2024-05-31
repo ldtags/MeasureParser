@@ -1,19 +1,11 @@
 import unittest as ut
 
-from measureparser.objects import (
-    Measure,
-    Parameter,
-    SharedParameter,
-    ValueTable,
-    SharedValueTable,
-    ParameterLabel,
-    Column
-)
+from context import models
 
 
 class TestMeasure(ut.TestCase):
     def test_creation(self):
-        measure = Measure('./resources/SWCR002.json')
+        measure = models.Measure('./resources/SWCR002.json')
         self.assertEqual(measure.owner, '')
         self.assertEqual(measure.id, 'SWCR002')
         self.assertEqual(measure.version_id, 'SWCR002-03')
@@ -30,7 +22,7 @@ class TestMeasure(ut.TestCase):
         self.assertEqual(len(measure.calculations), 7)
         self.assertEqual(len(measure.exclusion_tables), 0)
 
-        param: Parameter = measure.parameters[0]
+        param: models.Parameter = measure.parameters[0]
         self.assertEqual(param.name, 'Description')
         self.assertEqual(param.api_name, 'Desc')
         self.assertEqual(param.labels[0].name, )
@@ -38,22 +30,22 @@ class TestMeasure(ut.TestCase):
         self.assertEqual(param.order, 1)
         self.assertEqual(param.reference_refs, [])
 
-        param_label: ParameterLabel = param.labels[0]
+        param_label: models.ParameterLabel = param.labels[0]
         self.assertEqual(param_label.name, 'ASH Controls')
         self.assertEqual(param_label.api_name, 'ASH Controls')
         self.assertEqual(param_label.active, True)
         self.assertEqual(param_label.description, 'Display Case Door with ASH Controls')
 
-        shared_param: SharedParameter = measure.shared_parameters[0]
+        shared_param: models.SharedParameter = measure.shared_parameters[0]
         self.assertEqual(shared_param.order, 2)
         self.assertEqual(shared_param.version.version_string, 'MeasAppType')
         self.assertEqual(shared_param.labels, ['NR'])
 
-        shared_table: SharedValueTable = measure.shared_tables[0]
+        shared_table: models.SharedValueTable = measure.shared_tables[0]
         self.assertEqual(shared_table.order, 11)
         self.assertEqual(shared_table.version.version_string, 'GSIA_default')
 
-        value_table: ValueTable = measure.value_tables[0]
+        value_table: models.ValueTable = measure.value_tables[0]
         self.assertEqual(value_table.name, 'Offering ID')
         self.assertEqual(value_table.api_name, 'offerId')
         self.assertEqual(value_table.type, 'value_table')
@@ -64,7 +56,7 @@ class TestMeasure(ut.TestCase):
         self.assertEqual(value_table.values, [['ASH Controls', 'A', 'Low-temperature reach-in display cases equipped with special display case glass doors that have no anti-sweat heaters']])
         self.assertEqual(value_table.reference_refs, [])
 
-        column: Column = value_table.columns[0]
+        column: models.Column = value_table.columns[0]
         self.assertEqual(column.name, 'Statewide Measure Offering ID')
         self.assertEqual(column.api_name, 'ID')
         self.assertEqual(column.unit, 'text')
@@ -72,7 +64,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_contains(self):
-        measure = Measure('./resources/SWCR014.json')
+        measure = models.Measure('./resources/SWCR014.json')
         self.assertTrue(measure.contains_param('MeasAppType'))
         self.assertTrue(measure.contains_param('BldgType'))
         self.assertTrue(measure.contains_param('LightingType'))
@@ -119,7 +111,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_getters(self):
-        measure = Measure('./resources/SWCR014.json')
+        measure = models.Measure('./resources/SWCR014.json')
         self.assertTrue(measure.get_shared_parameter('MeasAppType') != None)
         self.assertTrue(measure.get_shared_parameter('BldgType') != None)
         self.assertTrue(measure.get_shared_parameter('iEBldgType') != None)
@@ -148,7 +140,7 @@ class TestMeasure(ut.TestCase):
 
 
     def test_measure_queries(self):
-        measure = Measure('./resources/SWCR002.json')
+        measure = models.Measure('./resources/SWCR002.json')
         self.assertTrue(measure.contains_MAT_label('NR'))
         self.assertFalse(measure.contains_MAT_label('NR', 'NC'))
         self.assertFalse(measure.contains_MAT_label('AOE'))
@@ -165,7 +157,7 @@ class TestMeasure(ut.TestCase):
         self.assertFalse(measure.is_interactive())
         self.assertEqual(measure.get_criteria(), ['REQ', 'DEF_GSIA', 'RES_NDEF', 'MAT_NCNR'])
 
-        measure = Measure('./resources/SWCR014.json')
+        measure = models.Measure('./resources/SWCR014.json')
         self.assertTrue(measure.contains_MAT_label('NR', 'NC'))
         self.assertFalse(measure.is_DEER())
         self.assertFalse(measure.is_WEN())

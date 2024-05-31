@@ -5,13 +5,13 @@ import requests
 from typing import Optional, Self, TYPE_CHECKING
 from argparse import Namespace
 
-from measureparser.dbservice.basedb import BaseDatabase
-from measureparser.dbservice.exceptions import (
+from src.dbservice.basedb import BaseDatabase
+from src.dbservice.exceptions import (
     DatabaseContentError
 )
 
 if TYPE_CHECKING:
-    from measureparser.models import Measure
+    from src.models import Measure
 
 
 def __sanitize_auth_token(auth_token: str) -> str:

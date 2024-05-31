@@ -4,19 +4,19 @@ import sqlite3
 from typing import Optional, final, TYPE_CHECKING
 from argparse import Namespace
 
-from measureparser import utils
-from measureparser.dbservice.basedb import (
+from src import utils
+from src.dbservice.basedb import (
     BaseDatabase,
     queryfy,
     listify
 )
-from measureparser.dbservice.exceptions import (
+from src.dbservice.exceptions import (
     DatabaseConnectionError,
     DatabaseContentError
 )
 
 if TYPE_CHECKING:
-    from measureparser.models import Measure
+    from src.models import Measure
 
 
 class LocalDatabase(BaseDatabase):

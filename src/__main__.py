@@ -5,15 +5,15 @@ from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
-from measureparser import _ROOT
-from measureparser.utils import perror
-from measureparser.parser import MeasureParser
-from measureparser.dbservice import (
+from src import _ROOT
+from src.utils import perror
+from src.parser import MeasureParser
+from src.dbservice import (
     BaseDatabase,
     LocalDatabase,
     ETRMDatabase
 )
-from measureparser.exceptions import (
+from src.exceptions import (
     ParserError,
     MeasureFormatError,
     DatabaseError,

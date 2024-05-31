@@ -1,22 +1,22 @@
 import os
 
-from measureparser.logger import MeasureDataLogger
-from measureparser.models import (
+from src.logger import MeasureDataLogger
+from src.models import (
     Measure,
     Permutation
 )
-from measureparser.dbservice import (
+from src.dbservice import (
     BaseDatabase
 )
-from measureparser.htmlparser import CharacterizationParser
-from measureparser.parserdata import (
+from src.htmlparser import CharacterizationParser
+from src.parserdata import (
     ParserData,
     MissingValueTableColumnData,
     InvalidValueTableColumnUnitData,
     StdValueTableNameData,
     InvalidPermutationData
 )
-from measureparser.exceptions import (
+from src.exceptions import (
     ParserError,
     MeasureContentError
 )

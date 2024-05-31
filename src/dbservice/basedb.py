@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING, TypeVar
 from argparse import Namespace
 
 if TYPE_CHECKING:
-    from measureparser.models import Measure
+    from src.models import Measure
 
 
 _T = TypeVar('_T')
