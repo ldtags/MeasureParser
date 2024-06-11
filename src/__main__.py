@@ -5,6 +5,7 @@ from traceback import print_exc
 from gooey import Gooey, GooeyParser
 from argparse import Namespace
 
+from src.app import Controller
 from src import _ROOT
 from src.utils import perror
 from src.parser import MeasureParser
@@ -83,51 +84,53 @@ def parse_arguments() -> Namespace:
     shutdown_signal=signal.CTRL_C_EVENT
 )
 def main() -> None:
-    args = parse_arguments()
-    msr_filepath: str | None = getattr(args, 'filepath', None)
-    msr_id: str | None = getattr(args, 'msr_id', None)
-    auth_token: str | None = getattr(args, 'auth_token', None)
-    if not (msr_filepath or (msr_id and auth_token)):
-        perror('Input Error:\nEither path to measure JSON file or eTRM'
-                + ' auth token and measure version ID required.')
-        return
+    app = Controller()
+    app.start()
+    # args = parse_arguments()
+    # msr_filepath: str | None = getattr(args, 'filepath', None)
+    # msr_id: str | None = getattr(args, 'msr_id', None)
+    # auth_token: str | None = getattr(args, 'auth_token', None)
+    # if not (msr_filepath or (msr_id and auth_token)):
+    #     perror('Input Error:\nEither path to measure JSON file or eTRM'
+    #             + ' auth token and measure version ID required.')
+    #     return
 
-    out_dirpath: str | None = getattr(args, 'output', None)
-    if out_dirpath == None:
-        perror('Input Error:\nOutput directory not specified')
-        return
+    # out_dirpath: str | None = getattr(args, 'output', None)
+    # if out_dirpath == None:
+    #     perror('Input Error:\nOutput directory not specified')
+    #     return
 
-    database: BaseDatabase | None = None
-    msr_source: str | None = None
-    try:
-        if (msr_id and auth_token):
-            database = ETRMDatabase(auth_token)
-            msr_source = msr_id
-        elif msr_filepath:
-            database = LocalDatabase()
-            msr_source = msr_filepath
-        else:
-            raise DatabaseConnectionError('No database source specified')
-    except DatabaseError as err:
-        perror(f'Database Error:\n{err.message}')
-        return
+    # database: BaseDatabase | None = None
+    # msr_source: str | None = None
+    # try:
+    #     if (msr_id and auth_token):
+    #         database = ETRMDatabase(auth_token)
+    #         msr_source = msr_id
+    #     elif msr_filepath:
+    #         database = LocalDatabase()
+    #         msr_source = msr_filepath
+    #     else:
+    #         raise DatabaseConnectionError('No database source specified')
+    # except DatabaseError as err:
+    #     perror(f'Database Error:\n{err.message}')
+    #     return
 
-    try:
-        measure = database.get_measure(msr_source)
-    except MeasureFormatError as err:
-        perror(f'Measure Format Error:\n{err.message}')
-        return
-    except InvalidFileError as err:
-        perror(f'Invalid File Error:\n{err.message}')
-        return
+    # try:
+    #     measure = database.get_measure(msr_source)
+    # except MeasureFormatError as err:
+    #     perror(f'Measure Format Error:\n{err.message}')
+    #     return
+    # except InvalidFileError as err:
+    #     perror(f'Invalid File Error:\n{err.message}')
+    #     return
 
-    try:
-        parser = MeasureParser(database)
-        parser.parse(measure)
-        parser.log_output(out_dirpath)
-    except ParserError as err:
-        perror(f'Parser Error:\n{err.message}')
-        return
+    # try:
+    #     parser = MeasureParser(database)
+    #     parser.parse(measure)
+    #     parser.log_output(out_dirpath)
+    # except ParserError as err:
+    #     perror(f'Parser Error:\n{err.message}')
+    #     return
 
 
 if __name__ == '__main__':

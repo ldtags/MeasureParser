@@ -32,18 +32,22 @@ def resource_path(filename: str) -> str:
 def asset_path(file_name: str) -> str:
     """Returns an absolute path to an asset file."""
 
-    return os.path.join(_ROOT, 'assets', file_name)
+    file_path = os.path.join(_ROOT, 'assets', file_name)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'No asset named {file_name} exists')
+    return file_path
 
 
 def get_tkimage(file_name: str,
                 size: tuple[int, int] | None=None
-               ) -> ImageTk.BitmapImage:
+               ) -> ImageTk.PhotoImage:
     """Returns an image asset that can be used in a tkinter widget."""
 
     file_path = asset_path(file_name)
     image = Image.open(file_path)
-    image.resize(size)
-    return ImageTk.BitmapImage(image)
+    if size:
+        image = image.resize(size)
+    return ImageTk.PhotoImage(image)
 
 
 # validates that the given filepath leads to an eTRM measure JSON file
