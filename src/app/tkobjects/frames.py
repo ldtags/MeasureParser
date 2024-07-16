@@ -17,6 +17,8 @@ class Frame(tk.Frame):
 
 
 class Page(Frame):
+    key: str
+
     def __init__(self, parent: tk.Frame, **kwargs):
         self.parent = parent
         super().__init__(parent, **kwargs)

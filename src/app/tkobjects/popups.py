@@ -46,7 +46,7 @@ class MeasureFilePopup(tk.Toplevel):
 
         self.geometry('450x250')
         self.resizable(width=False, height=False)
-        self.iconbitmap(utils.asset_path('app.ico'))
+        self.iconbitmap(utils.get_asset_path('app.ico'))
         self.grab_set()
 
         self.grid_columnconfigure((0), weight=1)

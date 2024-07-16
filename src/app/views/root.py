@@ -8,7 +8,7 @@ class Root(tk.Tk):
         super().__init__()
 
         self.title('Measure Parser')
-        self.iconbitmap(utils.asset_path('app.ico'))
+        self.iconbitmap(utils.get_asset_path('app.ico'))
         self.geometry(f'{width}x{height}')
         self.minsize(width=width, height=height)
         self.grid_rowconfigure(0, weight=1)

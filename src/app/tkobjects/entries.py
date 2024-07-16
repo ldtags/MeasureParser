@@ -25,7 +25,7 @@ class Entry(tk.Entry):
         kwargs['highlightbackground'] = border_color
         kwargs['highlightcolor'] = border_color
         kwargs['font'] = font
-        super().__init__(parent, **kwargs)
+        tk.Entry.__init__(self, parent, **kwargs)
 
         self.placeholder = placeholder
         self.placeholder_color = placeholder_color
@@ -33,6 +33,8 @@ class Entry(tk.Entry):
 
         if text:
             self.insert(0, text)
+        elif placeholder:
+            self.put_placeholder()
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
@@ -64,7 +66,7 @@ class FileEntry(Frame):
                  font=fonts.BODY,
                  textvariable: tk.Variable | None=None,
                  **kwargs):
-        super().__init__(parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
 
         self.types = types
         self.file_type = file_type
@@ -89,14 +91,11 @@ class FileEntry(Frame):
                         fill=tk.BOTH,
                         expand=True,
                         padx=(0, 0),
-                        pady=(0, 0),
-                        ipadx=1,
-                        ipady=2)
+                        pady=(0, 0))
 
         if textvariable:
             self.entry.config(textvariable=textvariable)
 
-        global dir_img
         dir_img = utils.get_tkimage('folder.png', (24, 24))
         self.button = Button(self,
                              pady=0,
@@ -109,9 +108,7 @@ class FileEntry(Frame):
         self.button.pack(side=tk.LEFT,
                          anchor=tk.NW,
                          padx=(0, 0),
-                         pady=(0, 0),
-                         ipadx=2,
-                         ipady=2)
+                         pady=(0, 0))
 
     def open_dialog(self, *args):
         initial_file = self.file_path.get()
@@ -130,8 +127,5 @@ class FileEntry(Frame):
             self.entry.delete(0, tk.END)
             self.entry.insert(0, file_path)
 
-    def get_file_path(self) -> str | None:
-        path = self.entry.get()
-        if path == '':
-            return None
-        return path
+    def get(self) -> str:
+        return self.entry.get()

@@ -1,9 +1,13 @@
 import json
 import os
 import sys
-from PIL import ImageTk, Image
 
 from src import _ROOT
+from src.assets import (
+    get_path as get_asset_path,
+    get_image,
+    get_tkimage
+)
 from src.exceptions import (
     SchemaNotFoundError,
     CorruptedSchemaError
@@ -27,27 +31,6 @@ def resource_path(filename: str) -> str:
     '''Returns an absolute path to a resource file in the package.'''
 
     return os.path.join(_ROOT, 'resources', filename)
-
-
-def asset_path(file_name: str) -> str:
-    """Returns an absolute path to an asset file."""
-
-    file_path = os.path.join(_ROOT, 'assets', file_name)
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f'No asset named {file_name} exists')
-    return file_path
-
-
-def get_tkimage(file_name: str,
-                size: tuple[int, int] | None=None
-               ) -> ImageTk.PhotoImage:
-    """Returns an image asset that can be used in a tkinter widget."""
-
-    file_path = asset_path(file_name)
-    image = Image.open(file_path)
-    if size:
-        image = image.resize(size)
-    return ImageTk.PhotoImage(image)
 
 
 # validates that the given filepath leads to an eTRM measure JSON file

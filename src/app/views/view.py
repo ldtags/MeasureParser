@@ -2,7 +2,7 @@ import os
 from ctypes import windll
 
 from src.app.views.root import Root
-from src.app.views.home import HomePage, HOME
+from src.app.views.home import HomePage
 from src.app.tkobjects import Page
 from src.app.exceptions import (
     GUIError
@@ -25,7 +25,7 @@ class View:
         self.home = HomePage(self.root.container)
         
         self.pages: dict[str, Page] = {
-            HOME: self.home
+            HomePage.key: self.home
         }
 
     def show(self, page_name: str):

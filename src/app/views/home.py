@@ -1,46 +1,55 @@
 import tkinter as tk
-from tkinter import ttk
+import tkinter.ttk as ttk
 
-# from src import utils
 from src.app import fonts
 from src.app.tkobjects import (
     Frame,
     Page,
     FileEntry,
     Button,
-    Toplevel,
-    OptionLabel,
     Entry,
-    MeasureFilePopup
+    OptionLabel
 )
 
 
-HOME = 'home'
-
-
 class HomePage(Page):
+    key = 'home'
+
     def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
+        Page.__init__(self, parent, **kwargs)
+
         self.grid(row=0,
                   column=0,
                   sticky=tk.NSEW)
 
-        self.popup: MeasureFilePopup | None = None
-
-        self.intro_frame = IntroFrame(self,
-                                      title='eTRM Measure Parser',
-                                      body='Validate eTRM Measures',
-                                      image_asset='config.png',
-                                      bg='#ffffff')
-        self.intro_frame.pack(side=tk.TOP,
-                              anchor=tk.N,
+        self.intro_label = OptionLabel(self,
+                                       title='eTRM Measure Parser',
+                                       sub_title='Simplifies the eTRM measure'
+                                                 ' QA/QC process by providing'
+                                                 ' accurate measure data'
+                                                 ' validation.',
+                                       img_name='etrm.png',
+                                       ipadx=(15, 15),
+                                       ipady=(20, 20))
+        self.intro_label.pack(side=tk.TOP,
+                              anchor=tk.NW,
                               fill=tk.X)
+        
+        self.source_frame = MeasureSourceFrame(self)
+        self.source_frame.pack(side=tk.TOP,
+                               anchor=tk.NW,
+                               fill=tk.BOTH,
+                               expand=True,
+                               padx=(10, 10),
+                               pady=(10, 10))
 
-        self.tabbed_page = TabbedPage(self)
-        self.tabbed_page.pack(side=tk.TOP,
-                              anchor=tk.N,
-                              fill=tk.BOTH,
-                              expand=True)
+        self.output_frame = OutputFrame(self)
+        self.output_frame.pack(side=tk.TOP,
+                               anchor=tk.NW,
+                               fill=tk.BOTH,
+                               expand=True,
+                               padx=(10, 10),
+                               pady=(10, 10))
 
         self.controls_frame = ControlsFrame(self,
                                             bg='#f0f0f0')
@@ -51,284 +60,214 @@ class HomePage(Page):
     def show(self):
         self.tkraise()
 
-    def json_popup(self) -> str:
-        if self.popup is None or not self.popup.winfo_exists():
-            self.popup = MeasureFilePopup(self)
-        self.popup.wm_transient()
-        self.popup.focus_set()
-        file_path = self.popup.wait()
-        self.popup = None
-        return file_path
-
-
-class TabbedPage(ttk.Notebook):
-    def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.measure_source_frame = MeasureSourceFrame(self,
-                                                       bg='#ffffff')
-        self.measure_source_frame.pack()
-        self.add(self.measure_source_frame, text=' Select Measures ')
-
-        self.selected_measures_frame = SelectedMeasuresFrame(self,
-                                                             bg='#ffffff')
-        self.selected_measures_frame.pack()
-        self.add(self.selected_measures_frame, text=' View Selected Measures ')
-
-        self.info_frame = InfoFrame(self, bg='#ffffff')
-        self.info_frame.pack()
-        self.add(self.info_frame, text=' Info ')
-
-
-class IntroFrame(Frame):
-    def __init__(self,
-                 parent: HomePage,
-                 title: str='',
-                 body: str='',
-                 image_asset: str | None=None,
-                 **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.intro_title = tk.Label(self,
-                                    text=title,
-                                    font=fonts.SUB_HEADER,
-                                    bg=self['bg'])
-        self.intro_title.pack(side=tk.TOP,
-                              anchor=tk.NW,
-                              padx=(15, 15),
-                              pady=(20, 0))
-
-        self.intro_body = tk.Label(self,
-                                   text=body,
-                                   font=fonts.BODY,
-                                   bg=self['bg'])
-        self.intro_body.pack(side=tk.TOP,
-                             anchor=tk.NW,
-                             padx=(15, 15),
-                             pady=(0, 20))
-
-        # if image_asset:
-        #     img = utils.get_tkimage(image_asset, size=(32, 32))
-        #     self.intro_image = tk.Label(self, image=img)
-        #     self.intro_image.pack()
-        # change layout style to grid if implemented
-
-        self.intro_sep = ttk.Separator(self)
-        self.intro_sep.pack(side=tk.TOP,
-                            fill=tk.X,
-                            anchor=tk.S,
-                            padx=(0, 0),
-                            pady=(5, 0))
-
 
 class MeasureSourceFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
 
-        self.selection_frame = MeasureSelectionFrame(self,
-                                                     bg=self['bg'])
-        self.selection_frame.pack(side=tk.TOP,
-                                  anchor=tk.NW,
-                                  fill=tk.BOTH,
-                                  padx=(20, 20),
-                                  pady=(30, 30))
+        self.source_label = OptionLabel(self,
+                                        title='eTRM Measure Sources',
+                                        level=0)
+        self.source_label.pack(side=tk.TOP,
+                               anchor=tk.NW,
+                               fill=tk.X)
 
-        self.options_frame = OptionsFrame(self,
-                                          bg=self['bg'])
-        self.options_frame.pack(side=tk.TOP,
+        self.source_frame = self._SourceFrame(self)
+        self.source_frame.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.BOTH,
-                               padx=(20, 20),
-                               pady=(30, 30))
-
-
-class MeasureSelectionFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.grid_columnconfigure((0, 1), weight=1, uniform='source_buttons')
-
-        self.label = OptionLabel(self,
-                                 title='eTRM Measure Sources',
-                                 sub_title='Select eTRM measures'
-                                           ' to be parsed',
-                                 separate=True)
-        self.label.grid(row=0,
-                        column=0,
-                        columnspan=2,
-                        sticky=tk.NSEW,
-                        padx=(0, 0),
-                        pady=(10, 10))
-
-        self.etrm_btn = Button(self,
-                               text='Select Measure(s) from eTRM')
-        self.etrm_btn.grid(row=1,
-                           column=0,
-                           padx=(10, 10),
-                           pady=(10, 10))
-
-        self.json_btn = Button(self,
-                               text='Import Measure from JSON File')
-        self.json_btn.grid(row=1,
-                           column=1,
-                           padx=(10, 10),
-                           pady=(10, 10))
-
-
-class OptionsFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.label = OptionLabel(self,
-                                 title='Parser Options',
-                                 sub_title='Specify how the parser'
-                                           ' should be run',
-                                 separate=True)
-        self.label.pack(side=tk.TOP,
-                        anchor=tk.N,
-                        fill=tk.X,
-                        padx=(0, 0),
-                        pady=(0, 10))
-
-        self.options_frame = Frame(self)
-        self.options_frame.pack(side=tk.TOP,
-                                anchor=tk.N,
-                                fill=tk.BOTH,
-                                padx=(10, 10),
-                                pady=(0, 0))
-        self.options_frame.grid_columnconfigure((0, 1),
-                                                weight=1,
-                                                uniform='options')
-
-        self.output_folder = FolderOutputOption(self.options_frame)
-        self.output_folder.grid(row=0,
-                                column=0,
-                                sticky=tk.NSEW,
-                                padx=(0, 15),
-                                pady=(0, 0))
-
-        self.output_name = FileNameOption(self.options_frame)
-        self.output_name.grid(row=0,
-                              column=1,
-                              sticky=tk.NSEW,
-                              padx=(15, 0),
-                              pady=(0, 0))
-
-
-class FolderOutputOption(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.output_label = OptionLabel(self,
-                                        title='Parser Output Location',
-                                        sub_title='Folder to store'
-                                                  ' the parser results'
-                                                  ' file',
-                                        level=1)
-        self.output_label.pack(side=tk.TOP,
-                               anchor=tk.N,
-                               fill=tk.X,
-                               padx=(0, 0),
-                               pady=(0, 5))
-
-        self.output_entry = FileEntry(self, file_type='directory')
-        self.output_entry.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.X,
                                expand=True,
-                               padx=(0, 0),
-                               pady=(0, 5))
+                               padx=(10, 10),
+                               pady=(10, 0))
 
-        self.err_var = tk.StringVar(self, '')
-        self.err_label = tk.Label(self,
-                                  textvariable=self.err_var,
-                                  font=fonts.BODY,
-                                  bg=self['bg'],
-                                  fg='red',
-                                  wraplength=self.output_entry.winfo_width())
-        self.err_label.pack(side=tk.TOP,
-                            anchor=tk.N,
-                            fill=tk.BOTH,
-                            expand=True,
-                            padx=(0, 0),
-                            pady=(0, 10))
+    class _SourceFrame(Frame):
+        def __init__(self, parent: Frame, **kwargs):
+            Frame.__init__(self, parent, **kwargs)
 
-    def display_err(self, text: str):
-        self.err_var.set(text)
+            self.grid_rowconfigure((0), weight=1)
+            self.grid_columnconfigure((0, 2),
+                                      weight=1,
+                                      uniform='_SourceFrame')
+            self.grid_columnconfigure((1), weight=0)
 
-    def clear_err(self):
-        self.err_var.set('')
+            self.json_frame = JSONSourceFrame(self)
+            self.json_frame.grid(column=0,
+                                 row=0,
+                                 sticky=tk.NSEW,
+                                 padx=(10, 10))
+
+            self.source_separator = SourceSeparator(self)
+            self.source_separator.grid(column=1,
+                                       row=0,
+                                       sticky=tk.NSEW)
+
+            self.etrm_frame = ETRMSourceFrame(self)
+            self.etrm_frame.grid(column=2,
+                                row=0,
+                                sticky=tk.NSEW,
+                                padx=(10, 10))
 
 
-class FileNameOption(Frame):
+class JSONSourceFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
 
-        self.output_label = OptionLabel(self,
-                                        title='Parser Output File Name',
-                                        sub_title='File name for the parser'
-                                                  ' results file (.txt)',
-                                        level=1)
-        self.output_label.pack(side=tk.TOP,
-                               anchor=tk.N,
-                               fill=tk.X,
-                               padx=(0, 0),
-                               pady=(0, 5))
+        self.grid_columnconfigure((0), weight=1)
+        self.grid_rowconfigure((0, 3), weight=1)
+        self.grid_rowconfigure((1, 2), weight=0)
 
-        self.entry = Entry(self, text='parser_results')
-        self.entry.pack(side=tk.TOP,
-                        anchor=tk.NW,
-                        fill=tk.BOTH,
-                        expand=True,
-                        padx=(0, 0),
-                        pady=(0, 5),
-                        ipadx=1,
-                        ipady=4)
+        self.file_label = OptionLabel(self,
+                                      title='Measure JSON File',
+                                      sub_title='Select an existing eTRM'
+                                                ' measure JSON file.',
+                                      level=1)
+        self.file_label.grid(column=0,
+                             row=1,
+                             sticky=tk.NSEW)
 
-        self.err_var = tk.StringVar(self, '')
-        self.err_label = tk.Label(self,
-                                  textvariable=self.err_var,
-                                  font=fonts.BODY,
-                                  bg=self['bg'],
-                                  fg='red',
-                                  wraplength=self.entry.winfo_width())
-        self.err_label.pack(side=tk.TOP,
-                            anchor=tk.N,
-                            fill=tk.BOTH,
-                            expand=True,
-                            padx=(0, 0),
-                            pady=(0, 10))
-
-    def display_err(self, text: str):
-        self.err_var.set(text)
-
-    def clear_err(self):
-        self.err_var.set('')
+        self.file_entry = FileEntry(self,
+                                    file_type='file',
+                                    types=[('JSON File', '.json')])
+        self.file_entry.grid(column=0,
+                             row=2,
+                             sticky=tk.NSEW,
+                             pady=(5, 0))
 
 
-class SelectedMeasuresFrame(Frame):
+class SourceSeparator(Frame):
     def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
+
+        self.grid_columnconfigure((0, 2), weight=1)
+        self.grid_columnconfigure((1), weight=0)
+        self.grid_rowconfigure((0, 2),
+                               weight=1,
+                               uniform='SourceSeparatorV')
+        self.grid_rowconfigure((1), weight=0)
+
+        self.top_separator = ttk.Separator(self,
+                                           orient='vertical')
+        self.top_separator.grid(column=1,
+                                row=0,
+                                sticky=tk.NS)
 
         self.label = tk.Label(self,
-                              text='Selected Measures',
-                              font=fonts.BODY_BOLD,
+                              text='OR',
+                              font=fonts.BODY,
                               bg=self['bg'])
-        self.label.pack(side=tk.TOP,
-                        anchor=tk.N,
-                        padx=(10, 10),
-                        pady=(5, 0))
+        self.label.grid(column=1,
+                        row=1,
+                        sticky=tk.NSEW)
 
-        self.separator = ttk.Separator(self)
-        self.separator.pack(side=tk.TOP,
-                            fill=tk.X,
-                            padx=(5, 5),
-                            pady=(0, 5))
+        self.bottom_separator = ttk.Separator(self,
+                                              orient='vertical')
+        self.bottom_separator.grid(column=1,
+                                   row=2,
+                                   sticky=tk.NS)
 
 
-class InfoFrame(Frame):
+class ETRMSourceFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
-        super().__init__(parent, **kwargs)
+        Frame.__init__(self, parent, **kwargs)
+
+        self.key_label = OptionLabel(self,
+                                     title='API Key',
+                                     sub_title='An eTRM API key, used'
+                                               ' for authorizing requests to'
+                                               ' the eTRM API.',
+                                     level=1)
+        self.key_label.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.X,)
+
+        self.api_key_entry = Entry(self,
+                                   placeholder='Token ae38f19b8c03de122...')
+        self.api_key_entry.pack(side=tk.TOP,
+                                anchor=tk.NW,
+                                fill=tk.X,
+                                expand=True,
+                                ipady=3,
+                                pady=(5, 0))
+
+        self.measure_label = OptionLabel(self,
+                                         title='Measure Version ID',
+                                         sub_title='A full eTRM measure'
+                                                   ' version ID.',
+                                         level=1)
+        self.measure_label.pack(side=tk.TOP,
+                                anchor=tk.NW,
+                                fill=tk.X,
+                                pady=(10, 0))
+
+        self.measure_entry = Entry(self,
+                                   placeholder='SWAP001-06')
+        self.measure_entry.pack(side=tk.TOP,
+                                anchor=tk.NW,
+                                fill=tk.X,
+                                expand=True,
+                                ipady=3,
+                                pady=(5, 0))
+
+
+class OutputFrame(Frame):
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
+
+        self.output_label = OptionLabel(self,
+                                        title='Parser Output Options',
+                                        level=0)
+        self.output_label.pack(side=tk.TOP,
+                               anchor=tk.NW,
+                               fill=tk.X)
+
+        self.options_frame = self._OutputOptionsFrame(self)
+        self.options_frame.pack(side=tk.TOP,
+                                anchor=tk.NW,
+                                fill=tk.BOTH,
+                                expand=True,
+                                padx=(10, 10),
+                                pady=(10, 0))
+
+
+    class _OutputOptionsFrame(Frame):
+        def __init__(self, parent: Frame, **kwargs):
+            Frame.__init__(self, parent, **kwargs)
+
+            self.grid_columnconfigure((0), weight=1)
+            self.grid_rowconfigure((0, 1, 2, 3), weight=0)
+
+            self.fname_label = OptionLabel(self,
+                                           title='Output File Name',
+                                           sub_title='The file name of the'
+                                                     ' parser output file.',
+                                           level=1)
+            self.fname_label.grid(row=0,
+                                  column=0,
+                                  sticky=tk.NSEW)
+
+            self.fname_entry = Entry(self,
+                                     text='parser_output')
+            self.fname_entry.grid(row=1,
+                                  column=0,
+                                  sticky=tk.NSEW,
+                                  ipady=3,
+                                  pady=(0, 10))
+
+            self.outdir_label = OptionLabel(self,
+                                            title='Output File Location',
+                                            sub_title='The folder that the'
+                                                      ' parser output file'
+                                                      ' will be placed in.',
+                                            level=1)
+            self.outdir_label.grid(row=2,
+                                   column=0,
+                                   sticky=tk.NSEW)
+
+            self.outdir_entry = FileEntry(self)
+            self.outdir_entry.grid(row=3,
+                                   column=0,
+                                   sticky=tk.NSEW,
+                                   pady=(0, 10))
 
 
 class ControlsFrame(Frame):
@@ -357,25 +296,3 @@ class ControlsFrame(Frame):
                             anchor=tk.E,
                             padx=(30, 15),
                             pady=(20, 20))
-
-
-class FileEntryPopup(Toplevel):
-    def __init__(self, parent: tk.BaseWidget, **kwargs):
-        super().__init__(parent, **kwargs)
-
-        self.label = tk.Label(self,
-                              text='Select eTRM Measure JSON File',
-                              bg=self['bg'],
-                              font=fonts.SUB_HEADER)
-        self.label.pack(side=tk.TOP,
-                        anchor=tk.NW,
-                        fill=tk.X,
-                        expand=False,
-                        padx=(5, 5),
-                        pady=(5, 0))
-
-        self.separator = ttk.Separator(self)
-        self.separator.pack(side=tk.TOP,
-                            fill=tk.X,
-                            padx=(5, 5),
-                            pady=(0, 5))

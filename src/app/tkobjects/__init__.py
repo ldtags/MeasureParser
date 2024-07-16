@@ -1,5 +1,6 @@
-from src.app.tkobjects.popups import MeasureFilePopup
-from src.app.tkobjects.frames import Frame, Page, Toplevel
-from src.app.tkobjects.entries import Entry, FileEntry
-from src.app.tkobjects.buttons import Button
-from src.app.tkobjects.general import OptionLabel
+from .popups import MeasureFilePopup
+from .frames import Frame, Page, Toplevel
+from .entries import Entry, FileEntry
+from .buttons import Button
+from .general import OptionLabel
+from .labels import Label
