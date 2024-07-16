@@ -6,6 +6,7 @@ from src.app.tkobjects import (
     Frame,
     Page,
     FileEntry,
+    FileNameEntry,
     Button,
     Entry,
     OptionLabel
@@ -245,13 +246,13 @@ class OutputFrame(Frame):
                                   column=0,
                                   sticky=tk.NSEW)
 
-            self.fname_entry = Entry(self,
-                                     text='parser_output')
+            self.fname_entry = FileNameEntry(self,
+                                             text='parser_output')
             self.fname_entry.grid(row=1,
                                   column=0,
                                   sticky=tk.NSEW,
                                   ipady=3,
-                                  pady=(0, 10))
+                                  pady=(5, 10))
 
             self.outdir_label = OptionLabel(self,
                                             title='Output File Location',
@@ -267,7 +268,7 @@ class OutputFrame(Frame):
             self.outdir_entry.grid(row=3,
                                    column=0,
                                    sticky=tk.NSEW,
-                                   pady=(0, 10))
+                                   pady=(5, 10))
 
 
 class ControlsFrame(Frame):

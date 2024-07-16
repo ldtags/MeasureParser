@@ -27,6 +27,7 @@ class Entry(tk.Entry):
         kwargs['font'] = font
         tk.Entry.__init__(self, parent, **kwargs)
 
+        self.parent = parent
         self.placeholder = placeholder
         self.placeholder_color = placeholder_color
         self.default_fg = self['fg']
@@ -52,6 +53,43 @@ class Entry(tk.Entry):
     def focus_out(self, *args):
         if self.placeholder and not self.get():
             self.put_placeholder()
+
+
+class FileNameEntry(Entry):
+    def __init__(self,
+                 parent: tk.Widget,
+                 placeholder: str | None=None,
+                 placeholder_color='grey',
+                 text: str | None=None,
+                 relief=tk.SOLID,
+                 border_width: int=1,
+                 border_color: str='grey',
+                 font=fonts.BODY,
+                 file_ext: str='txt',
+                 **kwargs):
+        Entry.__init__(self,
+                       parent,
+                       placeholder,
+                       placeholder_color,
+                       f'{text}.{file_ext}',
+                       relief,
+                       border_width,
+                       border_color,
+                       font,
+                       **kwargs)
+        self.file_ext = file_ext
+
+        self.bind('<FocusIn>', self.shift_cursor)
+
+    def shift_cursor(self, *args) -> None:
+        self.focus_set()
+
+        try:
+            index = self.get().rindex(f'.{self.file_ext}')
+        except ValueError:
+            return
+
+        self.icursor(index)
 
 
 class FileEntry(Frame):
