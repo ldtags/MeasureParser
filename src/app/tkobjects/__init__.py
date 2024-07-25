@@ -1,5 +1,5 @@
 from .popups import MeasureFilePopup
-from .frames import Frame, Page, Toplevel
+from .frames import Frame, Page, Toplevel, Container
 from .entries import Entry, FileEntry, FileNameEntry
 from .buttons import Button
 from .general import OptionLabel

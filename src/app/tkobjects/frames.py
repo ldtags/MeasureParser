@@ -19,13 +19,22 @@ class Frame(tk.Frame):
 class Page(Frame):
     key: str
 
-    def __init__(self, parent: tk.Frame, **kwargs):
+    def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):
         self.parent = parent
+        self.root = root
+
         super().__init__(parent, **kwargs)
 
     @overload
     def show(self):
         ...
+
+
+class Container(Frame):
+    def __init__(self, root: tk.Tk, **kwargs):
+        self.root = root
+
+        Frame.__init__(self, root, **kwargs)
 
 
 class Toplevel(tk.Toplevel):

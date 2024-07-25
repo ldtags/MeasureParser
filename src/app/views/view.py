@@ -3,6 +3,7 @@ from ctypes import windll
 
 from src.app.views.root import Root
 from src.app.views.home import HomePage
+from src.app.views.progress import ProgressPage
 from src.app.tkobjects import Page
 from src.app.exceptions import (
     GUIError
@@ -22,10 +23,12 @@ class View:
 
     def __init__(self):
         self.root = Root()
-        self.home = HomePage(self.root.container)
-        
+        self.home = HomePage(self.root.container, self.root)
+        self.progress = ProgressPage(self.root.container, self.root)
+
         self.pages: dict[str, Page] = {
-            HomePage.key: self.home
+            HomePage.key: self.home,
+            ProgressPage.key: self.progress
         }
 
     def show(self, page_name: str):

@@ -1,3 +1,4 @@
+from typing import Literal
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -9,15 +10,17 @@ from src.app.tkobjects import (
     FileNameEntry,
     Button,
     Entry,
-    OptionLabel
+    OptionLabel,
+    Label
 )
+from src.config import app_config
 
 
 class HomePage(Page):
     key = 'home'
 
-    def __init__(self, parent: Frame, **kwargs):
-        Page.__init__(self, parent, **kwargs)
+    def __init__(self, parent: Frame, root: tk.Tk, **kwargs):
+        Page.__init__(self, parent, root, **kwargs)
 
         self.grid(row=0,
                   column=0,
@@ -67,7 +70,7 @@ class MeasureSourceFrame(Frame):
         Frame.__init__(self, parent, **kwargs)
 
         self.source_label = OptionLabel(self,
-                                        title='eTRM Measure Sources',
+                                        title='Measure Sources',
                                         level=0)
         self.source_label.pack(side=tk.TOP,
                                anchor=tk.NW,
@@ -80,6 +83,21 @@ class MeasureSourceFrame(Frame):
                                expand=True,
                                padx=(10, 10),
                                pady=(10, 0))
+
+        self.source_err_var = tk.StringVar(self, ' ')
+        self.source_err_label = Label(self,
+                                      textvariable=self.source_err_var,
+                                      fg='#ff0000')
+        self.source_err_label.pack(side=tk.TOP,
+                                   anchor=tk.NW,
+                                   fill=tk.X,
+                                   padx=(10, 10))
+
+    def clear_err(self) -> None:
+        self.source_err_var.set('')
+
+    def print_err(self, err: str) -> None:
+        self.source_err_var.set(err)
 
     class _SourceFrame(Frame):
         def __init__(self, parent: Frame, **kwargs):
@@ -235,7 +253,7 @@ class OutputFrame(Frame):
             Frame.__init__(self, parent, **kwargs)
 
             self.grid_columnconfigure((0), weight=1)
-            self.grid_rowconfigure((0, 1, 2, 3), weight=0)
+            self.grid_rowconfigure((0, 1, 2, 3, 4, 5), weight=0)
 
             self.fname_label = OptionLabel(self,
                                            title='Output File Name',
@@ -252,7 +270,16 @@ class OutputFrame(Frame):
                                   column=0,
                                   sticky=tk.NSEW,
                                   ipady=3,
-                                  pady=(5, 10))
+                                  pady=(5, 0))
+
+            self.file_err_var = tk.StringVar(self, ' ')
+            self.file_err_label = Label(self,
+                                        textvariable=self.file_err_var,
+                                        fg='#ff0000')
+            self.file_err_label.grid(row=2,
+                                     column=0,
+                                     sticky=tk.NSEW,
+                                     pady=(0, 10))
 
             self.outdir_label = OptionLabel(self,
                                             title='Output File Location',
@@ -260,15 +287,39 @@ class OutputFrame(Frame):
                                                       ' parser output file'
                                                       ' will be placed in.',
                                             level=1)
-            self.outdir_label.grid(row=2,
+            self.outdir_label.grid(row=3,
                                    column=0,
                                    sticky=tk.NSEW)
 
-            self.outdir_entry = FileEntry(self)
-            self.outdir_entry.grid(row=3,
+            self.outdir_entry = FileEntry(self,
+                                          text=app_config.output_path)
+            self.outdir_entry.grid(row=4,
                                    column=0,
                                    sticky=tk.NSEW,
-                                   pady=(5, 10))
+                                   pady=(5, 0))
+
+            self.outdir_err_var = tk.StringVar(self, ' ')
+            self.outdir_err_label = Label(self,
+                                          textvariable=self.outdir_err_var,
+                                          fg='#ff0000')
+            self.outdir_err_label.grid(row=5,
+                                       column=0,
+                                       sticky=tk.NSEW,
+                                       pady=(0, 10))
+
+        def reset_errs(self) -> None:
+            self.file_err_var.set(' ')
+            self.outdir_err_var.set(' ')
+
+        def print_error(self,
+                        type: Literal['directory', 'file'],
+                        err: str
+                       ) -> None:
+            self.reset_errs()
+            if type == 'directory':
+                self.outdir_err_var.set(err)
+            elif type == 'file':
+                self.file_err_var.set(err)
 
 
 class ControlsFrame(Frame):

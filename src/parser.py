@@ -393,21 +393,16 @@ class MeasureParser:
             parser.parse(characterization)
 
 
-    def log_output(self,
-                   dir_path: str | None = None,
-                   file_name: str | None = None):
+    def log_output(self, out_file: str | None=None) -> None:
         """Specifies the control flow for logging parsed measure data."""
 
         out: str | None = None
-        if dir_path != None:
-            if file_name == None:
-                file_name = 'parser-output'
-            out = os.path.join(dir_path, f'{file_name}.txt')
-        elif file_name != None:
-            raise ParserError(
-                'No output directory path provided with file name')
-        else:
+        if out_file is None:
             print('\n')
+        elif not os.path.exists(out_file):
+            raise ParserError(f'Invalid file path: {out_file}')
+        else:
+            out = out_file
 
         if self.data == None:
             raise ParserError('Parser data is required to log output')

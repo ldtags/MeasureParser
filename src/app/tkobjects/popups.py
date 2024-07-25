@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 
-from src import utils, _ROOT
+from src import assets, _ROOT
 from src.app import fonts
 from src.app.tkobjects.frames import Frame
 from src.app.tkobjects.buttons import Button
@@ -46,7 +46,7 @@ class MeasureFilePopup(tk.Toplevel):
 
         self.geometry('450x250')
         self.resizable(width=False, height=False)
-        self.iconbitmap(utils.get_asset_path('app.ico'))
+        self.iconbitmap(assets.get_path('app.ico'))
         self.grab_set()
 
         self.grid_columnconfigure((0), weight=1)

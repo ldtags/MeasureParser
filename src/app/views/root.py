@@ -4,7 +4,7 @@ from src import utils
 
 
 class Root(tk.Tk):
-    def __init__(self, width: int=700, height: int=700):
+    def __init__(self, width: int=700, height: int=750):
         super().__init__()
 
         self.title('Measure Parser')
