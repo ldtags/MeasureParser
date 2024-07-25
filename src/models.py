@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from src.dbservice import BaseDatabase
+from src import dbservice as db
 from src.exceptions import (
     MeasureFormatError,
     RequiredContentError,
@@ -185,7 +185,7 @@ class Measure:
     querying measure data and information.
     """
 
-    def __init__(self, measure_json: object, db_source: BaseDatabase):
+    def __init__(self, measure_json: object):
         from .utils import is_etrm_measure
         if not is_etrm_measure(measure_json):
             raise InvalidFileError()
@@ -231,10 +231,10 @@ class Measure:
             raise MeasureFormatError()
 
         self.characterizations: list[Characterization] \
-            = db_source.get_characterization_names(measure_json)
+            = db.get_characterization_names(measure_json)
 
         self.permutations: list[Permutation] \
-            = db_source.get_permutations(measure_json)
+            = db.get_permutations(measure_json)
 
 
     # Checks if the measure contains a parameter associated with

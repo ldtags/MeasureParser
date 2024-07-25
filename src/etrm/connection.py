@@ -160,7 +160,7 @@ class ETRMConnection:
     """eTRM API connection layer"""
 
     def __init__(self, auth_token: str, stage: bool=False):
-        self.auth_token = sanitizers.sanitize_auth_token(auth_token)
+        self.auth_token = sanitizers.sanitize_api_key(auth_token)
         self.api = STAGE_API if stage else PROD_API
         self.headers = {
             'Authorization': auth_token

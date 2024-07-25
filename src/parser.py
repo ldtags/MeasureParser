@@ -1,12 +1,10 @@
 import os
 
+from src import dbservice as db
 from src.logger import MeasureDataLogger
 from src.models import (
     Measure,
     Permutation
-)
-from src.dbservice import (
-    BaseDatabase
 )
 from src.htmlparser import CharacterizationParser
 from src.parserdata import (
@@ -25,63 +23,14 @@ from src.exceptions import (
 class MeasureParser:
     """Data validation parser for eTRM measures."""
 
-    def __init__(self, database: BaseDatabase):
-        if not (BaseDatabase in database.__mro__):
-            raise ParserError('Parser database must extend BaseDatabase')
-
-        self.db = database
-        self.data: ParserData | None = None
-        self.measure: Measure | None = None
-        self.ordered_params: list[str] = []
-        self.ordered_val_tables: list[str] = []
-        self.ordered_sha_tables: list[str] = []
-
-    def clear_measure(self):
-        self.measure = None
-        self.ordered_params = []
-        self.ordered_val_tables = []
-        self.ordered_sha_tables = []
-        self.data = None
-
-    def set_measure(self, measure: Measure):
+    def __init__(self, measure: Measure):
         self.measure = measure
-        self.ordered_params = self.db.get_param_api_names(measure=measure)
-        self.ordered_val_tables = self.db.get_table_api_names(measure=measure,
-                                                              nonshared=True)
-        self.ordered_sha_tables = self.db.get_table_api_names(measure=measure,
-                                                              shared=True)
         self.data = ParserData()
-
-    # specifies the control flow for the generic parsing of @measure
-    def parse(self, measure: Measure) -> ParserData:
-        self.set_measure(measure)
-
-        print(f'starting to parse measure {measure.id}\n')
-        try:
-            print('validating parameters\n')
-            self.validate_parameters()
-
-            print('validating exclusion tables\n')
-            self.validate_exclusion_tables()
-
-            print('validating value tables\n')
-            self.validate_tables()
-
-            print('validating permutations\n')
-            self.validate_permutations()
-
-            print('parsing characterizations\n')
-            self.parse_characterizations()
-        except ParserError as err:
-            raise err
-        except Exception as err:
-            raise ParserError('Unexpected error occurred while parsing') \
-                from err
-        finally:
-            self.clear_measure()
-
-        print(f'finished parsing measure {measure.id}')
-
+        self.ordered_params = db.get_param_api_names(measure=measure)
+        self.ordered_val_tables = db.get_table_api_names(measure=measure,
+                                                         nonshared=True)
+        self.ordered_sha_tables = db.get_table_api_names(measure=measure,
+                                                         shared=True)
 
     def validate_parameters(self, measure: Measure) -> None:
         self.data.parameter.nonshared = list(
@@ -92,7 +41,6 @@ class MeasureParser:
                 measure.remove_unknown_params(self.ordered_params)))
         self.data.parameter.missing = self.validate_param_existence()
         self.data.parameter.unordered = self.validate_param_order()
-
 
     def validate_tables(self, measure: Measure) -> None:
         shared_data = self.data.value_table.shared
@@ -120,7 +68,7 @@ class MeasureParser:
     #   bool    : true if all columns are valid, false otherwise 
     def validate_table_columns(self) -> None:
         column_data = self.data.value_table.nonshared.column
-        column_dict = self.db.get_table_columns()
+        column_dict = db.get_table_columns()
 
         for table in self.measure.value_tables:
             table_columns: list[dict[str, str]] | None \
@@ -161,7 +109,7 @@ class MeasureParser:
 
     # validates that all nonshared value tables have the correct standard name
     def validate_standard_table_names(self) -> None:
-        name_map = self.db.get_standard_table_names(self.measure)
+        name_map = db.get_standard_table_names(self.measure)
         for table in self.measure.value_tables:
             std_name = name_map.get(table.api_name)
             if std_name == None:
@@ -311,7 +259,7 @@ class MeasureParser:
     #   str : the valid name of @permutation
     def get_valid_perm_names(self, permutation: Permutation) -> list[str]:
         reporting_name: str = permutation.reporting_name
-        data: dict[str, str] = self.db.get_permutation_data(reporting_name)
+        data: dict[str, str] = db.get_permutation_data(reporting_name)
         if data['verbose'] == '':
             raise MeasureContentError(
                 f'The permutation name [{reporting_name}] is unknown')
@@ -385,7 +333,7 @@ class MeasureParser:
     # in @measure
     def parse_characterizations(self) -> None:
         parser = CharacterizationParser(self.data.characterization)
-        for char_name in self.db.get_all_characterization_names():
+        for char_name in db.get_all_characterization_names():
             if self.measure.get_characterization(char_name) == None:
                 self.data.characterization[char_name].missing = True
         for characterization in self.measure.characterizations:
@@ -407,5 +355,5 @@ class MeasureParser:
         if self.data == None:
             raise ParserError('Parser data is required to log output')
 
-        with MeasureDataLogger(self.measure, self.db, out) as _logger:
+        with MeasureDataLogger(self.measure, out) as _logger:
             _logger.log_data()

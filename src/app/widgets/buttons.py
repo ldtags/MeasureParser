@@ -58,5 +58,10 @@ class Button(tk.Frame):
         self.configure(highlightbackground=self.default_border,
                        highlightcolor=self.default_border)
 
+    def set_state(self,
+                  state: Literal['normal', 'active', 'disabled']
+                 ) -> None:
+        self.button.config(state=state)
+
     def set_command(self, command: Callable[..., None]):
         self.button.configure(command=command)

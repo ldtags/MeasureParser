@@ -1,8 +1,8 @@
 import sys
 from typing import Self
 
+from src import dbservice as db
 from src.models import Measure
-from src.dbservice import BaseDatabase
 from src.parserdata import (
     ParserData
 )
@@ -11,10 +11,8 @@ from src.parserdata import (
 class MeasureDataLogger:
     def __init__(self,
                  measure: Measure,
-                 db: BaseDatabase,
                  output_path: str | None = None):
         self.measure = measure
-        self.db = db
         if output_path != None:
             self.out = open(output_path, 'w+')
         else:
@@ -258,8 +256,9 @@ class MeasureDataLogger:
 
         self.log('All Permutations:')
         for permutation in self.measure.permutations:
-            perm_data = self.db.get_permutation_data(
-                permutation.reporting_name)
+            perm_data = db.get_permutation_data(
+                permutation.reporting_name
+            )
 
             if self.measure.permutations.index(permutation) != 0:
                 self.log()

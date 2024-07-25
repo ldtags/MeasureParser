@@ -7,20 +7,18 @@ from src import utils
 from src.app.enums import Result, SUCCESS, FAILURE
 from src.app.views import View
 from src.app.models import Model
-from src.app.controllers.base import BaseController
 from src.etrm.models import Measure
-from src.etrm.connection import ETRMConnection
 
 
-class HomeController(BaseController):
+class HomeController:
     def __init__(self,
                  model: Model,
                  view: View,
                  start_func: Callable[[], None]):
-        BaseController.__init__(self, model, view)
-
+        self.root = view.root
+        self.root_view = view
         self.view = view.home
-        self.model = model.home
+        self.model = model
         self.start_func = start_func
         self.__bind_output()
         self.__bind_controls()
@@ -124,23 +122,22 @@ class HomeController(BaseController):
         if output_path is None or file_name is None:
             return FAILURE
 
-        self.model.output_path = os.path.join(output_path, file_name)
+        self.model.output_file_path = os.path.join(output_path, file_name)
         return SUCCESS
 
-    def get_measure(self) -> Measure:
+    def set_measure(self) -> Measure:
         view = self.view.source_frame.source_frame
         file_path = view.json_frame.file_entry.get()
         if file_path != '':
-            with open(file_path, 'r') as fp:
-                measure_json = json.load(fp)
-            return Measure(measure_json)
+            self.model.measure_file_path = file_path
+            return
 
         api_key = view.etrm_frame.api_key_entry.get()
         measure_id = view.etrm_frame.measure_entry.get()
         if api_key != '' and measure_id != '':
-            connection = ETRMConnection(api_key)
-            measure = connection.get_measure(measure_id)
-            return measure
+            self.model.set_api_key(api_key)
+            self.model.set_measure(measure_id)
+            return
 
         raise RuntimeError('Measure source validation failed')
 
@@ -151,8 +148,7 @@ class HomeController(BaseController):
         if output_res != SUCCESS or source_res != SUCCESS:
             return
 
-        measure = self.get_measure()
-        self.model.measure = measure
+        self.set_measure()
         self.start_func()
 
     def __bind_controls(self) -> None:

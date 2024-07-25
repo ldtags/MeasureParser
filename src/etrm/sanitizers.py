@@ -8,18 +8,18 @@ from src.etrm.exceptions import (
 )
 
 
-def sanitize_auth_token(token: str) -> str:
-    re_match = re.fullmatch(patterns.AUTH_TOKEN, token)
+def sanitize_api_key(api_key: str) -> str:
+    re_match = re.fullmatch(patterns.API_KEY, api_key)
     if re_match is None:
-        raise UnauthorizedError(f'invalid API key: {token}')
+        raise UnauthorizedError(f'invalid API key: {api_key}')
 
     token_type = 'Token'
-    api_key = re_match.group(3)
-    if not isinstance(api_key, str):
-        raise ETRMConnectionError('An error occurred while parsing the '
-                                  f' API key from {token}')
+    token = re_match.group(3)
+    if not isinstance(token, str):
+        raise ETRMConnectionError('An error occurred while parsing the'
+                                  f' API key {api_key}')
 
-    sanitized = f'{token_type} {api_key}'
+    sanitized = f'{token_type} {token}'
     return sanitized
 
 

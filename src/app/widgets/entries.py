@@ -54,6 +54,12 @@ class Entry(tk.Entry):
         if self.placeholder and not self.get():
             self.put_placeholder()
 
+    def set_text(self, text: str) -> None:
+        if self.placeholder and self['fg'] == self.placeholder_color:
+            self.delete(0, tk.END)
+            self['fg'] = self.default_fg
+            self.insert(0, text)
+
 
 class FileNameEntry(Entry):
     def __init__(self,

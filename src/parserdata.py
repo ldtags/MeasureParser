@@ -85,7 +85,7 @@ class CharacterizationData:
 
 
 def characterization_dict() -> dict[str, CharacterizationData]:
-    from measureparser.dbservice import get_all_characterization_names
+    from src.dbservice import get_all_characterization_names
     char_dict: dict[str, CharacterizationData] = {}
     for name in get_all_characterization_names():
         char_dict[name] = CharacterizationData()

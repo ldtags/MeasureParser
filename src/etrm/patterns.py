@@ -4,8 +4,8 @@
 import re
 
 
-__AUTH_TOKEN = r'^(([Tt]oken )?([a-fA-F0-9]+))$'
-AUTH_TOKEN = re.compile(__AUTH_TOKEN)
+__API_KEY = r'^(([Tt]oken )?([a-fA-F0-9]+))$'
+API_KEY = re.compile(__API_KEY)
 """eTRM API Key RegEx Pattern
 
 Group 1: eTRM API Key (including token type)\n

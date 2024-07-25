@@ -1,6 +1,5 @@
 from src.app.models.home import HomeModel
-from src.app.exceptions import GUIError
-from src.dbservice import BaseDatabase
+from src.etrm import sanitizers
 
 
 class Model:
@@ -11,9 +10,15 @@ class Model:
 
     def __init__(self):
         self.home = HomeModel()
-        self.db: BaseDatabase | None = None
+        self.api_key: str | None = None
+        self.measure_id: str | None = None
+        self.measure_file_path: str | None = None
+        self.output_file_path: str | None = None
 
-    def set_db(self, db: BaseDatabase):
-        if BaseDatabase not in db.__mro__:
-            raise GUIError('Database must extend BaseDatabase')
-        self.db = db
+    def set_api_key(self, api_key: str) -> None:
+        sanitized_key = sanitizers.sanitize_api_key(api_key)
+        self.api_key = sanitized_key
+
+    def set_measure(self, measure_id: str) -> None:
+        sanitized_id = sanitizers.sanitize_measure_id(measure_id)
+        self.measure_id = sanitized_id

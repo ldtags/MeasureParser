@@ -27,3 +27,6 @@ measures/
 tested/
 /measure.json
 visualized-*.txt
+
+# security
+config.ini
