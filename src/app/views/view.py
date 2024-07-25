@@ -4,7 +4,7 @@ from ctypes import windll
 from src.app.views.root import Root
 from src.app.views.home import HomePage
 from src.app.views.progress import ProgressPage
-from src.app.tkobjects import Page
+from src.app.widgets import Page
 from src.app.exceptions import (
     GUIError
 )

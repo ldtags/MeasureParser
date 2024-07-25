@@ -6,8 +6,8 @@ from typing import Literal
 
 from src import assets
 from src.app import fonts
-from src.app.tkobjects.frames import Frame
-from src.app.tkobjects.labels import Label
+from src.app.widgets.frames import Frame
+from src.app.widgets.labels import Label
 from src.app.exceptions import GUIError
 
 

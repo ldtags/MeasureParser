@@ -3,7 +3,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from src.app import fonts
-from src.app.tkobjects import (
+from src.app.widgets import (
     Frame,
     Page,
     FileEntry,

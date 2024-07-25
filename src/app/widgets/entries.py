@@ -4,8 +4,8 @@ from typing import Literal
 
 from src import utils, _ROOT
 from src.app import fonts
-from src.app.tkobjects.frames import Frame
-from src.app.tkobjects.buttons import Button
+from src.app.widgets.frames import Frame
+from src.app.widgets.buttons import Button
 
 
 class Entry(tk.Entry):

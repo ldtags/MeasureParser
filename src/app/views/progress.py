@@ -1,6 +1,6 @@
 import tkinter as tk
 
-from src.app.tkobjects import Page
+from src.app.widgets import Page
 
 
 class ProgressPage(Page):

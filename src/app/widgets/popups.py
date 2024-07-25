@@ -3,10 +3,10 @@ import tkinter as tk
 
 from src import assets, _ROOT
 from src.app import fonts
-from src.app.tkobjects.frames import Frame
-from src.app.tkobjects.buttons import Button
-from src.app.tkobjects.entries import FileEntry
-from src.app.tkobjects.general import OptionLabel
+from src.app.widgets.frames import Frame
+from src.app.widgets.buttons import Button
+from src.app.widgets.entries import FileEntry
+from src.app.widgets.general import OptionLabel
 from src.app.exceptions import ValidationError
 
 
