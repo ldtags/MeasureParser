@@ -8,6 +8,7 @@ Lib/
 pyvenv.cfg
 venv/
 .venv/
+*.code-workspace
 
 # pyinstaller
 build/
