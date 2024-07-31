@@ -152,13 +152,15 @@ class OptionCheckBox(Frame):
                              anchor=tk.NW,
                              fill=tk.X)
 
+        self.check_box_var = tk.IntVar(self, 0)
         self.check_box = tk.Checkbutton(self,
                                         text=sub_text,
                                         font=fonts.BODY_SM,
                                         justify='left',
                                         anchor=tk.NW,
                                         cursor='hand2',
-                                        offrelief=tk.SOLID)
+                                        offrelief=tk.SOLID,
+                                        variable=self.check_box_var)
         self.check_box.pack(side=tk.TOP,
                             anchor=tk.NW)
 
@@ -171,3 +173,9 @@ class OptionCheckBox(Frame):
 
     def set_command(self, func: Callable[[], None]) -> None:
         self.check_box.config(command=lambda _=None: func())
+
+    def get(self) -> bool:
+        val = self.check_box_var.get()
+        if val == 1:
+            return True
+        return False

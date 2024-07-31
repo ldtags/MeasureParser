@@ -19,7 +19,8 @@ def parser_function(log: str | None=None) -> Callable[[_DEC_TYPE], _DEC_TYPE]:
         def wrapper(self: ProgressController, *args, **kwargs):
             self.view.log_frame.add(log)
             value = func(self, *args, **kwargs)
-            self.view.controls_frame.progress_bar.step(100)
+            progress = self.view.controls_frame.progress_var.get()
+            self.view.controls_frame.progress_var.set(progress + 100)
             return value
         return wrapper
     return decorator
@@ -79,7 +80,10 @@ class ProgressController:
 
     @parser_function('Logging output')
     def log_output(self, parser: MeasureParser) -> None:
-        parser.log_output(self.model.output_file_path)
+        parser.log_output(
+            self.model.output_file_path,
+            self.model.home.override_file
+        )
 
     def parse(self) -> None:
         self.view.controls_frame.cont_btn.set_state('disabled')

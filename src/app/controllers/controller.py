@@ -21,14 +21,12 @@ class Controller:
               measure_id: str | None=None
              ) -> None:
         if api_key is not None:
-            sanitized_key = sanitizers.sanitize_api_key(api_key)
-            self.model.set_api_key(sanitized_key)
-            self.view.set_api_key(sanitized_key)
+            self.model.api_key = api_key
+            self.view.set_api_key(self.model.api_key)
 
         if measure_id is not None:
-            sanitized_id = sanitizers.sanitize_measure_id(measure_id)
-            self.model.set_measure(sanitized_id)
-            self.view.set_measure(sanitized_id)
+            self.model.measure_id = measure_id
+            self.view.set_measure(self.model.measure_id)
 
         self.view.show(HomePage.key)
         self.view.start()

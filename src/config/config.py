@@ -19,6 +19,8 @@ class AppConfig(JSONObject):
         if not os.path.exists(self.output_path):
             os.mkdir(self.output_path)
 
+        self.override_file = self.get('override_file', bool, False)
+
     def to_json_string(self) -> str:
         return json.dumps(
             self,

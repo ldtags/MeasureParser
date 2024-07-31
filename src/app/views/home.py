@@ -334,7 +334,8 @@ class OutputFrame(Frame):
                                   sticky=tk.NSEW)
 
             self.fname_entry = FileNameEntry(self,
-                                             text='parser_output')
+                                             text='parser_output',
+                                             events=events)
             self.fname_entry.grid(row=1,
                                   column=0,
                                   sticky=tk.NSEW,

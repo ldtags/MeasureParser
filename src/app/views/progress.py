@@ -49,6 +49,11 @@ class ProgressPage(Page):
                                  anchor=tk.S,
                                  fill=tk.X)
 
+    def show(self) -> None:
+        self.log_frame.clear()
+        self.controls_frame.progress_var.set(0)
+        super().show()
+
 
 class ControlsFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
@@ -59,7 +64,9 @@ class ControlsFrame(Frame):
                             anchor=tk.S,
                             fill=tk.X)
 
-        self.progress_bar = ttk.Progressbar(self)
+        self.progress_var = tk.IntVar(self, 0)
+        self.progress_bar = ttk.Progressbar(self,
+                                            variable=self.progress_var)
         self.progress_bar.pack(side=tk.LEFT,
                                anchor=tk.CENTER,
                                fill=tk.X,

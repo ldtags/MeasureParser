@@ -154,3 +154,5 @@ class ScrollableFrame(Frame):
     def clear(self) -> None:
         for label in self.items:
             label.destroy()
+            del label
+        self.items = []

@@ -1,6 +1,7 @@
 import re
 import os
 import json
+import tkinter as tk
 from typing import Callable
 
 from src import utils
@@ -8,6 +9,7 @@ from src.app.enums import Result, SUCCESS, FAILURE
 from src.app.views import View
 from src.app.models import Model
 from src.etrm.models import Measure
+from src.config import app_config
 
 
 class HomeController:
@@ -22,6 +24,7 @@ class HomeController:
         self.start_func = start_func
         self.__bind_output()
         self.__bind_controls()
+        self.__set_defaults()
 
     def validate_file_name(self, text: str) -> bool:
         pattern = re.compile(f'^.*{re.escape(".")}txt$')
@@ -36,8 +39,20 @@ class HomeController:
             validatecommand=(fname_reg, '%P')
         )
 
+    def handle_override_file(self, event: tk.Event) -> None:
+        checkbox_options = self.view.output_frame.checkbox_options
+        state = checkbox_options.override_file.get()
+        self.model.home.override_file = state
+
+    def __bind_checkbox_options(self) -> None:
+        checkbox_options = self.view.output_frame.checkbox_options
+        checkbox_options.override_file.check_box.config(
+            command=self.handle_override_file
+        )
+
     def __bind_output(self) -> None:
         self.__bind_output_validations()
+        self.__bind_checkbox_options()
 
     def close(self) -> None:
         self.root.destroy()
@@ -105,7 +120,7 @@ class HomeController:
             return None
 
         file_path = os.path.join(output_path, file_name)
-        if os.path.exists(file_path):
+        if os.path.exists(file_path) and not self.model.home.override_file:
             view.print_error(
                 type='file',
                 err=f'The file {file_path} already exists'
@@ -157,3 +172,10 @@ class HomeController:
         view = self.view.controls_frame
         view.close_btn.set_command(self.close)
         view.start_btn.set_command(self.start)
+
+    def __set_defaults(self) -> None:
+        checkbox_options = self.view.output_frame.checkbox_options
+        if app_config.override_file:
+            checkbox_options.override_file.check_box.select()
+        else:
+            checkbox_options.override_file.check_box.deselect()
