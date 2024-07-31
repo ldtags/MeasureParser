@@ -54,9 +54,6 @@ class HomeController:
         self.__bind_output_validations()
         self.__bind_checkbox_options()
 
-    def close(self) -> None:
-        self.root.destroy()
-
     def validate_measure_sources(self) -> Result:
         view = self.view.source_frame
         file_path = view.source_frame.json_frame.file_entry.get()
@@ -170,7 +167,7 @@ class HomeController:
 
     def __bind_controls(self) -> None:
         view = self.view.controls_frame
-        view.close_btn.set_command(self.close)
+        view.close_btn.set_command(self.root_view.close)
         view.start_btn.set_command(self.start)
 
     def __set_defaults(self) -> None:

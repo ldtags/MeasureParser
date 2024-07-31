@@ -50,3 +50,6 @@ class View:
 
     def start(self) -> None:
         self.root.mainloop()
+
+    def close(self) -> None:
+        self.root.destroy()

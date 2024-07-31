@@ -3,7 +3,7 @@ import os
 import json
 from typing import Callable, TypeVar
 
-from src.app.views import View
+from src.app.views import View, HomePage, ResultsPage
 from src.app.models import Model
 from src.etrm.models import Measure
 from src.etrm.connection import ETRMConnection
@@ -110,10 +110,11 @@ class ProgressController:
         self.view.controls_frame.back_btn.set_state('normal')
 
     def handle_back(self) -> None:
-        self.root_view.show('home')
+        self.root_view.show(HomePage.key)
 
     def handle_continue(self) -> None:
-        self.root_view.show('results')
+        self.root_view.show(ResultsPage.key)
 
     def __bind_controls(self) -> None:
-        self.view.controls_frame.back_btn.set_command(self.handle_back)
+        self.view.controls_frame.back_btn.config(command=self.handle_back)
+        self.view.controls_frame.cont_btn.config(command=self.handle_continue)

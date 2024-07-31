@@ -4,7 +4,7 @@ from src.app.views.home import HomePage
 from src.app.views.progress import ProgressPage
 from src.app.controllers.home import HomeController
 from src.app.controllers.progress import ProgressController
-from src.etrm import sanitizers
+from src.app.controllers.results import ResultsController
 
 
 class Controller:
@@ -15,6 +15,7 @@ class Controller:
                                    self.view,
                                    self.start_process)
         self.progress = ProgressController(self.model, self.view)
+        self.results = ResultsController(self.model, self.view)
 
     def start(self,
               api_key: str | None=None,
