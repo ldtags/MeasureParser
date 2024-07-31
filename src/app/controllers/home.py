@@ -39,7 +39,7 @@ class HomeController:
             validatecommand=(fname_reg, '%P')
         )
 
-    def handle_override_file(self, event: tk.Event) -> None:
+    def handle_override_file(self) -> None:
         checkbox_options = self.view.output_frame.checkbox_options
         state = checkbox_options.override_file.get()
         self.model.home.override_file = state

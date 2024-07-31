@@ -2,37 +2,67 @@ import tkinter as tk
 import tkinter.filedialog as filedialog
 from typing import Literal
 
+from .misc import Widget
+from .labels import Label
+from .buttons import Button
+
 from src import utils, _ROOT
 from src.app import fonts
-from src.app.types import TK_EVENT_BINDING
-from src.app.widgets.frames import Frame
-from src.app.widgets.buttons import Button
 
 
-class Entry(tk.Entry):
+class _Entry(Widget, tk.XView):
     def __init__(self,
-                 parent: tk.Widget,
-                 placeholder: str | None=None,
-                 placeholder_color='grey',
-                 text: str | None=None,
-                 relief=tk.SOLID,
-                 border_width: int=1,
-                 border_color: str='grey',
-                 font=fonts.BODY,
-                 events: list[TK_EVENT_BINDING] | None=None,
+                 parent: tk.Misc,
+                 text_color: str='black',
+                 relief: str=tk.SOLID,
+                 font: tuple[str, int, str | None]=fonts.BODY,
                  **kwargs):
-        kwargs['borderwidth'] = 0
-        kwargs['relief'] = relief
-        kwargs['highlightthickness'] = border_width
-        kwargs['highlightbackground'] = border_color
-        kwargs['highlightcolor'] = border_color
-        kwargs['font'] = font
-        tk.Entry.__init__(self, parent, **kwargs)
+        kw = {
+            'fg': text_color,
+            'relief': relief,
+            'font': font,
+            'borderwidth': 0
+        }
+        for key, val in kwargs.items():
+            kw[key] = val
+        Widget.__init__(self, parent, 'entry', kw=kw)
 
-        self.parent = parent
+
+class Entry(Widget):
+    def __init__(self,
+                 parent: tk.Misc,
+                 placeholder: str | None=None,
+                 placeholder_color: str='grey',
+                 text: str | None=None,
+                 text_color: str='black',
+                 relief: str=tk.SOLID,
+                 border_width: float=1,
+                 border_color: str='#adadad',
+                 font: tuple[str, int, str | None]=fonts.BODY,
+                 **kwargs):
+        kw = {
+            'highlightcolor': border_color,
+            'highlightbackground': border_color,
+            'highlightthickness': border_width,
+            'height': font[1]
+        }
+        Widget.__init__(self, parent, 'frame', cnf={}, kw=kw)
+
         self.placeholder = placeholder
         self.placeholder_color = placeholder_color
-        self.default_fg = self['fg']
+        self.text_color = text_color
+        self.text = text
+        self.entry = _Entry(
+            self,
+            text_color,
+            relief,
+            font,
+            **kwargs
+        )
+        self.entry.pack(side=tk.TOP,
+                        anchor=tk.NW,
+                        fill=tk.BOTH,
+                        expand=tk.TRUE)
 
         if text:
             self.insert(0, text)
@@ -41,27 +71,57 @@ class Entry(tk.Entry):
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
-        for event, callback in events or []:
-            self.bind(event, callback)
 
-    def put_placeholder(self):
+    def configure(self, **kw) -> None:
+        self.entry.configure(**kw)
+
+    def delete(self, first: str | int, last: str | int | None=None) -> None:
+        """Delete text from FIRST to LAST (not included)."""
+
+        self.entry.tk.call(self.entry._w, 'delete', first, last)
+
+    def get(self) -> str:
+        """Return the text."""
+
+        return self.entry.tk.call(self.entry._w, 'get')
+
+    def icursor(self, index: int) -> None:
+        """Insert cursor at INDEX."""
+
+        self.entry.tk.call(self.entry._w, 'icursor', index)
+
+    def index(self, index: int) -> int:
+        """Return position of cursor."""
+
+        return self.entry.tk.getint(
+            self.entry.tk.call(
+                self.entry._w, 'index', index
+            )
+        )
+
+    def insert(self, index: int, string: str) -> None:
+        """Insert STRING at INDEX."""
+
+        self.entry.tk.call(self.entry._w, 'insert', index, string)
+
+    def put_placeholder(self) -> None:
         if self.placeholder:
             self.insert(0, self.placeholder)
-            self['fg'] = self.placeholder_color
+            self.entry['fg'] = self.placeholder_color
 
-    def focus_in(self, *args):
-        if self.placeholder and self['fg'] == self.placeholder_color:
+    def focus_in(self, event: tk.Event) -> None:
+        if self.placeholder and self.entry['fg'] == self.placeholder_color:
             self.delete(0, tk.END)
-            self['fg'] = self.default_fg
+            self.entry['fg'] = self.text_color
 
-    def focus_out(self, *args):
+    def focus_out(self, event: tk.Event) -> None:
         if self.placeholder and not self.get():
             self.put_placeholder()
 
     def set_text(self, text: str) -> None:
-        if self.placeholder and self['fg'] == self.placeholder_color:
+        if self.placeholder and self.entry['fg'] == self.placeholder_color:
             self.delete(0, tk.END)
-            self['fg'] = self.default_fg
+            self.entry['fg'] = self.text_color
             self.insert(0, text)
 
 
@@ -76,18 +136,16 @@ class FileNameEntry(Entry):
                  border_color: str='grey',
                  font=fonts.BODY,
                  file_ext: str='txt',
-                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
         Entry.__init__(self,
                        parent,
-                       placeholder,
-                       placeholder_color,
-                       f'{text}.{file_ext}',
-                       relief,
-                       border_width,
-                       border_color,
-                       font,
-                       events=events,
+                       placeholder=placeholder,
+                       placeholder_color=placeholder_color,
+                       text=f'{text}.{file_ext}',
+                       relief=relief,
+                       border_width=border_width,
+                       border_color=border_color,
+                       font=font,
                        **kwargs)
         self.file_ext = file_ext
 
@@ -104,7 +162,7 @@ class FileNameEntry(Entry):
         self.icursor(index)
 
 
-class FileEntry(Frame):
+class FileEntry(Widget):
     """Custom widget that opens either a file or directory dialog."""
     def __init__(self,
                  parent: tk.Widget,
@@ -115,9 +173,8 @@ class FileEntry(Frame):
                  label_text: str | None=None,
                  font=fonts.BODY,
                  textvariable: tk.Variable | None=None,
-                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+        Widget.__init__(self, parent, 'frame', kw=kwargs)
 
         self.types = types
         self.file_type = file_type
@@ -125,21 +182,18 @@ class FileEntry(Frame):
         self.file_path = tk.StringVar(self, '')
 
         if label_text:
-            self.label = tk.Label(self,
-                                  text=label_text,
-                                  font=font,
-                                  bg=self['bg'])
+            self.label = Label(self,
+                               text=label_text,
+                               font=font,
+                               bg=self['bg'])
             self.label.pack(side=tk.LEFT,
                             anchor=tk.NE,
                             padx=(0, 5),
                             pady=(0, 0))
-            for event, callback in events or []:
-                self.label.bind(event, callback)
 
         self.entry = Entry(self,
                            text=text,
-                           font=font,
-                           events=events)
+                           font=font)
         self.entry.pack(side=tk.LEFT,
                         anchor=tk.N,
                         fill=tk.BOTH,
@@ -158,8 +212,7 @@ class FileEntry(Frame):
                              highlightbackground='grey',
                              highlightcolor='grey',
                              highlightthickness=1,
-                             command=self.open_dialog,
-                             events=events)
+                             command=self.open_dialog)
         self.button.pack(side=tk.LEFT,
                          anchor=tk.NW,
                          padx=(0, 0),

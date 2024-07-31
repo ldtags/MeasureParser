@@ -1,26 +1,21 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 
-from src.app.types import TK_EVENT_BINDING
+from .misc import Widget
 
 
-class Frame(tk.Frame):
-    def __init__(self,
-                 parent: tk.Misc,
-                 events: list[TK_EVENT_BINDING] | None=None,
-                 **kwargs):
+class Frame(Widget):
+    def __init__(self, parent: tk.Misc, **kw):
         try:
-            kwargs['bg']
+            kw['bg']
         except KeyError:
-            if isinstance(parent, tk.Frame):
-                kwargs['bg'] = parent['bg']
+            if isinstance(parent, Frame):
+                kw['bg'] = parent['bg']
 
-        tk.Frame.__init__(self, parent, **kwargs)
+        Widget.__init__(self, parent, 'frame', kw=kw)
 
         self.parent = parent
         self.bind('<Button-1>', lambda _: self.focus())
-        for event, callback in events or []:
-            self.bind(event, callback)
 
 
 class Page(Frame):
@@ -86,15 +81,17 @@ class ScrollableFrame(Frame):
         canvas.xview_moveto(0)
         canvas.yview_moveto(0)
 
-        self.interior = interior = ttk.Frame(canvas)
+        self.interior = interior = Frame(canvas)
         self.interior_id = canvas.create_window(0,
                                                 0,
                                                 window=interior,
                                                 anchor=tk.NW)
 
-        interior.bind('<Configure>', self.__configure_interior)
         canvas.bind('<Configure>', self.__configure_canvas)
-        canvas.bind_all('<MouseWheel>', self._on_mousewheel)
+
+        interior.blacklist.append('<Configure>')
+        interior.bind('<Configure>', self.__configure_interior)
+        interior.bind_all('<MouseWheel>', self._on_mousewheel)
 
     def __configure_interior(self, event: tk.Event) -> None:
         width = self.interior.winfo_reqwidth()

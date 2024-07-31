@@ -1,9 +1,8 @@
 import tkinter as tk
 import tkinter.ttk as ttk
-from typing import Literal, Callable
+from typing import Literal
 
 from src.app import fonts
-from src.app.types import TK_EVENT_BINDING
 from src.app.widgets import (
     Frame,
     Page,
@@ -65,12 +64,7 @@ class HomeContainer(ScrollableFrame):
     def __init__(self, parent: tk.Frame, **kwargs):
         ScrollableFrame.__init__(self, parent, scrollbar=True, **kwargs)
 
-        self.source_frame = MeasureSourceFrame(
-            self.interior,
-            events=[
-                ('<MouseWheel>', self._on_mousewheel)
-            ]
-        )
+        self.source_frame = MeasureSourceFrame(self.interior)
         self.source_frame.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.BOTH,
@@ -78,12 +72,7 @@ class HomeContainer(ScrollableFrame):
                                padx=(10, 10),
                                pady=(10, 10))
 
-        self.output_frame = OutputFrame(
-            self.interior,
-            events=[
-                ('<MouseWheel>', self._on_mousewheel)
-            ]
-        )
+        self.output_frame = OutputFrame(self.interior)
         self.output_frame.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.BOTH,
@@ -93,35 +82,28 @@ class HomeContainer(ScrollableFrame):
 
 
 class MeasureSourceFrame(Frame):
-    def __init__(self,
-                 parent: Frame,
-                 events: list[TK_EVENT_BINDING]=None,
-                 **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
 
         self.source_label = OptionLabel(self,
                                         title='Measure Sources',
-                                        level=0,
-                                        events=events)
+                                        level=0)
         self.source_label.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.X)
 
-        self.source_frame = self._SourceFrame(self,
-                                              events=events)
+        self.source_frame = self._SourceFrame(self)
         self.source_frame.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.BOTH,
                                expand=True,
                                padx=(10, 10),
                                pady=(10, 0))
-        self.source_frame.bind()
 
         self.source_err_var = tk.StringVar(self, ' ')
         self.source_err_label = Label(self,
                                       textvariable=self.source_err_var,
-                                      fg='#ff0000',
-                                      events=events)
+                                      fg='#ff0000')
         self.source_err_label.pack(side=tk.TOP,
                                    anchor=tk.NW,
                                    fill=tk.X,
@@ -134,11 +116,8 @@ class MeasureSourceFrame(Frame):
         self.source_err_var.set(err)
 
     class _SourceFrame(Frame):
-        def __init__(self,
-                     parent: Frame,
-                     events: list[TK_EVENT_BINDING]=None,
-                     **kwargs):
-            Frame.__init__(self, parent, events, **kwargs)
+        def __init__(self, parent: Frame, **kwargs):
+            Frame.__init__(self, parent, **kwargs)
 
             self.grid_rowconfigure((0), weight=1)
             self.grid_columnconfigure((0, 2),
@@ -146,18 +125,18 @@ class MeasureSourceFrame(Frame):
                                       uniform='_SourceFrame')
             self.grid_columnconfigure((1), weight=0)
 
-            self.json_frame = JSONSourceFrame(self, events)
+            self.json_frame = JSONSourceFrame(self)
             self.json_frame.grid(column=0,
                                  row=0,
                                  sticky=tk.NSEW,
                                  padx=(10, 10))
 
-            self.source_separator = SourceSeparator(self, events)
+            self.source_separator = SourceSeparator(self)
             self.source_separator.grid(column=1,
                                        row=0,
                                        sticky=tk.NSEW)
 
-            self.etrm_frame = ETRMSourceFrame(self, events)
+            self.etrm_frame = ETRMSourceFrame(self)
             self.etrm_frame.grid(column=2,
                                 row=0,
                                 sticky=tk.NSEW,
@@ -165,11 +144,8 @@ class MeasureSourceFrame(Frame):
 
 
 class JSONSourceFrame(Frame):
-    def __init__(self,
-                 parent: Frame,
-                 events: list[TK_EVENT_BINDING]=None,
-                 **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
 
         self.grid_columnconfigure((0), weight=1)
         self.grid_rowconfigure((0, 3), weight=1)
@@ -179,16 +155,14 @@ class JSONSourceFrame(Frame):
                                       title='Measure JSON File',
                                       sub_title='Select an existing eTRM'
                                                 ' measure JSON file.',
-                                      level=1,
-                                      events=events)
+                                      level=1)
         self.file_label.grid(column=0,
                              row=1,
                              sticky=tk.NSEW)
 
         self.file_entry = FileEntry(self,
                                     file_type='file',
-                                    types=[('JSON File', '.json')],
-                                    events=events)
+                                    types=[('JSON File', '.json')])
         self.file_entry.grid(column=0,
                              row=2,
                              sticky=tk.NSEW,
@@ -196,11 +170,8 @@ class JSONSourceFrame(Frame):
 
 
 class SourceSeparator(Frame):
-    def __init__(self,
-                 parent: Frame,
-                 events: list[tuple[str, Callable[[], None]]]=None,
-                 **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
 
         self.grid_columnconfigure((0, 2), weight=1)
         self.grid_columnconfigure((1), weight=0)
@@ -231,26 +202,21 @@ class SourceSeparator(Frame):
 
 
 class ETRMSourceFrame(Frame):
-    def __init__(self,
-                 parent: Frame,
-                 events: list[tuple[str, Callable[[], None]]]=None,
-                 **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
 
         self.key_label = OptionLabel(self,
                                      title='API Key',
                                      sub_title='An eTRM API key, used'
                                                ' for authorizing requests to'
                                                ' the eTRM API.',
-                                     level=1,
-                                     events=events)
+                                     level=1)
         self.key_label.pack(side=tk.TOP,
                             anchor=tk.NW,
                             fill=tk.X,)
 
         self.api_key_entry = Entry(self,
-                                   placeholder='Token ae38f19b8c03de122...',
-                                   events=events)
+                                   placeholder='Token ae38f19b8c03de122...')
         self.api_key_entry.pack(side=tk.TOP,
                                 anchor=tk.NW,
                                 fill=tk.X,
@@ -262,16 +228,14 @@ class ETRMSourceFrame(Frame):
                                          title='Measure Version ID',
                                          sub_title='A full eTRM measure'
                                                    ' version ID.',
-                                         level=1,
-                                         events=events)
+                                         level=1)
         self.measure_label.pack(side=tk.TOP,
                                 anchor=tk.NW,
                                 fill=tk.X,
                                 pady=(10, 0))
 
         self.measure_entry = Entry(self,
-                                   placeholder='SWAP001-06',
-                                   events=events)
+                                   placeholder='SWAP001-06')
         self.measure_entry.pack(side=tk.TOP,
                                 anchor=tk.NW,
                                 fill=tk.X,
@@ -281,22 +245,17 @@ class ETRMSourceFrame(Frame):
 
 
 class OutputFrame(Frame):
-    def __init__(self,
-                 parent: Frame,
-                 events: list[TK_EVENT_BINDING]=None,
-                 **kwargs):
-        Frame.__init__(self, parent, events, **kwargs)
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
 
         self.output_label = OptionLabel(self,
                                         title='Parser Options',
-                                        level=0,
-                                        events=events)
+                                        level=0)
         self.output_label.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.X)
 
-        self.options_frame = self._OutputOptionsFrame(self,
-                                                      events=events)
+        self.options_frame = self._OutputOptionsFrame(self)
         self.options_frame.pack(side=tk.TOP,
                                 anchor=tk.NW,
                                 fill=tk.BOTH,
@@ -304,8 +263,7 @@ class OutputFrame(Frame):
                                 padx=(10, 10),
                                 pady=(10, 0))
 
-        self.checkbox_options = self._CheckboxOptionsFrame(self,
-                                                           events=events)
+        self.checkbox_options = self._CheckboxOptionsFrame(self)
         self.checkbox_options.pack(side=tk.TOP,
                                    anchor=tk.NW,
                                    fill=tk.BOTH,
@@ -314,11 +272,8 @@ class OutputFrame(Frame):
                                    pady=(0, 0))
 
     class _OutputOptionsFrame(Frame):
-        def __init__(self,
-                     parent: Frame,
-                     events: list[TK_EVENT_BINDING]=None,
-                     **kwargs):
-            Frame.__init__(self, parent, events, **kwargs)
+        def __init__(self, parent: Frame, **kwargs):
+            Frame.__init__(self, parent, **kwargs)
 
             self.grid_columnconfigure((0), weight=1)
             self.grid_rowconfigure((0, 1, 2, 3, 4, 5), weight=0)
@@ -327,15 +282,13 @@ class OutputFrame(Frame):
                                            title='Output File Name',
                                            sub_title='The file name of the'
                                                      ' parser output file.',
-                                           level=1,
-                                           events=events)
+                                           level=1)
             self.fname_label.grid(row=0,
                                   column=0,
                                   sticky=tk.NSEW)
 
             self.fname_entry = FileNameEntry(self,
-                                             text='parser_output',
-                                             events=events)
+                                             text='parser_output')
             self.fname_entry.grid(row=1,
                                   column=0,
                                   sticky=tk.NSEW,
@@ -345,8 +298,7 @@ class OutputFrame(Frame):
             self.file_err_var = tk.StringVar(self, ' ')
             self.file_err_label = Label(self,
                                         textvariable=self.file_err_var,
-                                        fg='#ff0000',
-                                        events=events)
+                                        fg='#ff0000')
             self.file_err_label.grid(row=2,
                                      column=0,
                                      sticky=tk.NSEW,
@@ -357,15 +309,13 @@ class OutputFrame(Frame):
                                             sub_title='The folder that the'
                                                       ' parser output file'
                                                       ' will be placed in.',
-                                            level=1,
-                                            events=events)
+                                            level=1)
             self.outdir_label.grid(row=3,
                                    column=0,
                                    sticky=tk.NSEW)
 
             self.outdir_entry = FileEntry(self,
-                                          text=app_config.output_path,
-                                          events=events)
+                                          text=app_config.output_path)
             self.outdir_entry.grid(row=4,
                                    column=0,
                                    sticky=tk.NSEW,
@@ -374,8 +324,7 @@ class OutputFrame(Frame):
             self.outdir_err_var = tk.StringVar(self, ' ')
             self.outdir_err_label = Label(self,
                                           textvariable=self.outdir_err_var,
-                                          fg='#ff0000',
-                                          events=events)
+                                          fg='#ff0000')
             self.outdir_err_label.grid(row=5,
                                        column=0,
                                        sticky=tk.NSEW)
@@ -395,11 +344,8 @@ class OutputFrame(Frame):
                 self.file_err_var.set(err)
 
     class _CheckboxOptionsFrame(Frame):
-        def __init__(self,
-                     parent: Frame,
-                     events: list[TK_EVENT_BINDING]=None,
-                     **kwargs):
-            Frame.__init__(self, parent, events, **kwargs)
+        def __init__(self, parent: Frame, **kwargs):
+            Frame.__init__(self, parent, **kwargs)
     
             self.grid_columnconfigure((0, 1, 2),
                                       weight=1,
@@ -410,8 +356,7 @@ class OutputFrame(Frame):
                                                 text='Override File',
                                                 sub_text='Override the existing'
                                                          ' file if a file conflict'
-                                                         ' occurs',
-                                                events=events)
+                                                         ' occurs')
             self.override_file.grid(row=0,
                                     column=0,
                                     sticky=tk.NSEW,
