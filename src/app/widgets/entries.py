@@ -133,7 +133,7 @@ class FileNameEntry(Entry):
                  text: str | None=None,
                  relief=tk.SOLID,
                  border_width: int=1,
-                 border_color: str='grey',
+                 border_color: str='#adadad',
                  font=fonts.BODY,
                  file_ext: str='txt',
                  **kwargs):
