@@ -2,6 +2,7 @@ import tkinter as tk
 from typing import Literal, Callable
 
 from src.app import fonts
+from src.app.types import TK_EVENT_BINDING
 
 
 class Button(tk.Frame):
@@ -20,14 +21,16 @@ class Button(tk.Frame):
                  font=fonts.BODY,
                  state: Literal['normal', 'active', 'disabled']='normal',
                  cursor: str='hand2',
+                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
-        super().__init__(parent,
-                         borderwidth=borderwidth,
-                         highlightbackground=highlightbackground,
-                         highlightcolor=highlightcolor,
-                         highlightthickness=highlightthickness,
-                         bd=0,
-                         cursor=cursor)
+        tk.Frame.__init__(self,
+                          parent,
+                          borderwidth=borderwidth,
+                          highlightbackground=highlightbackground,
+                          highlightcolor=highlightcolor,
+                          highlightthickness=highlightthickness,
+                          bd=0,
+                          cursor=cursor)
 
         self.default_border = highlightcolor
 
@@ -49,6 +52,9 @@ class Button(tk.Frame):
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
+        for event, callback in events or []:
+            self.bind(event, callback)
+            self.button.bind(event, callback)
 
     def focus_in(self, *args):
         self.configure(highlightbackground='#1281d9',
@@ -61,6 +67,14 @@ class Button(tk.Frame):
     def set_state(self,
                   state: Literal['normal', 'active', 'disabled']
                  ) -> None:
+        match state:
+            case 'normal':
+                self.config(cursor='hand2')
+            case 'active' | 'disabled':
+                self.config(cursor='arrow')
+            case _:
+                pass
+
         self.button.config(state=state)
 
     def set_command(self, command: Callable[..., None]):

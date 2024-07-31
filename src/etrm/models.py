@@ -4,11 +4,12 @@ import pandas as pd
 import datetime
 import unicodedata
 from enum import Enum
-from typing import Any, overload
+from typing import Literal, Any, overload
 from pandas import DataFrame, Series
 
-from src import utils
+from src.etrm import utils
 from src.utils import getc
+from src.exceptions import RequiredContentError
 from src.etrm.exceptions import ETRMResponseError, ETRMConnectionError
 
 
@@ -233,6 +234,26 @@ class PermutationsTable:
 
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
+
+
+class Permutation:
+    """Class representation of a measure permutation."""
+
+    def __init__(self,
+                 reporting_name: str,
+                 mapped_name: str | None,
+                 derivation: str = 'mapped'):
+        self.reporting_name = reporting_name
+        self.mapped_name = mapped_name
+        self.derivation = derivation
+
+
+class Characterization:
+    """Class representation of a characterization."""
+
+    def __init__(self, name: str, content: str):
+        self.name = name
+        self.content = content
 
 
 class MeasureInfo:
@@ -475,6 +496,18 @@ class ValueTable:
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
+    def get_column(self, api_name: str) -> Column | None:
+        for column in self.columns:
+            if column.api_name.lower() == api_name.lower():
+                return column
+        return None
+
+    def contains_column(self, api_name: str) -> bool:
+        for column in self.columns:
+            if column.api_name.lower() == api_name.lower():
+                return True
+        return False
+
 
 class SharedValueTable:
     def __init__(self, res_json: dict[str, Any]):
@@ -573,79 +606,111 @@ class ExclusionTable:
 
 
 class Measure:
-    __characterization_names = [
-        'technology_summary',
-        'measure_case_description',
-        'base_case_description',
-        'code_requirements',
-        'program_requirements',
-        'program_exclusions',
-        'data_collection_requirements',
-        'electric_savings',
-        'peak_electric_demand_reduction',
-        'gas_savings',
-        'life_cycle',
-        'base_case_material_cost',
-        'measure_case_material_cost',
-        'base_case_labor_cost',
-        'measure_case_labor_cost',
-        'net_to_gross',
-        'gsia',
-        'non_energy_impacts',
-        'deer_differences_analysis'
-    ]
-
-    def __init__(self, res_json: dict[str, Any]):
+    def __init__(self,
+                 res_json: dict[str, Any],
+                 source: Literal['etrm', 'json']):
         self._json = res_json
+        self.source = source
+        match source:
+            case 'etrm':
+                self.owner = getc(res_json, 'owner', str)
+                self.statewide_id = getc(res_json, 'statewide_measure_id', str)
+                self.version_id = getc(res_json, 'full_version_id', str)
+                self.name = getc(res_json, 'name', str)
+                self.use_category = getc(res_json, 'use_category', str)
+                self.pa_lead = getc(res_json, 'pa_lead', str)
+                self.start_date = getc(res_json, 'effective_start_date', str)
+                self.end_date = getc(res_json, 'sunset_date', str | None)
+                self.status = getc(res_json, 'status', str)
+                self.is_published = getc(res_json, 'is_published', bool)
+                self.permutation_method = getc(
+                    res_json,
+                    'permutation_method',
+                    int
+                )
+                self.workpaper_cover_sheet = getc(
+                    res_json,
+                    'workpaper_cover_sheet',
+                    str
+                )
+                self.characterization_source_file = getc(
+                    res_json,
+                    'characterization_source_file',
+                    str | None
+                )
+                self.date_committed = getc(res_json, 'date_committed', str)
+                self.change_description = getc(
+                    res_json,
+                    'change_description',
+                    str
+                )
+                self.permutations_url = getc(res_json, 'permutations_url', str)
+                self.property_data_url = getc(
+                    res_json,
+                    'property_data_url',
+                    str
+                )
+            case 'json':
+                self.owner = getc(res_json, 'owned_by_user', str)
+                self.statewide_id = getc(res_json, 'MeasureID', str)
+                self.version_id = getc(res_json, 'MeasureVersionID', str)
+                self.name = getc(res_json, 'MeasureName', str)
+                self.use_category = getc(res_json, 'UseCategory', str)
+                self.pa_lead = getc(res_json, 'PALead', str)
+                self.start_date = getc(res_json, 'StartDate', str)
+                self.end_date = getc(res_json, 'EndDate', str | None)
+                self.status = getc(res_json, 'Status', str)
+                self.is_published = None
+                self.permutation_method = None
+                self.workpaper_cover_sheet = None
+                self.characterization_source_file = None
+                self.date_committed = None
+                self.change_description = None
+                self.permutations_url = None
+                self.property_data_url = None
+            case other:
+                raise RuntimeError(f'Invalid measure source: {other}')
         try:
-            self.statewide_measure_id = getc(res_json,
-                                             'statewide_measure_id',
-                                             str)
-            self.is_published = getc(res_json, 'is_published', bool)
-            self.name = getc(res_json, 'name', str)
-            self.use_category = getc(res_json, 'use_category', str)
-            self.status = getc(res_json, 'status', str)
-            self.effective_start_date = getc(res_json,
-                                             'effective_start_date',
-                                             str)
-            self.sunset_date = getc(res_json, 'sunset_date', str | None)
-            self.pa_lead = getc(res_json, 'pa_lead', str)
-            self.permutation_method = getc(res_json, 'permutation_method', int)
-            self.workpaper_cover_sheet = getc(res_json,
-                                              'workpaper_cover_sheet',
-                                              str)
-            self.characterization_source_file \
-                = getc(res_json, 'characterization_source_file', str | None)
-            self.determinants = getc(res_json,
-                                     'determinants',
-                                     list[Determinant])
-            self.shared_determinant_refs = getc(res_json,
-                                                'shared_determinant_refs',
-                                                list[SharedDeterminantRef])
-            self.shared_lookup_refs = getc(res_json,
-                                           'shared_lookup_refs',
-                                           list[SharedLookupRef])
-            self.value_tables = getc(res_json,
-                                     'value_tables',
-                                     list[ValueTable])
-            self.calculations = getc(res_json,
-                                     'calculations',
-                                     list[Calculation])
-            self.exclusion_tables = getc(res_json,
-                                         'exclusion_tables',
-                                         list[ExclusionTable])
-            self.full_version_id = getc(res_json, 'full_version_id', str)
-            self.date_committed = getc(res_json, 'date_committed', str)
-            self.change_description = getc(res_json, 'change_description', str)
-            self.owner = getc(res_json, 'owner', str)
-            self.permutations_url = getc(res_json, 'permutations_url', str)
-            self.property_data_url = getc(res_json, 'property_data_url', str)
-            id_path = '/'.join(self.full_version_id.split('-'))
-            self.link = f'{ETRM_URL}/measure/{id_path}'
+
+            self.determinants = getc(
+                res_json,
+                'determinants',
+                list[Determinant]
+            )
+            self.shared_determinant_refs = getc(
+                res_json,
+                'shared_determinant_refs',
+                list[SharedDeterminantRef]
+            )
+            self.shared_lookup_refs = getc(
+                res_json,
+                'shared_lookup_refs',
+                list[SharedLookupRef]
+            )
+            self.value_tables = getc(
+                res_json,
+                'value_tables',
+                list[ValueTable]
+            )
+            self.calculations = getc(
+                res_json,
+                'calculations',
+                list[Calculation]
+            )
+            self.exclusion_tables = getc(
+                res_json,
+                'exclusion_tables',
+                list[ExclusionTable]
+            )
         except IndexError:
             raise ETRMResponseError()
 
+        id_path = '/'.join(self.version_id.split('-'))
+        self.link = f'{ETRM_URL}/measure/{id_path}'
+
         self.characterizations = self.__get_characterizations()
+        self.permutations = self.__get_permutations()
+
         self.value_table_cache: dict[str, ValueTable] = {}
 
     def __eq__(self, other) -> bool:
@@ -658,26 +723,47 @@ class Measure:
         return not self.__eq__(other)
 
     @property
-    def start_date(self) -> datetime.date:
-        return utils.to_date(self.effective_start_date)
+    def start_date_time(self) -> datetime.date:
+        return utils.to_date(self.start_date)
 
     @property
-    def end_date(self) -> datetime.date | None:
-        if self.sunset_date is None:
+    def end_date_time(self) -> datetime.date | None:
+        if self.end_date is None:
             return None
 
-        return utils.to_date(self.sunset_date)
+        return utils.to_date(self.end_date)
 
-    def __get_characterizations(self) -> dict[str, str]:
-        char_list: dict[str, str] = {}
-        for char_name in self.__characterization_names:
+    def __get_characterizations(self) -> list[Characterization]:
+        from src import dbservice as db
+        
+        char_dict: dict[str, str] = {}
+        for char_name in db.get_all_characterization_names(self.source):
             try:
                 uchar = self._json[char_name]
-                char_list[char_name] = unicodedata.normalize('NFKD', uchar)
+                char_dict[char_name] = unicodedata.normalize('NFKD', uchar)
             except KeyError:
-                raise ETRMResponseError()
+                pass
 
-        return char_list
+        characterizations: list[Characterization] = []
+        for name, content in char_dict.items():
+            characterizations.append(Characterization(name, content))
+        return characterizations
+
+    def __get_permutations(self) -> list[Permutation]:
+        from src import dbservice as db
+
+        if self.source != 'json':
+            return []
+
+        permutations: list[Permutation] = []
+        permutation_names = db.get_permutation_names()
+        for name in permutation_names:
+            try:
+                value = getc(self._json, name, str)
+            except:
+                continue
+            permutations.append(Permutation(name, value))
+        return permutations
 
     def get_determinant(self, name: str) -> Determinant | None:
         for determinant in self.determinants:
@@ -691,6 +777,15 @@ class Measure:
             if parameter.name.lower() == name.lower():
                 return parameter
         return None
+
+    def get_shared_parameters(self,
+                              names: list[str]
+                             ) -> list[SharedDeterminantRef]:
+        parameters: list[SharedDeterminantRef] = []
+        for parameter in self.shared_determinant_refs:
+            if parameter.name in names:
+                parameters.append(parameter)
+        return parameters
 
     def __get_value_table(self, name: str) -> ValueTable | None:
         table = self.value_table_cache.get(name, None)
@@ -719,16 +814,326 @@ class Measure:
                 break
         return value_table
 
+    def get_value_tables(self, names: list[str]) -> list[ValueTable]:
+        tables: list[ValueTable] = []
+        for table in self.value_tables:
+            if table.name in names or table.api_name in names:
+                tables.append(table)
+        return tables
+
     def get_shared_lookup(self, name: str) -> SharedLookupRef | None:
         for lookup_ref in self.shared_lookup_refs:
             if lookup_ref.name.lower() == name.lower():
                 return lookup_ref
         return None
 
+    def get_shared_lookups(self, names: list[str]) -> list[SharedLookupRef]:
+        tables: list[SharedLookupRef] = []
+        for table in self.shared_lookup_refs:
+            if table.name in names:
+                tables.append(table)
+        return tables
+
+    def get_permutation(self, name: str) -> Permutation | None:
+        for permutation in self.permutations:
+            if permutation.reporting_name.lower() == name.lower():
+                return permutation
+        return None
+
+    def get_characterization(self, name: str) -> Characterization | None:
+        for characterization in self.characterizations:
+            if characterization.name.lower() == name.lower():
+                return characterization
+        return None
+
+    def contains_parameter(self, name: str) -> bool:
+        for parameter in self.shared_determinant_refs:
+            if parameter.name.lower() == name.lower():
+                return True
+        return False
+
+    def contains_value_table(self, name: str) -> bool:
+        for table in self.value_tables:
+            if (table.name.lower() == name.lower()
+                    or table.api_name.lower() == name.lower()):
+                return True
+        return False
+
+    def contains_shared_table(self, name: str) -> bool:
+        for table in self.shared_lookup_refs:
+            if table.name.lower() == name.lower():
+                return True
+        return False
+
+    def contains_table(self, name: str) -> bool:
+        if self.contains_value_table(name):
+            return True
+
+        if self.contains_shared_table(name):
+            return True
+
+        return False
+
+    def contains_calculation(self, name: str) -> bool:
+        for calculation in self.calculations:
+            if (calculation.api_name.lower() == name.lower()
+                    or calculation.name.lower() == name.lower()):
+                return True
+        return False
+
+    def contains_permutation(self, name: str) -> bool:
+        for permutation in self.permutations:
+            if permutation.reporting_name.lower() == name.lower():
+                return True
+        return False
+
+    def contains_mat_label(self, *labels: str) -> bool:
+        mat = self.get_shared_parameter('MeasAppType')
+        if mat is None:
+            raise RequiredContentError(name='Measure Application Type')
+
+        return set(labels).issubset(mat.active_labels)
+
+    def is_deer(self) -> bool:
+        version = self.get_shared_parameter('version')
+        if version is None:
+            raise RequiredContentError(name='Version')
+
+        return 'DEER' in version.active_labels
+
+    def is_wen(self) -> bool:
+        wen_param = self.get_shared_parameter('waterMeasureType')
+        wen_table = self.get_shared_lookup('waterEnergyIntensity')
+        if wen_param is not None and wen_table is not None:
+            return True
+
+        if wen_param is None and wen_table is None:
+            return False
+
+        if wen_param is None:
+            raise RequiredContentError('WEN measure detected, but missing'
+                                       ' a Water Energy Intensity value table')
+
+        if wen_table is None:
+            raise RequiredContentError('WEN measure detected, but missing'
+                                       ' a Water Energy Intensity parameter')
+
+        return False
+
+    def is_deemed(self) -> bool:
+        delivery_table = self.get_shared_parameter('DelivType')
+        if delivery_table is None:
+            raise RequiredContentError(name='Delivery Type')
+
+        labels = delivery_table.active_labels
+        return (
+            'DnDeemDI' in labels
+                or set(['DnDeemed', 'UpDeemed']).issubset(labels)
+        )
+
+    def is_fuel_sub(self) -> bool:
+        mat = self.get_shared_parameter('MeasImpactType')
+        if mat is None:
+            raise RequiredContentError(name='Measure Impact Type')
+
+        return 'FuelSub' in mat.active_labels
+
+    def is_sector_default(self) -> bool:
+        sector = self.get_shared_parameter('Sector')
+        if sector is None:
+            raise RequiredContentError(name='Sector')
+
+        ntg_id = self.get_shared_parameter('NTGID')
+        if ntg_id is None:
+            raise RequiredContentError(name='Net to Gross Ratio ID')
+
+        sectors = list(
+            map(
+                lambda sector: sector + '-Default',
+                sector.active_labels
+            )
+        )
+
+        for sector in sectors:
+            for _id in ntg_id.active_labels:
+                if sector in _id:
+                    return True
+        return False
+
+    def requires_ntg_version(self) -> bool:
+        ntg_id = self.get_shared_parameter('NTGID')
+        if ntg_id == None:
+            raise RequiredContentError(name='Net to Gross Ratio ID')
+
+        for label in ntg_id.active_labels:
+            match label:
+                case ('Res-Default>2yrs'
+                        | 'Com-Default>2yrs'
+                        | 'Ind-Default>2yrs'
+                        | 'Agric-Default>2yrs'):
+                    continue
+                case _:
+                    return True
+        return False
+
+    def requires_upstream_flag(self) -> bool:
+        delivery_type = self.get_shared_parameter('DelivType')
+        if delivery_type == None:
+            raise RequiredContentError(name='Delivery Type')
+
+        if len(delivery_type.active_labels) < 2:
+            return False
+
+        return 'UpDeemed' in delivery_type.active_labels
+
+    def is_res_default(self) -> bool:
+        ntg_id = self.get_shared_parameter('NTGID')
+        if ntg_id == None:
+            raise RequiredContentError(name='Net to Gross Ratio ID')
+
+        return 'Res-Default>2yrs' in ntg_id.active_labels
+
+    def is_nonres_default(self) -> bool:
+        ntg_id = self.get_shared_parameter('NTGID')
+        if ntg_id == None:
+            raise RequiredContentError(name='Net to Gross Ratio ID')
+
+        for label in ntg_id.active_labels:
+            match label:
+                case ('Com-Default>2yrs'
+                        | 'Ind-Default>2yrs'
+                        | 'Agric-Default>2yrs'):
+                    return True
+                case _:
+                    continue
+        return False
+
+    def is_GSIA_default(self) -> bool:
+        gsia = self.get_shared_parameter('GSIAID')
+        if gsia == None:
+            raise RequiredContentError(name='GSIA ID')
+
+        return 'Def-GSIA' in gsia.active_labels
+
+    def is_interactive(self) -> bool:
+        lighting_type = self.get_shared_parameter('LightingType')
+        interactive_effect_app = self.get_value_table('IEApplicability')
+        commercial_effects = self.get_shared_lookup('commercialInteractiveEffects')
+        residential_effects = self.get_shared_lookup('residentialInteractiveEffects')
+
+        if lighting_type or (commercial_effects or residential_effects):
+            return True
+        # elif (lighting_type or (commercial_effects or residential_effects)
+        #       or interactive_effect_app):
+        #     raise MeasureFormatError(
+        #         'Missing required information for interactive effects')
+
+        return False
+
+    def get_criteria(self) -> list[str]:
+        criteria: list[str] = ['REQ']
+
+        if self.is_deer():
+            criteria.append('DEER')
+
+        if self.is_GSIA_default():
+            criteria.append('DEF_GSIA')
+        else:
+            criteria.append('GSIA')
+
+        if self.is_wen():
+            criteria.append('WEN')
+
+        if self.is_fuel_sub():
+            criteria.append('FUEL')
+
+        if self.is_interactive():
+            criteria.append('INTER')
+
+        if self.is_res_default():
+            criteria.append('RES_DEF')
+
+        if self.is_nonres_default():
+            criteria.append('RES_NDEF')
+
+        if not ('RES-DEF' in criteria or 'RES-NDEF' in criteria):
+            criteria.append('RES')
+
+        mat_labels = self.get_shared_parameter('MeasAppType').active_labels
+        if 'AR' in mat_labels or 'AOE' in mat_labels:
+            criteria.append('MAT_ARAOE')
+
+        if 'NC' in mat_labels or 'NR' in mat_labels:
+            criteria.append('MAT_NCNR')
+            if 'AR' in mat_labels or 'AOE' in mat_labels:
+                criteria.append('MAT_NCNR_ARAOE')
+
+        if self.requires_ntg_version():
+            criteria.append('NTG')
+
+        if self.requires_upstream_flag():
+            criteria.append('DEEM')
+
+        if self.contains_value_table('emergingTech'):
+            criteria.append('ET')
+
+        return criteria
+
+    def get_table_column_criteria(self) -> list[str]:
+        criteria: list[str] = []
+
+        mat = self.get_shared_parameter('MeasAppType')
+        if 'AR' in mat.active_labels:
+            criteria.append('AR_MAT')
+            if len(mat.active_labels) > 2:
+                criteria.append('AR_M_MAT')
+
+        deliv = self.get_shared_parameter('DelivType')
+        if 'UpDeemed' in deliv.active_labels:
+            if len(deliv.active_labels) > 2:
+                criteria.append('UD_M_DT')
+
+        return criteria
+
+    def get_permutation_criteria(self) -> list[str]:
+        criteria: list[str] = []
+
+        mat = self.get_shared_parameter('MeasAppType')
+        if 'AR' in mat.active_labels:
+            criteria.append('AR_MAT')
+            if len(mat.active_labels) == 1:
+                criteria.append('O_AR_MAT')
+            else:
+                criteria.append('M_AR_MAT')
+        else:
+            criteria.append('N_AR_MAT')
+
+        if 'AOE' in mat.active_labels:
+            criteria.append('AOE_MAT')
+        else:
+            criteria.append('N_AOE_MAT')
+
+        if 'AR' in mat.active_labels and 'AOE' in mat.active_labels:
+            criteria.append('AR_AOE_MAT')
+            if len(mat.active_labels) == 2:
+                criteria.append('O_AR_AOE_MAT')
+            else:
+                criteria.append('M_AR_AOE_MAT')
+        else:
+            criteria.append('N_AR_AOE_MAT')
+
+        if self.is_GSIA_default():
+            criteria.append('DEF_GSIA')
+
+        criteria.append('PK_DMND')
+        criteria.append('ELCT_SVG')
+        criteria.append('GAS_SVG')
+        criteria.append('FBLC') # maybe in costs value table? ask chau
+
     @staticmethod
     def sorting_key(measure: Measure) -> int:
-        return utils.version_key(measure.full_version_id)
-            
+        return utils.version_key(measure.version_id)
+
 
 class Reference:
     def __init__(self, res_json: dict[str, Any]):
@@ -736,21 +1141,29 @@ class Reference:
         try:
             self.reference_code = getc(res_json, 'reference_code', str)
             self.reference_citation = getc(res_json, 'reference_citation', str)
-            self.source_reference = getc(res_json,
-                                         'source_reference',
-                                         str | None)
+            self.source_reference = getc(
+                res_json,
+                'source_reference',
+                str | None
+            )
             self.source_url = getc(res_json, 'source_url', str | None)
-            self.reference_location = getc(res_json,
-                                           'reference_location',
-                                           str | None)
+            self.reference_location = getc(
+                res_json,
+                'reference_location',
+                str | None
+            )
             self.reference_type = getc(res_json, 'reference_type', str)
-            self.publication_title = getc(res_json,
-                                          'publication_title',
-                                          str | None)
+            self.publication_title = getc(
+                res_json,
+                'publication_title',
+                str | None
+            )
             self.lead_author = getc(res_json, 'lead_author', str | None)
-            self.lead_author_org = getc(res_json,
-                                        'lead_author_org',
-                                        str | None)
+            self.lead_author_org = getc(
+                res_json,
+                'lead_author_org',
+                str | None
+            )
             self.sponsor_org = getc(res_json, 'sponsor_org', str | None)
             self.source_document = getc(res_json, 'source_document', str)
         except IndexError:

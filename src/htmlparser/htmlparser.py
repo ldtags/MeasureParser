@@ -10,36 +10,36 @@ import src.parserdata as pd
 from src.models import (
     Characterization
 )
-from src.htmlparser.models import (
-    EmbeddedReference
-)
 
 
-class CharacterizationParser():
-    '''A parser that validates data found in eTRM measure characterizations
-    
-    __init__(_data_dict, characterization)
-        _data_dict (dict[str, CharacterizationData])
-    '''
+class CharacterizationParser:
+    """A parser that validates data found in eTRM measure characterizations."""
 
     def __init__(self,
                  _data_dict: dict[str, pd.CharacterizationData] | None = None,
-                 characterization: Characterization | None = None):
+                 characterization: Characterization | None = None,
+                 characterizations: list[Characterization] | None=None):
         if _data_dict != None:
             self._data_dict = _data_dict
         else:
             self._data_dict = pd.characterization_dict()
 
         self.characterization = characterization
-        self.data: pd.CharacterizationData | None = None
+        self.characterizations: list[Characterization] = []
+        if characterizations is not None:
+            self.characterizations.extend(characterizations)
+            if characterization not in characterizations:
+                self.characterizations.append(characterization)
 
-        if characterization != None:
+        self.data: pd.CharacterizationData | None = None
+        if characterization is not None:
             self.data = self._data_dict[characterization.name]
 
     def parse(self, characterization: Characterization | None = None) -> None:
-        '''Validates the given characterization in accordance to the
-            eTRM QA/QC
-        '''
+        """Validates the given characterization in accordance to the
+        eTRM QA/QC
+        """
+
         if characterization != None:
             self.characterization = characterization
             self.data = self._data_dict.get(characterization.name)
@@ -48,10 +48,15 @@ class CharacterizationParser():
             return
 
         soup = BeautifulSoup(self.characterization.content, 'html.parser')
-        root = soup.find('html')
-        self.validate_header_order(root)
+        top_level = list(
+            filter(
+                lambda elem: isinstance(elem, Tag),
+                soup.find_all(recursive=False)
+            )
+        )
+        self.validate_header_order(top_level)
         # self.validate_sentence_spacing(soup)
-        self.validate_reference_tags(root)
+        self.validate_reference_tags(top_level)
 
         # name = self.characterization.name
         # EMBEDDED_TABLE_MAP = db.get_embedded_table_map()
@@ -62,14 +67,25 @@ class CharacterizationParser():
         # if name in STATIC_TABLE_MAP:
         #     self.validate_static_table(soup, STATIC_TABLE_MAP[name])
 
-    def validate_header_order(self, element: Tag) -> None:
-        '''Validates that all headers that appear in the characterization
-            follow the order `h3 -> h4 -> h5`
-        '''
+    def validate_header_order(self, top_level: list[Tag]) -> None:
+        """Validates that all headers that appear in the characterization
+        follow the order `h3 -> h4 -> h5`.
+        """
+
         if self.data == None:
             return
 
-        headers: ResultSet[Tag] = element.find_all(re.compile('^h[3-5]$'))
+        headers: list[Tag] = []
+        for element in top_level:
+            headers.extend(
+                list(
+                    filter(
+                        lambda elem: isinstance(elem, Tag),
+                        element.find_all(re.compile(r'^h[3-5]$'))
+                    )
+                )
+            )
+
         if headers == []:
             return
 
@@ -96,7 +112,8 @@ class CharacterizationParser():
     # splits sentences in those paragraphs by '.'
     # this also validates some reference tag spacing as a side effect
     def validate_sentence_spacing(self, element: Tag) -> None:
-        '''Validates that all sentences are seperated by only one space'''
+        """Validates that all sentences are seperated by only one space."""
+
         if self.data == None:
             return
 
@@ -134,19 +151,29 @@ class CharacterizationParser():
     def validate_embedded_reference(self, reference_tag: Tag) -> None:
         pass
 
-    def validate_reference_tags(self, element: Tag) -> None:
-        '''Validates the spacing around reference tags and reference
-            titles
-        '''
+    def validate_reference_tags(self, elements: list[Tag]) -> None:
+        """Validates the spacing around reference tags and reference
+        titles.
+        """
+
         if self.data == None:
             return
 
-        reference_tags: ResultSet[Tag] \
-            = element.find_all(attrs={'data-etrmreference': True})
+        reference_tags: list[Tag] = []
+        for element in elements:
+            reference_tags.extend(
+                element.find_all(
+                    attrs={
+                        'data-etrmreference': True
+                    }
+                )
+            )
+
         for reference_tag in reference_tags:
             tag_data = pd.ReferenceTagData(
                 spacing=validate_tag_spacing(reference_tag),
-                title=validate_static_title(reference_tag))
+                title=validate_static_title(reference_tag)
+            )
             if not tag_data.is_empty():
                 title = _get_static_title(reference_tag, clean=True)
                 self.data.references.get(title).append(tag_data)
@@ -228,8 +255,10 @@ def validate_static_title(embedded_tag: Tag) -> pd.TitleData:
 
 def validate_tag_spacing(tag: Tag,
                          leading: int = 0,
-                         trailing: int = 0) -> pd.SpacingData:
-    '''Validates that `tag` has `leading` and `trailing` whitespace'''
+                         trailing: int = 0
+                        ) -> pd.SpacingData:
+    """Validates that `tag` has `leading` and `trailing` whitespace."""
+
     spacing_data = pd.SpacingData()
 
     prev_text = _get_previous_text(tag)
@@ -297,9 +326,6 @@ def _get_following_text(element: Tag) -> str | None:
 
 
 def _get_leading_spaces(data: str) -> int:
-    if not isinstance(data, str):
-        return 0
-
     count = 0
     while data != '' and data[0] in ['\u00a0', ' ']:
         count += 1
@@ -308,9 +334,6 @@ def _get_leading_spaces(data: str) -> int:
 
 
 def _get_trailing_spaces(data: str) -> int:
-    if not isinstance(data, str):
-        return 0
-
     count = 0
     while data != '' and data[-1] in ['\u00a0', ' ']:
         count += 1

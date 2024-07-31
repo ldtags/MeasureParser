@@ -16,6 +16,7 @@ class ProgressPage(Page):
     def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):
         Page.__init__(self, parent, root, **kwargs)
 
+        self.config(bg='#f0f0f0')
         self.grid(row=0,
                   column=0,
                   sticky=tk.NSEW)
@@ -28,12 +29,14 @@ class ProgressPage(Page):
                                                  ' minutes.',
                                        img_name='etrm.png',
                                        ipadx=(15, 15),
-                                       ipady=(20, 20))
+                                       ipady=(20, 20),
+                                       bg='#ffffff')
         self.intro_label.pack(side=tk.TOP,
                               anchor=tk.NW,
                               fill=tk.X)
 
-        self.log_frame = ScrollableFrame(self)
+        self.log_frame = ScrollableFrame(self,
+                                         canvas_bg='#ffffff')
         self.log_frame.pack(side=tk.TOP,
                             anchor=tk.NW,
                             fill=tk.BOTH,
@@ -46,9 +49,6 @@ class ProgressPage(Page):
                                  anchor=tk.S,
                                  fill=tk.X)
 
-    def show(self) -> None:
-        self.tkraise()
-
 
 class ControlsFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
@@ -58,6 +58,14 @@ class ControlsFrame(Frame):
         self.separator.pack(side=tk.TOP,
                             anchor=tk.S,
                             fill=tk.X)
+
+        self.progress_bar = ttk.Progressbar(self)
+        self.progress_bar.pack(side=tk.LEFT,
+                               anchor=tk.CENTER,
+                               fill=tk.X,
+                               expand=tk.TRUE,
+                               padx=(30, 15),
+                               pady=(20, 20))
 
         self.cont_btn = Button(self,
                                pady=0,
@@ -69,12 +77,11 @@ class ControlsFrame(Frame):
                            padx=(15, 30),
                            pady=(20, 20))
 
-
-        self.cancel_btn = Button(self,
-                                 pady=0,
-                                 padx=30,
-                                 text='Cancel')
-        self.cancel_btn.pack(side=tk.RIGHT,
-                             anchor=tk.E,
-                             padx=(30, 15),
-                             pady=(20, 20))
+        self.back_btn = Button(self,
+                               pady=0,
+                               padx=30,
+                               text='Back')
+        self.back_btn.pack(side=tk.RIGHT,
+                           anchor=tk.E,
+                           padx=(30, 15),
+                           pady=(20, 20))

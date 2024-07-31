@@ -2,7 +2,7 @@ import sys
 from typing import Self
 
 from src import dbservice as db
-from src.models import Measure
+from src.etrm.models import Measure
 from src.parserdata import (
     ParserData
 )
@@ -24,7 +24,7 @@ class MeasureDataLogger:
         if self.out != None:
             self.out.close()
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.close()
 
     def __enter__(self) -> Self:
@@ -45,7 +45,8 @@ class MeasureDataLogger:
         self.log('\n')
 
     def log_parameter_data(self) -> None:
-        """Logs all measure specific parameters and invalid measure parameter data.
+        """Logs all measure specific parameters and invalid measure parameter
+        data.
 
         Invalid Parameter data:
             - Unexpected parameters
@@ -53,14 +54,25 @@ class MeasureDataLogger:
         """
 
         param_data = self.data.parameter
-        self.log('Validating Parameters:')
-        self.log('\tMeasure Specific Parameters: ',
-                 param_data.nonshared)
+        self.log('Parameters:')
+
+        nonshared_names = list(
+            map(
+                lambda param: param.name,
+                param_data.nonshared
+            )
+        )
+        self.log(f'\tMeasure Specific Parameters: {nonshared_names}')
         self.log()
-        self.log('\tUnexpected Shared Parameters: ',
-                 param_data.unexpected)
-        self.log('\tMissing Shared Parameters: ',
-                 param_data.missing)
+
+        unexpected_names = list(
+            map(
+                lambda param: param.name,
+                param_data.unexpected
+            )
+        )
+        self.log(f'\tUnexpected Shared Parameters: {unexpected_names}')
+        self.log(f'\tMissing Shared Parameters: {param_data.missing}')
         self.log()
         self.log('\tParameter Order:')
         # for param_name in param_data.unordered:
@@ -84,7 +96,7 @@ class MeasureDataLogger:
             - Incorrect amount of hyphens in name
         """
 
-        self.log('Validating Exclusion Tables:')
+        self.log('Exclusion Tables:')
         for table in self.measure.exclusion_tables:
             self.log(f'\tTable Name: {table.name}\n',
                      f'\t\tParameters: {table.determinants}\n')
@@ -115,19 +127,27 @@ class MeasureDataLogger:
                 - Unit
         """
 
-        self.log('Validating Value Tables:')
+        self.log('Value Tables:')
         shared_data = self.data.value_table.shared
-        self.log('\tUnexpected Shared Tables: ',
-                 shared_data.unexpected)
-        self.log('\tMissing Shared Tables: ',
-                 shared_data.missing)
+        unexpected_names = list(
+            map(
+                lambda table: table.name,
+                shared_data.unexpected
+            )
+        )
+        self.log(f'\tUnexpected Shared Tables: {unexpected_names}')
+        self.log(f'\tMissing Shared Tables: {shared_data.missing}')
         self.log()
 
         nonshared_data = self.data.value_table.nonshared
-        self.log('\tUnexpected Non-Shared Tables: ',
-                 nonshared_data.unexpected)
-        self.log('\tMissing Non-Shared Tables: ',
-                 nonshared_data.missing)
+        unexpected_names = list(
+            map(
+                lambda table: table.name,
+                nonshared_data.unexpected
+            )
+        )
+        self.log(f'\tUnexpected Non-Shared Tables: {unexpected_names}')
+        self.log(f'\tMissing Non-Shared Tables: {nonshared_data.missing}')
         self.log()
 
         self.log('\tValue Table Names:')
@@ -211,7 +231,7 @@ class MeasureDataLogger:
             - Parameters
         """
 
-        self.log('All Calculations:')
+        self.log('Calculations:')
         for calculation in self.measure.calculations:
             if self.measure.calculations.index(calculation) != 0:
                 self.log()
@@ -219,30 +239,6 @@ class MeasureDataLogger:
                      f'\t\tAPI Name: {calculation.api_name}\n'
                      f'\t\tUnit: {calculation.unit}\n'
                      f'\t\tParameters: {calculation.determinants}')
-        self.log('\n')
-
-    def log_permutation_data(self) -> None:
-        """Logs parsed invalid permutation data to the output file.
-
-        General data:
-            - Unexpected permutation
-
-        Permutation specific data:
-            - Incorrect mapped field
-        """
-
-        self.log('Validating permutations:')
-        for err in self.data.permutation.invalid:
-            self.log(f'\tInvalid Permutation ({err.reporting_name}) - '
-                     f'{err.mapped_name} should be ' +
-                     (f'{err.valid_names[0]}' if len(err.valid_names) == 1
-                        else f'one of {err.valid_names}'))
-
-        for perm_name in self.data.permutation.unexpected:
-            self.log(f'\tUnexpected Permutation - {perm_name}')
-
-        if self.data.permutation.is_empty():
-            self.log('\tAll permutations are valid')
         self.log('\n')
 
     def log_permutations(self) -> None:
@@ -254,7 +250,20 @@ class MeasureDataLogger:
             - Mapped field
         """
 
-        self.log('All Permutations:')
+        self.log('Permutations:')
+        for err in self.data.permutation.invalid:
+            self.log(f'\tInvalid Permutation ({err.reporting_name}) - '
+                     f'{err.mapped_name} should be ' +
+                     (f'{err.valid_names[0]}' if len(err.valid_names) == 1
+                        else f'one of {err.valid_names}'))
+
+        for perm_name in self.data.permutation.unexpected:
+            self.log(f'\tUnexpected Permutation - {perm_name}')
+
+        if self.data.permutation.is_empty():
+            self.log('\tAll permutations are valid')
+        self.log()
+
         for permutation in self.measure.permutations:
             perm_data = db.get_permutation_data(
                 permutation.reporting_name
@@ -283,7 +292,7 @@ class MeasureDataLogger:
             - Sentence and punctuation spacing
         """
 
-        self.log('Parsing characterizations:')
+        self.log('Characterizations:')
         for name, data in self.data.characterization.items():
             if data.is_empty():
                 continue
@@ -356,8 +365,8 @@ class MeasureDataLogger:
         self.log_value_table_data()
         self.log_value_tables()
         self.log_calculations()
-        self.log_permutation_data()
-        self.log_permutations()
+        if self.measure.source == 'json':
+            self.log_permutations()
         self.log_characterization_data()
 
         self.data = None

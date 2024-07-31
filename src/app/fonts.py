@@ -1,12 +1,17 @@
 from tkinter import font as tkfont
 
 
-BODY = ('Segoe UI', 8)
+_DEF_FONT = 'Segoe UI'
 
-BODY_LG = ('Segoe UI', 9)
+
+BODY = (_DEF_FONT, 8)
+
+BODY_LG = (BODY[0], 9)
+
+BODY_SM = (BODY[0], 7)
 
 BODY_BOLD = (*BODY, tkfont.BOLD)
 
-HEADER = ('Segoe UI', 11, tkfont.BOLD)
+HEADER = (_DEF_FONT, 11, tkfont.BOLD)
 
-SUB_HEADER = ('Segoe UI', 9, tkfont.BOLD)
+SUB_HEADER = (HEADER[0], 9, tkfont.BOLD)

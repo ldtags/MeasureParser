@@ -1,13 +1,17 @@
 '''Classes that store data from parsing eTRM measure JSON files'''
 
+from typing import Literal
 from dataclasses import dataclass, field
 
+from src.etrm.models import (
+    Determinant,
+    SharedDeterminantRef,
+    ValueTable,
+    SharedLookupRef
+)
 
-@dataclass
-class GeneralValidationData:
-    unexpected: list[str] = field(default_factory=list)
-    missing: list[str] = field(default_factory=list)
-    unordered: list[str] = field(default_factory=list)
+
+_measure_source: Literal['json', 'etrm'] | None = None
 
 
 @dataclass
@@ -87,7 +91,8 @@ class CharacterizationData:
 def characterization_dict() -> dict[str, CharacterizationData]:
     from src.dbservice import get_all_characterization_names
     char_dict: dict[str, CharacterizationData] = {}
-    for name in get_all_characterization_names():
+    global _measure_source
+    for name in get_all_characterization_names(_measure_source):
         char_dict[name] = CharacterizationData()
     return char_dict
 
@@ -139,21 +144,29 @@ class StdValueTableNameData:
 
 
 @dataclass
-class NonSharedValueTableData(GeneralValidationData):
+class NonSharedValueTableData:
     invalid_name: list[StdValueTableNameData] = field(default_factory=list)
     column: ValueTableColumnData = field(default_factory=ValueTableColumnData)
+    unexpected: list[ValueTable] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+    unordered: list[str] = field(default_factory=list)
 
 
 @dataclass
-class SharedValueTableData(GeneralValidationData):
-    pass
+class SharedValueTableData:
+    unexpected: list[SharedLookupRef] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+    unordered: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ValueTableData:
-    shared: SharedValueTableData = field(default_factory=SharedValueTableData)
-    nonshared: NonSharedValueTableData \
-        = field(default_factory=NonSharedValueTableData)
+    shared: SharedValueTableData = field(
+        default_factory=SharedValueTableData
+    )
+    nonshared: NonSharedValueTableData = field(
+        default_factory=NonSharedValueTableData
+    )
 
 
 @dataclass
@@ -165,16 +178,27 @@ class ExclusionTableData:
         return self.whitespace == [] and self.hyphen == []
 
 @dataclass
-class ParameterData(GeneralValidationData):
-    nonshared: list[str] = field(default_factory=list)
+class ParameterData:
+    nonshared: list[Determinant] = field(default_factory=list)
+    unexpected: list[SharedDeterminantRef] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+    unordered: list[str] = field(default_factory=list)
 
 
-@dataclass
+@dataclass()
 class ParserData:
     parameter: ParameterData = field(default_factory=ParameterData)
-    exclusion_table: ExclusionTableData \
-        = field(default_factory=ExclusionTableData)
+    exclusion_table: ExclusionTableData = field(
+        default_factory=ExclusionTableData
+    )
     value_table: ValueTableData = field(default_factory=ValueTableData)
     permutation: PermutationData = field(default_factory=PermutationData)
-    characterization: dict[str, CharacterizationData] \
-        = field(default_factory=characterization_dict)
+    characterization: dict[str, CharacterizationData] = field(
+        default_factory=characterization_dict
+    )
+
+
+def parser_data_factory(source: Literal['json', 'etrm']) -> ParserData:
+    global _measure_source
+    _measure_source = source
+    return ParserData()

@@ -4,6 +4,7 @@ from typing import Literal
 
 from src import utils, _ROOT
 from src.app import fonts
+from src.app.types import TK_EVENT_BINDING
 from src.app.widgets.frames import Frame
 from src.app.widgets.buttons import Button
 
@@ -18,6 +19,7 @@ class Entry(tk.Entry):
                  border_width: int=1,
                  border_color: str='grey',
                  font=fonts.BODY,
+                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
         kwargs['borderwidth'] = 0
         kwargs['relief'] = relief
@@ -39,6 +41,8 @@ class Entry(tk.Entry):
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
+        for event, callback in events or []:
+            self.bind(event, callback)
 
     def put_placeholder(self):
         if self.placeholder:
@@ -72,6 +76,7 @@ class FileNameEntry(Entry):
                  border_color: str='grey',
                  font=fonts.BODY,
                  file_ext: str='txt',
+                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
         Entry.__init__(self,
                        parent,
@@ -82,6 +87,7 @@ class FileNameEntry(Entry):
                        border_width,
                        border_color,
                        font,
+                       events=events,
                        **kwargs)
         self.file_ext = file_ext
 
@@ -109,8 +115,9 @@ class FileEntry(Frame):
                  label_text: str | None=None,
                  font=fonts.BODY,
                  textvariable: tk.Variable | None=None,
+                 events: list[TK_EVENT_BINDING] | None=None,
                  **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+        Frame.__init__(self, parent, events, **kwargs)
 
         self.types = types
         self.file_type = file_type
@@ -126,10 +133,13 @@ class FileEntry(Frame):
                             anchor=tk.NE,
                             padx=(0, 5),
                             pady=(0, 0))
+            for event, callback in events or []:
+                self.label.bind(event, callback)
 
         self.entry = Entry(self,
                            text=text,
-                           font=font)
+                           font=font,
+                           events=events)
         self.entry.pack(side=tk.LEFT,
                         anchor=tk.N,
                         fill=tk.BOTH,
@@ -148,7 +158,8 @@ class FileEntry(Frame):
                              highlightbackground='grey',
                              highlightcolor='grey',
                              highlightthickness=1,
-                             command=self.open_dialog)
+                             command=self.open_dialog,
+                             events=events)
         self.button.pack(side=tk.LEFT,
                          anchor=tk.NW,
                          padx=(0, 0),

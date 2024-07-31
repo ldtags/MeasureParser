@@ -1,4 +1,7 @@
+from __future__ import annotations
+import os
 import json
+from typing import Callable, TypeVar
 
 from src.app.views import View
 from src.app.models import Model
@@ -7,46 +10,106 @@ from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
 
 
+_T = TypeVar('_T')
+_DEC_TYPE = Callable[..., _T]
+
+
+def parser_function(log: str | None=None) -> Callable[[_DEC_TYPE], _DEC_TYPE]:
+    def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
+        def wrapper(self: ProgressController, *args, **kwargs):
+            self.view.log_frame.add(log)
+            value = func(self, *args, **kwargs)
+            self.view.controls_frame.progress_bar.step(100)
+            return value
+        return wrapper
+    return decorator
+
+
 class ProgressController:
     def __init__(self, model: Model, view: View):
         self.root = view.root
         self.root_view = view
         self.view = view.progress
         self.model = model
+        self.__bind_controls()
 
-    def get_measure(self) -> Measure:
-        measure_file_path = self.model.measure_file_path
-        if measure_file_path is not None:
+    def get_etrm_measure(self) -> Measure:
+        @parser_function(f'Retrieving measure {self.model.measure_id}')
+        def get_measure(*args) -> Measure:
+            connection = ETRMConnection(self.model.api_key)
+            measure = connection.get_measure(self.model.measure_id)
+            return measure
+
+        measure = get_measure(self)
+        return measure
+
+    def get_json_measure(self) -> Measure:
+        _, file_name = os.path.split(self.model.measure_file_path)
+        @parser_function(f'Retrieving measure from {file_name}')
+        def get_measure(*args) -> Measure:
             with open(self.model.measure_file_path, 'r') as fp:
                 measure_json = json.load(fp)
-            measure = Measure(measure_json)
+            measure = Measure(measure_json, source='json')
             return measure
 
-        api_key = self.model.api_key
-        measure_id = self.model.measure_id
-        if api_key is not None and measure_id is not None:
-            connection = ETRMConnection(api_key)
-            measure = connection.get_measure(measure_id)
-            return measure
+        measure = get_measure(self)
+        return measure
 
-        raise RuntimeError('Measure source validation failed')
-
-    def parse(self) -> None:
-        measure = self.get_measure()
-        parser = MeasureParser(measure)
-        frame = self.view.log_frame
-
-        frame.add('Validating parameters...')
+    @parser_function('Validating parameters')
+    def parse_parameters(self, parser: MeasureParser) -> None:
         parser.validate_parameters()
 
-        frame.add('Validating exclusion tables...')
-        parser.validate_exclusion_tables()
-
-        frame.add('Validating value tables...')
+    @parser_function('Validating value tables')
+    def parse_value_tables(self, parser: MeasureParser) -> None:
         parser.validate_tables()
 
-        frame.add('Validating permutations...')
+    @parser_function('Validating exclusion tables')
+    def parse_exclusion_tables(self, parser: MeasureParser) -> None:
+        parser.validate_exclusion_tables()
+
+    @parser_function('Validating permutations')
+    def parse_permutations(self, parser: MeasureParser) -> None:
         parser.validate_permutations()
 
-        frame.add('Validating characterizations...')
-        parser.parse_characterizations()
+    @parser_function('Validating characterizations')
+    def parse_characterizations(self, parser: MeasureParser) -> None:
+        for characterization in parser.measure.characterizations:
+            self.view.log_frame.add(f'Parsing {characterization.name}')
+            parser.parse_characterization(characterization)
+
+    @parser_function('Logging output')
+    def log_output(self, parser: MeasureParser) -> None:
+        parser.log_output(self.model.output_file_path)
+
+    def parse(self) -> None:
+        self.view.controls_frame.cont_btn.set_state('disabled')
+        self.view.controls_frame.back_btn.set_state('disabled')
+        self.view.controls_frame.progress_bar.config(maximum=701)
+
+        if self.model.measure_source == 'etrm':
+            measure = self.get_etrm_measure()
+        elif self.model.measure_source == 'json':
+            measure = self.get_json_measure()
+        else:
+            raise RuntimeError('Input validation failed')
+
+        parser = MeasureParser(measure)
+        self.parse_parameters(parser)
+        self.parse_value_tables(parser)
+        self.parse_exclusion_tables(parser)
+        self.parse_permutations(parser)
+        self.parse_characterizations(parser)
+        self.log_output(parser)
+
+        self.view.controls_frame.progress_bar.config(maximum=0)
+        self.view.controls_frame.cont_btn.set_state('normal')
+        self.view.controls_frame.back_btn.set_state('normal')
+
+    def handle_back(self) -> None:
+        self.root_view.show('home')
+
+    def handle_continue(self) -> None:
+        self.root_view.show('results')
+
+    def __bind_controls(self) -> None:
+        self.view.controls_frame.back_btn.set_command(self.handle_back)

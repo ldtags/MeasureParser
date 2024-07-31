@@ -133,7 +133,7 @@ class ETRMCache:
         return self.measure_cache.get(version_id, None)
 
     def add_measure(self, measure: Measure):
-        self.measure_cache[measure.full_version_id] = measure
+        self.measure_cache[measure.version_id] = measure
 
     @etrm_cache_request
     def get_reference(self, ref_id: str) -> Reference | None:
@@ -239,7 +239,7 @@ class ETRMConnection:
 
         statewide_id, version_id = measure_version.split('-', 1)
         response = self.get(f'/measures/{statewide_id}/{version_id}')
-        measure = Measure(response.json())
+        measure = Measure(response.json(), source='etrm')
         self.cache.add_measure(measure)
         return measure
 

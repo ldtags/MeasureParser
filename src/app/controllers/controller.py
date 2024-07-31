@@ -35,4 +35,5 @@ class Controller:
 
     def start_process(self) -> None:
         self.view.show(ProgressPage.key)
+        self.view.progress.update()
         self.progress.parse()

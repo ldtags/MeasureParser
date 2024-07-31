@@ -129,12 +129,14 @@ class HomeController:
         view = self.view.source_frame.source_frame
         file_path = view.json_frame.file_entry.get()
         if file_path != '':
+            self.model.measure_source = 'json'
             self.model.measure_file_path = file_path
             return
 
         api_key = view.etrm_frame.api_key_entry.get()
         measure_id = view.etrm_frame.measure_entry.get()
         if api_key != '' and measure_id != '':
+            self.model.measure_source = 'etrm'
             self.model.set_api_key(api_key)
             self.model.set_measure(measure_id)
             return

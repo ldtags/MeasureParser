@@ -2,13 +2,17 @@ import os
 
 from src import dbservice as db
 from src.logger import MeasureDataLogger
-from src.models import (
+from src.etrm.models import (
     Measure,
-    Permutation
+    Permutation,
+    SharedDeterminantRef,
+    ValueTable,
+    SharedLookupRef,
+    Characterization
 )
 from src.htmlparser import CharacterizationParser
 from src.parserdata import (
-    ParserData,
+    parser_data_factory,
     MissingValueTableColumnData,
     InvalidValueTableColumnUnitData,
     StdValueTableNameData,
@@ -25,54 +29,92 @@ class MeasureParser:
 
     def __init__(self, measure: Measure):
         self.measure = measure
-        self.data = ParserData()
+        self.data = parser_data_factory(measure.source)
         self.ordered_params = db.get_param_api_names(measure=measure)
         self.ordered_val_tables = db.get_table_api_names(measure=measure,
                                                          nonshared=True)
         self.ordered_sha_tables = db.get_table_api_names(measure=measure,
                                                          shared=True)
 
-    def validate_parameters(self, measure: Measure) -> None:
+        names = db.get_all_characterization_names(self.measure.source)
+        for char_name in names:
+            if self.measure.get_characterization(char_name) == None:
+                self.data.characterization[char_name].missing = True
+        self.characterization_parser = CharacterizationParser(
+            self.data.characterization,
+            characterizations=self.measure.characterizations
+        )
+
+    def get_known_parameters(self) -> list[SharedDeterminantRef]:
+        """Returns a collection of all shared determinant refs that
+        appear in both the measure and ordered parameters.
+        """
+
+        return self.measure.get_shared_parameters(self.ordered_params)
+
+    def get_known_value_tables(self) -> list[ValueTable]:
+        """Returns a collection of all non-shared value tables that
+        appear in both the measure and ordered non-shared value tables.
+        """
+
+        return self.measure.get_value_tables(self.ordered_val_tables)
+
+    def get_known_shared_tables(self) -> list[SharedLookupRef]:
+        """Returns a collection of all shared lookup refs that appear
+        in both the measure and ordered shared value tables.
+        """
+
+        return self.measure.get_shared_lookups(self.ordered_sha_tables)
+
+    def validate_parameters(self) -> None:
         self.data.parameter.nonshared = list(
-            map(lambda param: param.name, measure.parameters))
+            map(
+                lambda param: param,
+                self.measure.determinants
+            )
+        )
 
+        known_params = self.get_known_parameters()
         self.data.parameter.unexpected = list(
-            map(lambda param: param.version.version_string,
-                measure.remove_unknown_params(self.ordered_params)))
-        self.data.parameter.missing = self.validate_param_existence()
-        self.data.parameter.unordered = self.validate_param_order()
+            filter(
+                lambda param: param not in known_params,
+                self.measure.determinants
+            )
+        )
+        self.data.parameter.missing = self.get_missing_parameter_names()
+        self.data.parameter.unordered = self.get_unordered_parameter_names()
 
-    def validate_tables(self, measure: Measure) -> None:
+    def validate_tables(self) -> None:
         shared_data = self.data.value_table.shared
+        known_tables = self.get_known_shared_tables()
         shared_data.unexpected = list(
-            map(lambda table: table.version.version_string,
-                measure.remove_unknown_shared_tables(
-                    self.ordered_sha_tables)))
-        shared_data.missing = self.validate_shared_table_existence()
-        shared_data.unordered = self.validate_shared_table_order()
+            filter(
+                lambda table: table not in known_tables,
+                self.measure.shared_lookup_refs
+            )
+        )
+        shared_data.missing = self.get_missing_shared_table_names()
+        shared_data.unordered = self.get_unordered_shared_table_names()
 
         nonshared_data = self.data.value_table.nonshared
+        known_tables = self.get_known_value_tables()
         nonshared_data.unexpected = list(
-            map(lambda table: table.name,
-                measure.remove_unknown_value_tables(
-                    self.ordered_val_tables)))
-        nonshared_data.missing = self.validate_value_table_existence()
-        nonshared_data.unordered = self.validate_value_table_order()
+            filter(
+                lambda table: table not in known_tables,
+                self.measure.value_tables
+            )
+        )
+        nonshared_data.missing = self.get_missing_value_table_names()
+        nonshared_data.unordered = self.get_unordered_value_table_names()
         self.validate_standard_table_names()
         self.validate_table_columns()
 
-
-    # validates all non-shared value table columns
-    #
-    # Returns:
-    #   bool    : true if all columns are valid, false otherwise 
     def validate_table_columns(self) -> None:
         column_data = self.data.value_table.nonshared.column
         column_dict = db.get_table_columns()
 
         for table in self.measure.value_tables:
-            table_columns: list[dict[str, str]] | None \
-                = column_dict.get(table.api_name)
+            table_columns = column_dict.get(table.api_name)
             if table_columns == None:
                 continue
 
@@ -80,8 +122,8 @@ class MeasureParser:
                 if column_info == None:
                     continue
 
-                name: str = column_info.get('name')
-                api_name: str | None = column_info.get('api_name')
+                name = column_info.get('name')
+                api_name = column_info.get('api_name')
                 if api_name == None:
                     continue
 
@@ -93,7 +135,7 @@ class MeasureParser:
                     continue
 
                 column = table.get_column(api_name)
-                unit: str | None = column_info.get('unit')
+                unit = column_info.get('unit')
                 if unit == None:
                     continue
 
@@ -106,9 +148,11 @@ class MeasureParser:
                             unit))
                     continue
 
-
-    # validates that all nonshared value tables have the correct standard name
     def validate_standard_table_names(self) -> None:
+        """Validates that all non-shared value tables have the correct
+        name.
+        """
+
         name_map = db.get_standard_table_names(self.measure)
         for table in self.measure.value_tables:
             std_name = name_map.get(table.api_name)
@@ -118,120 +162,103 @@ class MeasureParser:
                 self.data.value_table.nonshared.invalid_name.append(
                     StdValueTableNameData(table.name, std_name))
 
+    def get_missing_shared_table_names(self) -> list[str]:
+        """Returns a collection of the names of all shared lookup refs
+        that were expected but are missing.
+        """
 
-    # validates that all shared value tables names in @ordered_sha_tables
-    # correlate to a shared value table in @measure
-    #
-    # Returns:
-    #   list[str]   : the list of missing shared value tables,
-    #                 returns an empty list if all tables are valid 
-    def validate_shared_table_existence(self) -> list[str]:
         missing_tables: list[str] = []
         for table in self.ordered_sha_tables:
             if not self.measure.contains_shared_table(table):
                 missing_tables.append(table)
         return missing_tables
 
+    def get_missing_value_table_names(self) -> list[str]:
+        """Returns a collection of the names of all value tables that
+        were expected but are missing.
+        """
 
-    # validates that all non-shared value tables names in
-    # @ordered_val_tables correlate to a non-shared value table in
-    # @measure
-    #
-    # Returns:
-    #   list[str]   : the list of missing non-shared value tables,
-    #                 returns an empty list if all tables are valid 
-    def validate_value_table_existence(self) -> list[str]:
         missing_tables: list[str] = []
         for table in self.ordered_val_tables:
             if not self.measure.contains_value_table(table):
                 missing_tables.append(table)
         return missing_tables
 
+    def get_missing_parameter_names(self) -> list[str]:
+        """Returns a collection of the names of all shared determinant
+        refs that were expected but are missing.
+        """
 
-    # validates that all parameter names in @ordered_params correlates
-    # to a parameter in @measure
-    #
-    # Returns
-    #   list[str]: the list of parameter names associated with all missing
-    #              shared parameters
-    def validate_param_existence(self) -> list[str]:
         missing_params: list[str] = []
         for param in self.ordered_params:
-            if not self.measure.contains_param(param):
+            if not self.measure.contains_parameter(param):
                 missing_params.append(param)
         return missing_params
 
+    def get_unordered_parameter_names(self) -> list[str]:
+        """Returns a collection of the names of all shared determinant
+        refs that are out of order.
+        """
 
-    def validate_param_order(self) -> list[str]:
-        unordered_params: list[str] = []
-        ordered_params: list[str] = list(
-            filter(lambda name: self.measure.contains_param(name),
-                   self.ordered_params))
-        param_names: list[str] = list(
-            map(lambda param: param.version.version_string,
-                self.measure.shared_parameters))
-        index: int = 0
-        while index < len(param_names):
-            param: str = param_names[index]
-            ordered_param: str = ordered_params[index]
-            if (param != ordered_param
-                    and ordered_param not in unordered_params):
-                unordered_params.append(ordered_param)
-                param_names.remove(ordered_param)
-                ordered_params.remove(ordered_param)
-                index = 0
-                continue
-            index = index + 1
+        ordered_params = list(
+            filter(
+                lambda name: self.measure.contains_parameter(name),
+                self.ordered_params
+            )
+        )
 
-        return unordered_params
+        parameters = self.get_known_parameters()
+        parameters.sort(key=lambda ref: ref.order)
+        return list(
+            set(ordered_params).symmetric_difference(
+                map(
+                    lambda parameter: parameter.name,
+                    parameters
+                )
+            )
+        )
 
+    def get_unordered_value_table_names(self) -> list[str]:
+        """Returns a collection of the names of all non-shared value
+        tables that are out of order.
+        """
 
-    def validate_value_table_order(self) -> list[str]:
-        unordered_tables: list[str] = []
-        ordered_tables: list[str] = list(
-            filter(lambda name: self.measure.contains_value_table(name),
-                   self.ordered_val_tables))
-        table_names: list[str] = list(
-            map(lambda table: table.api_name, self.measure.value_tables))
-        index: int = 0
-        while index < len(table_names):
-            table: str = table_names[index]
-            ordered_table: str = ordered_tables[index]
-            if (table != ordered_table
-                    and ordered_table not in unordered_tables):
-                unordered_tables.append(ordered_table)
-                table_names.remove(ordered_table)
-                ordered_tables.remove(ordered_table)
-                index = 0
-                continue
-            index = index + 1
+        ordered_table_names = list(
+            filter(
+                lambda name: self.measure.contains_value_table(name),
+                self.ordered_val_tables
+            )
+        )
 
-        return unordered_tables
+        value_tables = self.get_known_value_tables()
+        value_tables.sort(key=lambda table: table.order)
+        return list(
+            set(ordered_table_names).symmetric_difference(
+                map(
+                    lambda table: table.name,
+                    value_tables
+                )
+            )
+        )
 
+    def get_unordered_shared_table_names(self) -> list[str]:
+        ordered_table_names = list(
+            filter(
+                lambda name: self.measure.contains_shared_table(name),
+                self.ordered_sha_tables
+            )
+        )
 
-    def validate_shared_table_order(self) -> list[str]:
-        unordered_tables: list[str] = []
-        ordered_tables: list[str] = list(
-            filter(lambda name: self.measure.contains_shared_table(name),
-                   self.ordered_sha_tables))
-        table_names: list[str] = list(
-            map(lambda table: table.version.version_string,
-                self.measure.shared_tables))
-        index: int = 0
-        while index < len(table_names):
-            table: str = table_names[index]
-            ordered_table: str = ordered_tables[index]
-            if (table != ordered_table
-                    and ordered_table not in unordered_tables):
-                unordered_tables.append(ordered_table)
-                table_names.remove(ordered_table)
-                ordered_tables.remove(ordered_table)
-                index = 0
-                continue
-            index = index + 1
-
-        return unordered_tables
-
+        lookup_refs = self.get_known_shared_tables()
+        lookup_refs.sort(key=lambda ref: ref.order)
+        return list(
+            set(ordered_table_names).symmetric_difference(
+                map(
+                    lambda table: table.name,
+                    lookup_refs
+                )
+            )
+        )
 
     # validates that all permutations have a valid mapped name
     def validate_permutations(self) -> None:
@@ -248,7 +275,6 @@ class MeasureParser:
                             valid_names))
             except MeasureContentError as err:
                 self.data.permutation.unexpected.append(err.name)
-
 
     # returns the valid name for @permutation
     #
@@ -272,11 +298,11 @@ class MeasureParser:
         get_value_table: function = self.measure.get_value_table
         match reporting_name:
             case 'BaseCase2nd':
-                if ('AR' in get_param('MeasAppType').labels):
+                if ('AR' in get_param('MeasAppType').active_labels):
                     valid_name = 'measOffer__descBase2'
             
             case 'Upstream_Flag':
-                if ('UpDeemed' in get_param('DelivType').labels):
+                if ('UpDeemed' in get_param('DelivType').active_labels):
                     valid_name = 'upstreamFlag__upstreamFlag'
 
             case 'WaterUse':
@@ -292,7 +318,7 @@ class MeasureParser:
                     valid_name = 'emergingTech__introYear'
 
             case 'RUL_Yrs':
-                mat_labels: list[str] = get_param('MeasAppType').labels
+                mat_labels: list[str] = get_param('MeasAppType').active_labels
                 if ('AR' in mat_labels):
                     if (len(mat_labels) == 1):
                         valid_name = 'hostEulAndRul__RUL_Yrs'
@@ -309,7 +335,6 @@ class MeasureParser:
                         'restrictPermFlag']
 
         return [valid_name]
-
 
     # validates that all exclusion tables follow the following
     #   1. There are no whitespaces in the table name
@@ -328,32 +353,47 @@ class MeasureParser:
             if name.count('-') != (len(params) - 1):
                 exclusion_data.hyphen.append(name)
 
+    def parse_characterization(self,
+                               characterization: Characterization
+                              ) -> None:
+        self.characterization_parser.parse(characterization)
 
     # calls the characterization parser to parse each characterization
     # in @measure
     def parse_characterizations(self) -> None:
-        parser = CharacterizationParser(self.data.characterization)
-        for char_name in db.get_all_characterization_names():
-            if self.measure.get_characterization(char_name) == None:
-                self.data.characterization[char_name].missing = True
         for characterization in self.measure.characterizations:
-            print(f'\tparsing {characterization.name}')
-            parser.parse(characterization)
+            self.characterization_parser.parse(characterization)
 
-
-    def log_output(self, out_file: str | None=None) -> None:
+    def log_output(self,
+                   out_file: str | None=None,
+                   override: bool=False
+                  ) -> None:
         """Specifies the control flow for logging parsed measure data."""
 
         out: str | None = None
         if out_file is None:
             print('\n')
-        elif not os.path.exists(out_file):
-            raise ParserError(f'Invalid file path: {out_file}')
         else:
-            out = out_file
+            out_dir, file_name = os.path.split(out_file)
+            if not os.path.exists(out_dir):
+                raise ParserError(
+                    f'Invalid File Path: directory {out_dir} does not exist'
+                )
+            elif os.path.exists(out_file) and not override:
+                raise ParserError(
+                    f'Invalid File Path: a file named {file_name} already'
+                    f' exists at {out_dir}'
+                )
+            else:
+                out = out_file
 
         if self.data == None:
             raise ParserError('Parser data is required to log output')
 
-        with MeasureDataLogger(self.measure, out) as _logger:
-            _logger.log_data()
+        try:
+            with MeasureDataLogger(self.measure, out) as _logger:
+                _logger.log_data(self.data)
+        except:
+            if out is not None and os.path.exists(out_file):
+                os.remove(out_file)
+            raise

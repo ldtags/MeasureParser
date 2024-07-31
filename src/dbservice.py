@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 
 from src import resources
 from src.etrm.models import Measure
@@ -39,7 +39,7 @@ def get_param_api_names(measure: Measure | None = None) -> list[str]:
     # measure specific post-processing
     if measure != None:
         if (measure.is_interactive()
-                and not measure.contains_param('LightingType')):
+                and not measure.contains_parameter('LightingType')):
             param_names.remove('LightingType')
 
     return listify(response)
@@ -293,8 +293,12 @@ def get_permutation_names() -> list[str]:
     return listify(response)
 
 
-def get_all_characterization_names() -> list[str]:
-    query = 'SELECT name FROM characterizations'
+def get_all_characterization_names(source: Literal['json', 'etrm']
+                                  ) -> list[str]:
+    query = ('SELECT name'
+        ' FROM characterizations'
+       f' WHERE source = \"{source}\"'
+    )
     cursor.execute(query)
     response: list[tuple[str,]] = cursor.fetchall()
     return listify(response)

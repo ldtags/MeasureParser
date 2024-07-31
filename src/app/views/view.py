@@ -4,6 +4,7 @@ from ctypes import windll
 from src.app.views.root import Root
 from src.app.views.home import HomePage
 from src.app.views.progress import ProgressPage
+from src.app.views.results import ResultsPage
 from src.app.widgets import Page
 from src.app.exceptions import (
     GUIError
@@ -25,10 +26,12 @@ class View:
         self.root = Root()
         self.home = HomePage(self.root.container, self.root)
         self.progress = ProgressPage(self.root.container, self.root)
+        self.results = ResultsPage(self.root.container, self.root)
 
         self.pages: dict[str, Page] = {
             HomePage.key: self.home,
-            ProgressPage.key: self.progress
+            ProgressPage.key: self.progress,
+            ResultsPage.key: self.results
         }
 
     def show(self, page_name: str) -> None:
