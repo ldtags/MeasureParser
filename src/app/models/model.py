@@ -2,6 +2,7 @@ from typing import Literal
 
 from src.app.models.home import HomeModel
 from src.etrm import sanitizers
+from src.parserdata import ParserData
 
 
 class Model:
@@ -17,6 +18,7 @@ class Model:
         self.measure_source: Literal['etrm', 'json'] | None = None
         self.measure_file_path: str | None = None
         self.output_file_path: str | None = None
+        self.parser_data: ParserData | None = None
 
     @property
     def api_key(self) -> str | None:

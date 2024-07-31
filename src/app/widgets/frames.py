@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 
 from .misc import Widget
+from .labels import Label
 
 
 class Frame(Widget):
@@ -60,8 +61,30 @@ class ScrollableFrame(Frame):
 
         self.items: list[ttk.Label] = []
 
+        style = ttk.Style(self)
+        style.layout(
+            'Vertical.TScrollbar', 
+            [
+                (
+                    'Vertical.Scrollbar.trough',
+                    {
+                        'children': [
+                            (
+                                'Vertical.Scrollbar.thumb', 
+                                {
+                                    'expand': '1', 
+                                    'sticky': 'nswe'
+                                }
+                            )
+                        ],
+                        'sticky': 'ns'
+                    }
+                )
+            ]
+        )
         self.vscrollbar = ttk.Scrollbar(self,
-                                        orient=tk.VERTICAL)
+                                        orient=tk.VERTICAL,
+                                        style='Vertical.TScrollbar')
         if scrollbar:
             self.vscrollbar.pack(fill=tk.Y,
                                  side=tk.RIGHT,
@@ -81,7 +104,8 @@ class ScrollableFrame(Frame):
         canvas.xview_moveto(0)
         canvas.yview_moveto(0)
 
-        self.interior = interior = Frame(canvas)
+        self.interior = interior = Frame(canvas,
+                                         bg=canvas['bg'])
         self.interior_id = canvas.create_window(0,
                                                 0,
                                                 window=interior,
@@ -112,6 +136,7 @@ class ScrollableFrame(Frame):
         if self.items == []:
             return False
 
+        self.items[-1].update()
         final_y_pos = self.items[-1].winfo_y()
         final_height = self.items[-1].winfo_reqheight()
         canvas_height = self.canvas.winfo_reqheight()
@@ -135,14 +160,15 @@ class ScrollableFrame(Frame):
         super().update()
 
     def add(self, text: str) -> None:
-        label = ttk.Label(self.interior,
-                          text=text,
-                          background=self.canvas['bg'],
-                          padding=self.padding)
+        label = Label(self.interior,
+                      text=text,
+                      background=self.canvas['bg'])
         label.pack(side=tk.TOP,
                    anchor=tk.NW,
                    fill=tk.X,
-                   expand=tk.FALSE)
+                   expand=tk.FALSE,
+                   padx=(self.padding, self.padding),
+                   pady=(self.padding, self.padding))
 
         self.items.append(label)
         self.update()

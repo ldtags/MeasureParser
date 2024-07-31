@@ -29,7 +29,8 @@ class Label(Widget):
 
         # defaults for optional args that rely on the parent object
         try:
-            self.config(bg=bg or parent['bg'])
+            bg = bg or parent['bg']
+            self.config(bg=bg)
         except TypeError:
             pass
 
