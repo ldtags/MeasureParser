@@ -17,6 +17,7 @@ dist/
 # Output
 out.txt
 output-*.txt
+outputs/
 
 # Database
 database.db-journal
