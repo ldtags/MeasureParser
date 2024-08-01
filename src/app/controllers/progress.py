@@ -116,5 +116,5 @@ class ProgressController:
         self.root_view.show(ResultsPage.key)
 
     def __bind_controls(self) -> None:
-        self.view.controls_frame.back_btn.config(command=self.handle_back)
-        self.view.controls_frame.cont_btn.config(command=self.handle_continue)
+        self.view.controls_frame.back_btn.set_command(self.handle_back)
+        self.view.controls_frame.cont_btn.set_command(self.handle_continue)

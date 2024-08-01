@@ -11,4 +11,4 @@ class ResultsController:
 
     def __bind_controls(self) -> None:
         controls = self.view.controls_frame
-        controls.close_btn.config(command=self.root_view.close)
+        controls.close_btn.set_command(self.root_view.close)

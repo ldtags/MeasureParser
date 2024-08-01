@@ -8,6 +8,8 @@ class Label(Widget):
     def __init__(self,
                  parent: tk.Misc,
                  justify: Literal['left', 'center', 'right']='left',
+                 text_color: str='black',
+                 variable: tk.StringVar | None=None,
                  bg: str | None=None,
                  **kwargs):
         self.parent = parent
@@ -21,7 +23,9 @@ class Label(Widget):
 
         kw = {
             'justify': justify,
-            'anchor': anchor
+            'anchor': anchor,
+            'fg': text_color,
+            'textvariable': variable
         }
         for key, val in kwargs.items():
             kw[key] = val

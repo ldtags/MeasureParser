@@ -35,7 +35,7 @@ class Entry(Widget):
                  placeholder_color: str='grey',
                  text: str | None=None,
                  text_color: str='black',
-                 relief: str=tk.SOLID,
+                 relief: str=tk.FLAT,
                  border_width: float=1,
                  border_color: str='#adadad',
                  font: tuple[str, int, str | None]=fonts.BODY,
@@ -59,7 +59,7 @@ class Entry(Widget):
             font,
             **kwargs
         )
-        self.entry.pack(side=tk.TOP,
+        self.entry.pack(side=tk.RIGHT,
                         anchor=tk.NW,
                         fill=tk.BOTH,
                         expand=tk.TRUE)
@@ -71,9 +71,6 @@ class Entry(Widget):
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
-
-    def configure(self, **kw) -> None:
-        self.entry.configure(**kw)
 
     def delete(self, first: str | int, last: str | int | None=None) -> None:
         """Delete text from FIRST to LAST (not included)."""
@@ -94,15 +91,31 @@ class Entry(Widget):
         """Return position of cursor."""
 
         return self.entry.tk.getint(
-            self.entry.tk.call(
-                self.entry._w, 'index', index
-            )
+            self.entry.tk.call(self.entry._w, 'index', index)
         )
 
     def insert(self, index: int, string: str) -> None:
         """Insert STRING at INDEX."""
 
         self.entry.tk.call(self.entry._w, 'insert', index, string)
+
+    def disable(self) -> None:
+        self.config(cursor='arrow')
+        self.entry.config(
+            cursor='arrow',
+            state=tk.DISABLED
+        )
+
+    def enable(self) -> None:
+        self.config(cursor='xterm')
+        self.entry.config(
+            cursor='xterm',
+            state=tk.NORMAL
+        )
+
+    def clear(self) -> None:
+        self.delete(0, tk.END)
+        self.put_placeholder()
 
     def put_placeholder(self) -> None:
         if self.placeholder:
@@ -123,6 +136,9 @@ class Entry(Widget):
             self.delete(0, tk.END)
             self.entry['fg'] = self.text_color
             self.insert(0, text)
+
+    def set_validator(self, validate: str, command: tuple[str, str]) -> None:
+        self.entry.config(validate=validate, validatecommand=command)
 
 
 class FileNameEntry(Entry):
@@ -162,7 +178,7 @@ class FileNameEntry(Entry):
         self.icursor(index)
 
 
-class FileEntry(Widget):
+class FileEntry(Entry):
     """Custom widget that opens either a file or directory dialog."""
     def __init__(self,
                  parent: tk.Widget,
@@ -174,7 +190,13 @@ class FileEntry(Widget):
                  font=fonts.BODY,
                  textvariable: tk.Variable | None=None,
                  **kwargs):
-        Widget.__init__(self, parent, 'frame', kw=kwargs)
+        Entry.__init__(
+            self,
+            parent,
+            text=text,
+            font=font,
+            **kwargs
+        )
 
         self.types = types
         self.file_type = file_type
@@ -188,18 +210,7 @@ class FileEntry(Widget):
                                bg=self['bg'])
             self.label.pack(side=tk.LEFT,
                             anchor=tk.NE,
-                            padx=(0, 5),
-                            pady=(0, 0))
-
-        self.entry = Entry(self,
-                           text=text,
-                           font=font)
-        self.entry.pack(side=tk.LEFT,
-                        anchor=tk.N,
-                        fill=tk.BOTH,
-                        expand=True,
-                        padx=(0, 0),
-                        pady=(0, 0))
+                            padx=(0, 5))
 
         if textvariable:
             self.entry.config(textvariable=textvariable)
@@ -213,10 +224,21 @@ class FileEntry(Widget):
                              highlightcolor='grey',
                              highlightthickness=1,
                              command=self.open_dialog)
-        self.button.pack(side=tk.LEFT,
+        self.button.pack(side=tk.RIGHT,
                          anchor=tk.NW,
                          padx=(0, 0),
                          pady=(0, 0))
+
+    def configure(self, **kw) -> None:
+        self.entry.config(**kw)
+
+    def disable(self) -> None:
+        self.button.disable()
+        super().disable()
+
+    def enable(self) -> None:
+        self.button.enable()
+        super().enable()
 
     def open_dialog(self, *args):
         initial_file = self.file_path.get()
@@ -232,8 +254,5 @@ class FileEntry(Widget):
                                                 mustexist=True)
         if file_path != '':
             self.file_path.set(file_path)
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, file_path)
-
-    def get(self) -> str:
-        return self.entry.get()
+            self.delete(0, tk.END)
+            self.insert(0, file_path)

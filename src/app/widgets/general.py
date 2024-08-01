@@ -132,35 +132,74 @@ class OptionCheckBox(Frame):
                  **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.text_label = Label(self,
-                                text=text,
-                                font=fonts.BODY_BOLD)
-        self.text_label.pack(side=tk.TOP,
-                             anchor=tk.NW,
-                             fill=tk.X)
+        self.text_label = Label(
+            self,
+            text=text,
+            font=fonts.BODY_BOLD
+        )
+        self.text_label.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.X
+        )
 
         self.check_box_var = tk.IntVar(self, 0)
-        self.check_box = tk.Checkbutton(self,
-                                        text=sub_text,
-                                        font=fonts.BODY_SM,
-                                        justify='left',
-                                        anchor=tk.NW,
-                                        cursor='hand2',
-                                        offrelief=tk.SOLID,
-                                        variable=self.check_box_var)
-        self.check_box.pack(side=tk.TOP,
-                            anchor=tk.NW)
+        self.check_box = tk.Checkbutton(
+            self,
+            text=sub_text,
+            font=fonts.BODY_SM,
+            justify='left',
+            anchor=tk.NW,
+            cursor='hand2',
+            offrelief=tk.SOLID,
+            variable=self.check_box_var
+        )
+        self.check_box.pack(
+            side=tk.TOP,
+            anchor=tk.NW
+        )
 
         self.bind('<Configure>', self.__wrap)
 
-    def __wrap(self, *args):
-        self.check_box.config(wraplength=self.parent.winfo_width() / 3 - 20)
+    @property
+    def state(self) -> Literal['normal', 'disabled', 'active']:
+        return self.check_box.cget('state')
+
+    @state.setter
+    def state(self, state: Literal['normal', 'disabled', 'active']) -> None:
+        self.check_box.config(state=state)
+
+    def __wrap(self, *args) -> None:
+        self.update()
+        self.check_box.config(wraplength=self.winfo_width())
+
+    def disable(self) -> None:
+        self.check_box.config(
+            state=tk.DISABLED,
+            cursor='arrow'
+        )
+
+    def enable(self) -> None:
+        self.check_box.config(
+            state=tk.NORMAL,
+            cursor='hand2'
+        )
 
     def set_command(self, func: Callable[[], None]) -> None:
         self.check_box.config(command=lambda _=None: func())
+
+    def configure(self, **kw) -> None:
+        self.check_box.configure(**kw)
 
     def get(self) -> bool:
         val = self.check_box_var.get()
         if val == 1:
             return True
         return False
+
+    def set(self, state: bool) -> None:
+        if state:
+            _state = 1
+        else:
+            _state = 0
+        self.check_box_var.set(_state)

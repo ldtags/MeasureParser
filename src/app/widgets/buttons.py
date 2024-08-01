@@ -50,7 +50,6 @@ class Button(Widget):
                  cursor: str='hand2',
                  command: Callable[[tk.Event], None] | None=None,
                  font: tuple=fonts.BODY,
-                 events=None,
                  **kwargs):
         """Construct a button widget with the parent MASTER.
 
@@ -96,13 +95,29 @@ class Button(Widget):
                           fill=tk.BOTH,
                           expand=tk.TRUE)
 
-        if command:
-            self.bind('<Button-1>', command)
+        self.command = command
+        if command is not None:
+            self.set_command(command)
 
-    def configure(self, **kw) -> None:
-        self._button.configure(**kw)
+    def disable(self) -> None:
+        self.configure(cursor='arrow')
+        self.unbind('<Button-1>')
+        self._button.configure(
+            cursor='arrow',
+            state=tk.DISABLED
+        )
 
-    def invoke(self):
+    def enable(self) -> None:
+        self.configure(cursor='hand2')
+        if self.command is not None:
+            self.bind('<Button-1>', lambda _: self.command())
+
+        self._button.configure(
+            cursor='hand2',
+            state=tk.NORMAL
+        )
+
+    def invoke(self) -> None:
         """Invoke the command associated with the button.
 
         The return value is the return value from the command,
@@ -113,7 +128,7 @@ class Button(Widget):
 
         return self._button.tk.call(self._button._w, 'invoke')
 
-    def flash(self):
+    def flash(self) -> None:
         """Flash the button.
 
         This is accomplished by redisplaying
@@ -126,8 +141,19 @@ class Button(Widget):
 
         self._button.tk.call(self._button._w, 'flash')
 
-    def set_state(self, state):
-        self.configure(state=state)
+    def set_state(self,
+                  state: Literal['normal', 'disabled', 'active']
+                 ) -> None:
+        self._button.configure(state=state)
 
-    def set_command(self, command):
-        self.configure(command=command)
+    def set_command(self, command: Callable[[], None]) -> None:
+        self.command = command
+        self.bind('<Button-1>', lambda _: command())
+        self._button.configure(command=command)
+
+    def remove_command(self) -> None:
+        if self.command is None:
+            return
+
+        self.unbind('<Button-1>')
+        self._button.configure(command=None)
