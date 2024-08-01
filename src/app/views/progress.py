@@ -36,7 +36,8 @@ class ProgressPage(Page):
                               fill=tk.X)
 
         self.log_frame = ScrollableFrame(self,
-                                         canvas_bg='#ffffff')
+                                         canvas_bg='#ffffff',
+                                         scrollbar=True)
         self.log_frame.pack(side=tk.TOP,
                             anchor=tk.NW,
                             fill=tk.BOTH,

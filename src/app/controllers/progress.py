@@ -3,27 +3,39 @@ import os
 import json
 from typing import Callable, TypeVar
 
+from src.app.enums import MeasureSource
 from src.app.views import View, HomePage, ResultsPage
 from src.app.models import Model
 from src.etrm.models import Measure
 from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
+from src.logger import MeasureDataLogger
+from src.parserdata import ParserData
 
 
 _T = TypeVar('_T')
 _DEC_TYPE = Callable[..., _T]
+_DEC_WRAPPER_TYPE = Callable[[_DEC_TYPE], _DEC_TYPE]
 
 
-def parser_function(log: str | None=None) -> Callable[[_DEC_TYPE], _DEC_TYPE]:
-    def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
-        def wrapper(self: ProgressController, *args, **kwargs):
-            self.view.log_frame.add(log)
-            value = func(self, *args, **kwargs)
-            progress = self.view.controls_frame.progress_var.get()
-            self.view.controls_frame.progress_var.set(progress + 100)
-            return value
-        return wrapper
-    return decorator
+def make_parser_decorator() -> Callable[[str | None], _DEC_WRAPPER_TYPE]:
+    registry: dict[str, _DEC_TYPE] = {}
+    def arg_wrapper(log: str | None=None) -> _DEC_WRAPPER_TYPE:
+        def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
+            registry[func.__name__] = func
+            def wrapper(self: ProgressController, *args, **kwargs):
+                self.view.log_frame.add(log)
+                value = func(self, *args, **kwargs)
+                progress = self.view.controls_frame.progress_var.get()
+                self.view.controls_frame.progress_var.set(progress + 100)
+                return value
+            return wrapper
+        return decorator
+    arg_wrapper.all = registry
+    return arg_wrapper
+
+
+parser_function = make_parser_decorator()
 
 
 class ProgressController:
@@ -34,27 +46,79 @@ class ProgressController:
         self.model = model
         self.__bind_controls()
 
-    def get_etrm_measure(self) -> Measure:
-        @parser_function(f'Retrieving measure {self.model.measure_id}')
-        def get_measure(*args) -> Measure:
-            connection = ETRMConnection(self.model.api_key)
-            measure = connection.get_measure(self.model.measure_id)
-            return measure
+    @parser_function('Logging measure details')
+    def log_measure_details(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_measure_details()
 
-        measure = get_measure(self)
-        return measure
+    @parser_function('Logging parameter data')
+    def log_parameter_data(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_parameter_data()
 
-    def get_json_measure(self) -> Measure:
-        _, file_name = os.path.split(self.model.measure_file_path)
-        @parser_function(f'Retrieving measure from {file_name}')
-        def get_measure(*args) -> Measure:
-            with open(self.model.measure_file_path, 'r') as fp:
-                measure_json = json.load(fp)
-            measure = Measure(measure_json, source='json')
-            return measure
+    @parser_function('Logging exclusion table data')
+    def log_exclusion_table_data(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_exclusion_table_data()
 
-        measure = get_measure(self)
-        return measure
+    @parser_function('Logging value table data')
+    def log_value_table_data(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_value_table_data()
+
+    @parser_function('Logging value tables')
+    def log_value_tables(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_value_tables()
+
+    @parser_function('Logging calculations')
+    def log_calculations(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_calculations()
+
+    @parser_function('Logging permutations')
+    def log_permutations(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_permutations()
+
+    @parser_function('Logging characterization data')
+    def log_characterization_data(self, _logger: MeasureDataLogger) -> None:
+        _logger.log_characterization_data()
+
+    @parser_function('Logging output')
+    def log_output(self,
+                   file_path: str,
+                   data: ParserData,
+                   measure: Measure
+                  ) -> None:
+        out_dir, file_name = os.path.split(file_path)
+        if not os.path.exists(out_dir):
+            self.view.log_frame.add(
+                text=f'Invalid File Path: directory {out_dir} does not exist',
+                fg='#ff0000'
+            )
+            return
+
+        if os.path.exists(file_path) and not self.model.home.override_file:
+            self.view.log_frame.add(
+                text=f'Invalid File Path: a file named {file_name} already'
+                    f' exists at {out_dir}',
+                fg='#ff0000'
+            )
+            return
+
+        try:
+            with MeasureDataLogger(measure, file_path, data) as _logger:
+                self.log_measure_details(_logger)
+                self.log_parameter_data(_logger)
+                self.log_exclusion_table_data(_logger)
+                self.log_value_table_data(_logger)
+                self.log_value_tables(_logger)
+                self.log_calculations(_logger)
+                if self.model.home.validate_permutations:
+                    self.log_permutations(_logger)
+                self.log_characterization_data(_logger)
+        except Exception as err:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            self.view.log_frame.add(
+                text=str(err),
+                fg='#ff0000'
+            )
+            return
 
     @parser_function('Validating parameters')
     def parse_parameters(self, parser: MeasureParser) -> None:
@@ -78,32 +142,59 @@ class ProgressController:
             self.view.log_frame.add(f'Parsing {characterization.name}')
             parser.parse_characterization(characterization)
 
-    @parser_function('Logging output')
-    def log_output(self, parser: MeasureParser) -> None:
-        parser.log_output(
-            self.model.output_file_path,
-            self.model.home.override_file
-        )
+    def get_etrm_measure(self) -> Measure:
+        @parser_function(f'Retrieving measure {self.model.measure_id}')
+        def get_measure(*args) -> Measure:
+            connection = ETRMConnection(self.model.api_key)
+            measure = connection.get_measure(self.model.measure_id)
+            return measure
+
+        measure = get_measure(self)
+        return measure
+
+    def get_json_measure(self) -> Measure:
+        _, file_name = os.path.split(self.model.measure_file_path)
+        @parser_function(f'Retrieving measure from {file_name}')
+        def get_measure(*args) -> Measure:
+            with open(self.model.measure_file_path, 'r') as fp:
+                measure_json = json.load(fp)
+            measure = Measure(measure_json, source='json')
+            return measure
+
+        measure = get_measure(self)
+        return measure
 
     def parse(self) -> None:
         self.view.controls_frame.cont_btn.set_state('disabled')
         self.view.controls_frame.back_btn.set_state('disabled')
-        self.view.controls_frame.progress_bar.config(maximum=701)
+        progress_max = len(parser_function.all) * 100
+        if not self.model.home.validate_permutations:
+            progress_max -= 200
+        self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
 
-        if self.model.measure_source == 'etrm':
+        if self.model.measure_source == MeasureSource.ETRM:
             measure = self.get_etrm_measure()
-        elif self.model.measure_source == 'json':
+        elif self.model.measure_source == MeasureSource.JSON:
             measure = self.get_json_measure()
         else:
-            raise RuntimeError('Input validation failed')
+            self.view.log_frame.add(
+                text='Input validation failed, no measure source detected',
+                fg='#ff0000'
+            )
+            return
 
         parser = MeasureParser(measure)
         self.parse_parameters(parser)
         self.parse_value_tables(parser)
         self.parse_exclusion_tables(parser)
-        self.parse_permutations(parser)
+        if self.model.home.validate_permutations:
+            self.parse_permutations(parser)
         self.parse_characterizations(parser)
-        self.log_output(parser)
+        self.log_output(
+            self.model.output_file_path,
+            parser.data,
+            parser.measure
+        )
 
         self.view.controls_frame.progress_bar.config(maximum=0)
         self.view.controls_frame.cont_btn.set_state('normal')

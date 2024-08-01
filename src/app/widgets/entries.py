@@ -48,6 +48,9 @@ class Entry(Widget):
         }
         Widget.__init__(self, parent, 'frame', cnf={}, kw=kw)
 
+        assert text_color != placeholder_color
+
+        self.is_placeholder = False
         self.placeholder = placeholder
         self.placeholder_color = placeholder_color
         self.text_color = text_color
@@ -118,21 +121,25 @@ class Entry(Widget):
         self.put_placeholder()
 
     def put_placeholder(self) -> None:
-        if self.placeholder:
+        if self.placeholder is not None:
+            self.is_placeholder = True
             self.insert(0, self.placeholder)
             self.entry['fg'] = self.placeholder_color
 
     def focus_in(self, event: tk.Event) -> None:
-        if self.placeholder and self.entry['fg'] == self.placeholder_color:
+        if (self.placeholder is not None
+                and self.entry['fg'] == self.placeholder_color):
+            self.is_placeholder = False
             self.delete(0, tk.END)
             self.entry['fg'] = self.text_color
 
     def focus_out(self, event: tk.Event) -> None:
-        if self.placeholder and not self.get():
+        if self.placeholder is not None and self.get() == '':
             self.put_placeholder()
 
     def set_text(self, text: str) -> None:
-        if self.placeholder and self.entry['fg'] == self.placeholder_color:
+        if (self.placeholder is not None
+                and self.entry['fg'] == self.placeholder_color):
             self.delete(0, tk.END)
             self.entry['fg'] = self.text_color
             self.insert(0, text)

@@ -159,10 +159,20 @@ class ScrollableFrame(Frame):
                                  expand=tk.FALSE)
         super().update()
 
-    def add(self, text: str) -> None:
+    def add(self, text: str, **kwargs) -> None:
+        bg = self.canvas['bg']
+        try:
+            bg = kwargs['bg']
+        except KeyError:
+            pass
+        try:
+            bg = kwargs['background']
+        except KeyError:
+            pass
+        kwargs['bg'] = bg
         label = Label(self.interior,
                       text=text,
-                      background=self.canvas['bg'])
+                      **kwargs)
         label.pack(side=tk.TOP,
                    anchor=tk.NW,
                    fill=tk.X,

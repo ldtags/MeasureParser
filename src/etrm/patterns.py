@@ -57,7 +57,7 @@ If a match is found, the string contains invalid characters.
 """
 
 
-__VRSN_WHITELIST = r'[^A-Za-z0-9\-]'
+__VRSN_WHITELIST = r'[^A-Za-z0-9-]'
 VERSION_WHITELIST = re.compile(__VRSN_WHITELIST)
 """eTRM Connection Measure Version Whitelist RegEx Pattern
 

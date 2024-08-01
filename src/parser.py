@@ -364,36 +364,27 @@ class MeasureParser:
         for characterization in self.measure.characterizations:
             self.characterization_parser.parse(characterization)
 
-    def log_output(self,
-                   out_file: str | None=None,
-                   override: bool=False
-                  ) -> None:
+    def log_output(self, out_file: str, override: bool=False) -> None:
         """Specifies the control flow for logging parsed measure data."""
 
-        out: str | None = None
-        if out_file is None:
-            print('\n')
-        else:
-            out_dir, file_name = os.path.split(out_file)
-            if not os.path.exists(out_dir):
-                raise ParserError(
-                    f'Invalid File Path: directory {out_dir} does not exist'
-                )
-            elif os.path.exists(out_file) and not override:
-                raise ParserError(
-                    f'Invalid File Path: a file named {file_name} already'
-                    f' exists at {out_dir}'
-                )
-            else:
-                out = out_file
+        out_dir, file_name = os.path.split(out_file)
+        if not os.path.exists(out_dir):
+            raise ParserError(
+                f'Invalid File Path: directory {out_dir} does not exist'
+            )
+        elif os.path.exists(out_file) and not override:
+            raise ParserError(
+                f'Invalid File Path: a file named {file_name} already'
+                f' exists at {out_dir}'
+            )
 
         if self.data == None:
             raise ParserError('Parser data is required to log output')
 
         try:
-            with MeasureDataLogger(self.measure, out) as _logger:
+            with MeasureDataLogger(self.measure, out_file) as _logger:
                 _logger.log_data(self.data)
         except:
-            if out is not None and os.path.exists(out_file):
+            if os.path.exists(out_file):
                 os.remove(out_file)
             raise

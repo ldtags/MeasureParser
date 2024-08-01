@@ -61,38 +61,43 @@ class SourceController:
         self.__bind_entry_validations()
 
     def validate_api_key_entry(self, text: str) -> bool:
+        if text == '':
+            return True
+
         re_match = re.search(patterns.VERSION_WHITELIST, text)
-        if re_match is not None:
+        if re_match is None:
             return True
         return False
 
     def disable_etrm_source(self, text: str) -> bool:
-        source = self.view.source_frame.etrm_frame
+        source = self.view.source_frame
+        text = source.json_frame.file_entry.get()
         if text != '':
-            source.api_key_entry.disable()
-            source.measure_entry.disable()
+            source.etrm_frame.api_key_entry.disable()
+            source.etrm_frame.measure_entry.disable()
         else:
-            source.api_key_entry.enable()
-            source.measure_entry.enable()
+            source.etrm_frame.api_key_entry.enable()
+            source.etrm_frame.measure_entry.enable()
         return True
 
     def disable_json_source(self, text: str) -> bool:
         if not self.validate_api_key_entry(text):
             return False
 
-        source = self.view.source_frame.json_frame
+        source = self.view.source_frame
         checkboxes = self.view.output_frame.checkbox_options
-        if text != '':
-            source.file_entry.disable()
-            checkboxes.validate_permutations.config(
-                state=tk.DISABLED,
-                cursor='arrow'
-            )
-        else:
-            source.file_entry.enable()
+        is_placeholder = source.etrm_frame.measure_entry.is_placeholder
+        if text == '' or is_placeholder:
+            source.json_frame.file_entry.enable()
             checkboxes.validate_permutations.config(
                 state=tk.NORMAL,
                 cursor='hand2'
+            )
+        else:
+            source.json_frame.file_entry.disable()
+            checkboxes.validate_permutations.config(
+                state=tk.DISABLED,
+                cursor='arrow'
             )
         return True
 
@@ -101,13 +106,13 @@ class SourceController:
         json_reg = self.root.register(self.disable_etrm_source)
         sources.json_frame.file_entry.set_validator(
             validate='key',
-            command=(json_reg, '%P')
+            command=(json_reg, r'%P')
         )
 
         etrm_reg = self.root.register(self.disable_json_source)
         sources.etrm_frame.measure_entry.set_validator(
             validate='key',
-            command=(etrm_reg, '%P')
+            command=(etrm_reg, r'%P')
         )
 
 

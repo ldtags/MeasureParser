@@ -11,14 +11,11 @@ from src.parserdata import (
 class MeasureDataLogger:
     def __init__(self,
                  measure: Measure,
-                 output_path: str | None = None):
+                 output_path: str,
+                 data: ParserData):
         self.measure = measure
-        if output_path != None:
-            self.out = open(output_path, 'w+')
-        else:
-            self.out = sys.stdout
-
-        self.data: ParserData | None = None
+        self.out = open(output_path, 'w+')
+        self.data = data
 
     def close(self):
         if self.out != None:
@@ -356,9 +353,7 @@ class MeasureDataLogger:
         if all(cd.is_empty() for cd in self.data.characterization.values()):
             self.log('\tAll characterizations are valid')
 
-    def log_data(self, data: ParserData):
-        self.data = data
-
+    def log_data(self):
         self.log_measure_details()
         self.log_parameter_data()
         self.log_exclusion_table_data()
@@ -368,5 +363,3 @@ class MeasureDataLogger:
         if self.measure.source == 'json':
             self.log_permutations()
         self.log_characterization_data()
-
-        self.data = None
