@@ -73,11 +73,24 @@ class Entry(Widget):
 
             - `border_color` specifies the color of the entry border.
 
-        Some standard Tkinter entry options have been renamed; such as:
+        Some standard Tkinter entry options have been renamed, such as:
             - `text_color` replaces `fg`
 
         If a standard Tkinter entry options that has been replaced is included
         in `kwargs`, it will override the replacement arg.
+
+        Some standard Tkinter entry methods are not currently supported, such as:
+            - `scan_dragto`
+            - `scan_mark`
+            - `select_adjust`
+            - `select_clear`
+            - `select_from`
+            - `select_present`
+            - `select_range`
+            - `select_to`
+            - `xview`
+            - `xview_moveto`
+            - `xview_scroll`
         """
 
         kw = {
@@ -218,6 +231,8 @@ class Entry(Widget):
 
 
 class FileNameEntry(Entry):
+    """Custom entry widget for restricting file name inputs."""
+
     def __init__(self,
                  parent: tk.Widget,
                  placeholder: str | None=None,
@@ -229,6 +244,16 @@ class FileNameEntry(Entry):
                  font=fonts.BODY,
                  file_ext: str='txt',
                  **kwargs):
+        """Initializes a new `FileNameEntry` instance.
+
+        Ensures that any input into this entry ends with a specified
+        file extension.
+
+        Class-specific args:
+            - `file_ext` specifies the file extension that all entry
+            input is required to end with.
+        """
+
         Entry.__init__(self,
                        parent,
                        placeholder=placeholder,
