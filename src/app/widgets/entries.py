@@ -1,3 +1,13 @@
+"""This module contains all custom entry-based Tkinter widgets."""
+
+
+__all__ = [
+    'Entry',
+    'FileNameEntry',
+    'FileEntry'
+]
+
+
 import tkinter as tk
 import tkinter.filedialog as filedialog
 from typing import Literal
@@ -9,13 +19,6 @@ from .buttons import Button
 
 from src import utils, _ROOT
 from src.app import fonts
-
-
-__all__ = [
-    'Entry',
-    'FileNameEntry',
-    'FileEntry'
-]
 
 
 class _Entry(Widget, tk.XView):
