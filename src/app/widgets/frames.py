@@ -121,13 +121,13 @@ class ScrollableFrame(Frame):
         width = self.interior.winfo_reqwidth()
         height = self.interior.winfo_reqheight()
         self.canvas.config(scrollregion=f'0 0 {width} {height}')
-        if width != self.canvas.winfo_width():
+        if width != self.canvas.winfo_reqwidth():
             self.canvas.config(width=width)
 
     def __configure_canvas(self, event: tk.Event) -> None:
-        if self.interior.winfo_reqwidth() != self.canvas.winfo_width():
-            self.canvas.itemconfigure(self.interior_id,
-                                      width=self.canvas.winfo_width())
+        canvas_width = self.canvas.winfo_width()
+        if self.interior.winfo_reqwidth() != canvas_width:
+            self.canvas.itemconfigure(self.interior_id, width=canvas_width)
 
     def __can_scroll_down(self) -> bool:
         if self.static_scrollbar:
