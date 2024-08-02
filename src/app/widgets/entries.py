@@ -78,6 +78,20 @@ class Entry(Widget, tk.XView):
 
         If a standard Tkinter entry options that has been replaced is included
         in `kwargs`, it will override the replacement arg.
+
+        New methods include:
+            - `enable` sets the state to normal and cursor type to hand2.
+
+            - `disable` sets the state to disabled and the cursor type to
+            arrow.
+
+            - `selection_all` | `select_all` selects all text within the entry
+
+            - `clear` clears all text within the entry.
+
+            - `set_text` clears and sets text within the entry.
+
+            - `set_validator` sets an input validator
         """
 
         kw = {
@@ -124,11 +138,52 @@ class Entry(Widget, tk.XView):
         if text:
             self.insert(0, text)
         elif placeholder:
-            self.put_placeholder()
+            self.__put_placeholder()
 
-        self.bind('<FocusIn>', self.focus_in)
-        self.bind('<FocusOut>', self.focus_out)
-        self.pad_frame.bind('<Button-1>', self.__on_pad_frame_click)
+        self.bind('<FocusIn>', self.__focus_in)
+        self.bind('<FocusOut>', self.__focus_out)
+        self.__bind_dynamic_events()
+
+    def __put_placeholder(self) -> None:
+        if self.placeholder is not None:
+            self.is_placeholder = True
+            self.insert(0, self.placeholder)
+            self.entry['fg'] = self.placeholder_color
+
+    def __focus_in(self, event: tk.Event) -> None:
+        if (self.placeholder is not None
+                and self.entry['fg'] == self.placeholder_color):
+            self.is_placeholder = False
+            self.delete(0, tk.END)
+            self.entry['fg'] = self.text_color
+
+    def __focus_out(self, event: tk.Event) -> None:
+        if self.placeholder is not None and self.get() == '':
+            self.__put_placeholder()
+
+    def __on_pad_frame_click(self, event: tk.Event) -> None:
+        self.entry.focus()
+        self.icursor(0)
+
+    def __on_pad_frame_double_click(self, event: tk.Event) -> None:
+        self.entry.focus()
+        self.selection_range(0, tk.END)
+
+    def __bind_dynamic_events(self) -> None:
+        self.entry.bind('<Double-Button-1>', lambda _: self.select_all())
+        self.pad_click_id = self.pad_frame.bind(
+            '<Button-1>',
+            self.__on_pad_frame_click,
+        )
+        self.pad_double_click_id = self.pad_frame.bind(
+            '<Double-Button-1>',
+            self.__on_pad_frame_double_click
+        )
+
+    def __unbind_dynamic_events(self) -> None:
+        self.entry.unbind('<Double-Button-1>')
+        self.pad_frame.unbind('<Button-1>')
+        self.pad_frame.unbind('<Double-Button-1>')
 
     def delete(self, first: str | int, last: str | int | None=None) -> None:
         """Delete text from FIRST to LAST (not included)."""
@@ -140,29 +195,29 @@ class Entry(Widget, tk.XView):
 
         return self.entry.tk.call(self.entry._w, 'get')
 
-    def icursor(self, index: int) -> None:
+    def icursor(self, index: str | int) -> None:
         """Insert cursor at INDEX."""
 
         self.entry.tk.call(self.entry._w, 'icursor', index)
 
-    def index(self, index: int) -> int:
+    def index(self, index: str | int) -> int:
         """Return position of cursor."""
 
         return self.entry.tk.getint(
             self.entry.tk.call(self.entry._w, 'index', index)
         )
 
-    def insert(self, index: int, string: str) -> None:
+    def insert(self, index: str | int, string: str) -> None:
         """Insert STRING at INDEX."""
 
         self.entry.tk.call(self.entry._w, 'insert', index, string)
 
-    def scan_mark(self, x: int) -> None:
+    def scan_mark(self, x) -> None:
         """Remember the current X, Y coordinates."""
 
         self.entry.tk.call(self.entry._w, 'scan', 'mark', x)
 
-    def scan_dragto(self, x: int) -> None:
+    def scan_dragto(self, x) -> None:
         """Adjust the view of the canvas to 10 times the
         difference between X and Y and the coordinates given in
         scan_mark.
@@ -170,7 +225,7 @@ class Entry(Widget, tk.XView):
 
         self.entry.tk.call(self.entry._w, 'scan', 'dragto', x)
 
-    def selection_adjust(self, index: int) -> None:
+    def selection_adjust(self, index: str | int) -> None:
         """Adjust the end of the selection near the cursor to INDEX."""
 
         self.entry.tk.call(self.entry._w, 'selection', 'adjust', index)
@@ -182,7 +237,7 @@ class Entry(Widget, tk.XView):
         self.entry.tk.call(self.entry._w, 'selection', 'clear')
     select_clear = selection_clear
 
-    def selection_from(self, index: int) -> None:
+    def selection_from(self, index: str | int) -> None:
         """Set the fixed end of a selection to INDEX."""
 
         self.entry.tk.call(self.entry._w, 'selection', 'from', index)
@@ -204,56 +259,43 @@ class Entry(Widget, tk.XView):
         self.entry.tk.call(self.entry._w, 'selection', 'range', start, end)
     select_range = selection_range
 
-    def selection_to(self, index: int) -> None:
+    def selection_to(self, index: str | int) -> None:
         """Set the variable end of a selection to INDEX."""
 
         self.entry.tk.call(self.entry._w, 'selection', 'to', index)
     select_to = selection_to
 
+    def selection_all(self) -> None:
+        """Set the selection to include all text."""
+
+        self.selection_range(0, tk.END)
+    select_all = selection_all
+
     def disable(self) -> None:
-        # self.config(cursor='arrow')
         self.entry.config(
             cursor='arrow',
             state=tk.DISABLED
         )
-        self.pad_frame.unbind('<Button-1>')
         self.pad_frame.config(
             cursor='arrow',
             bg=self.entry.cget('disabledbackground')
         )
+        self.__unbind_dynamic_events()
 
     def enable(self) -> None:
-        # self.config(cursor='xterm')
         self.entry.config(
             cursor='xterm',
             state=tk.NORMAL
         )
-        self.pad_frame.bind('<Button-1>', self.__on_pad_frame_click)
         self.pad_frame.config(
             cursor='xterm',
             bg=self.entry.cget('bg')
         )
+        self.__bind_dynamic_events()
 
     def clear(self) -> None:
         self.delete(0, tk.END)
-        self.put_placeholder()
-
-    def put_placeholder(self) -> None:
-        if self.placeholder is not None:
-            self.is_placeholder = True
-            self.insert(0, self.placeholder)
-            self.entry['fg'] = self.placeholder_color
-
-    def focus_in(self, event: tk.Event) -> None:
-        if (self.placeholder is not None
-                and self.entry['fg'] == self.placeholder_color):
-            self.is_placeholder = False
-            self.delete(0, tk.END)
-            self.entry['fg'] = self.text_color
-
-    def focus_out(self, event: tk.Event) -> None:
-        if self.placeholder is not None and self.get() == '':
-            self.put_placeholder()
+        self.__put_placeholder()
 
     def set_text(self, text: str) -> None:
         if (self.placeholder is not None
@@ -265,10 +307,6 @@ class Entry(Widget, tk.XView):
 
     def set_validator(self, validate: str, command: tuple[str, str]) -> None:
         self.entry.config(validate=validate, validatecommand=command)
-
-    def __on_pad_frame_click(self, event: tk.Event) -> None:
-        self.entry.focus()
-        self.icursor(0)
 
 
 class FileNameEntry(Entry):
