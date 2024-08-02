@@ -211,16 +211,18 @@ class ProgressController:
                 f'Parsing finished in {end - start:.4f} seconds'
             )
             self.model.parser_data = parser.data
-            self.view.controls_frame.cont_btn.set_state('normal')
+            # self.view.controls_frame.cont_btn.set_state('normal')
         finally:
             self.view.controls_frame.progress_bar.config(maximum=0)
             self.view.controls_frame.back_btn.set_state('normal')
+            self.view.controls_frame.cont_btn.set_state('normal')
 
     def handle_back(self) -> None:
         self.root_view.show(HomePage.key)
 
     def handle_continue(self) -> None:
-        self.root_view.show(ResultsPage.key)
+        # self.root_view.show(ResultsPage.key)
+        self.root_view.close()
 
     def __bind_controls(self) -> None:
         self.view.controls_frame.back_btn.set_command(self.handle_back)

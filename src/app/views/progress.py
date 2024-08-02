@@ -78,7 +78,7 @@ class ControlsFrame(Frame):
         self.cont_btn = Button(self,
                                pady=0,
                                padx=30,
-                               text='Continue',
+                               text='Close',
                                state='disabled')
         self.cont_btn.pack(side=tk.RIGHT,
                            anchor=tk.E,
