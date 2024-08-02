@@ -3,7 +3,7 @@ from typing import Literal
 from src.app.enums import MeasureSource
 from src.app.models.home import HomeModel
 from src.etrm import sanitizers
-from src.parserdata import ParserData
+from src.parser.parserdata import ParserData
 
 
 class Model:

@@ -89,7 +89,7 @@ class CharacterizationData:
 
 
 def characterization_dict() -> dict[str, CharacterizationData]:
-    from src.dbservice import get_all_characterization_names
+    from src.parser.dbservice import get_all_characterization_names
     char_dict: dict[str, CharacterizationData] = {}
     global _measure_source
     for name in get_all_characterization_names(_measure_source):

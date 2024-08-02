@@ -10,8 +10,8 @@ from src.app.models import Model
 from src.etrm.models import Measure
 from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
-from src.logger import MeasureDataLogger
-from src.parserdata import ParserData
+from src.parser.logger import MeasureDataLogger
+from src.parser.parserdata import ParserData
 
 
 _T = TypeVar('_T')

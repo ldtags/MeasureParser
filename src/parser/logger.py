@@ -1,9 +1,8 @@
-import sys
 from typing import Self
 
-from src import dbservice as db
 from src.etrm.models import Measure
-from src.parserdata import (
+from src.parser import dbservice as db
+from src.parser.parserdata import (
     ParserData
 )
 

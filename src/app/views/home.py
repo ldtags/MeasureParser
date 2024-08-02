@@ -541,37 +541,44 @@ class OutputFrame(Frame):
         def __init__(self, parent: Frame, **kwargs):
             Frame.__init__(self, parent, **kwargs)
     
-            self.grid_columnconfigure(
-                (0, 1, 2),
-                weight=1,
-                uniform='OptionsFrameCols'
-            )
-            self.grid_rowconfigure((0), weight=1)
 
-            self.override_file = OptionCheckBox(
-                self,
-                text='Override File',
-                sub_text='Override the existing file if a file conflict occurs'
-            )
-            self.override_file.grid(
-                row=0,
-                column=0,
-                sticky=tk.NSEW,
-                padx=(0, 5)
-            )
 
-            self.validate_permutations = OptionCheckBox(
-                self,
-                text='Validate Permutations',
-                sub_text='Validate the mapped permutation fields (JSON file'
-                    ' only)'
-            )
-            self.validate_permutations.grid(
-                row=0,
-                column=1,
-                sticky=tk.NSEW,
-                padx=(5, 5)
-            )
+
+class OptionsFrame(Frame):
+    def __init__(self, parent: Frame, **kwargs):
+        Frame.__init__(self, parent, **kwargs)
+
+        self.grid_columnconfigure(
+            (0, 1, 2),
+            weight=1,
+            uniform='OptionsFrameCols'
+        )
+        self.grid_rowconfigure((0), weight=1)
+
+        self.override_file = OptionCheckBox(
+            self,
+            text='Override File',
+            sub_text='Override the existing file if a file conflict occurs'
+        )
+        self.override_file.grid(
+            row=0,
+            column=0,
+            sticky=tk.NSEW,
+            padx=(0, 5)
+        )
+
+        self.validate_permutations = OptionCheckBox(
+            self,
+            text='Validate Permutations',
+            sub_text='Validate the mapped permutation fields (JSON file'
+                ' only)'
+        )
+        self.validate_permutations.grid(
+            row=0,
+            column=1,
+            sticky=tk.NSEW,
+            padx=(5, 5)
+        )
 
 
 class ControlsFrame(Frame):

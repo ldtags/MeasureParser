@@ -1,7 +1,7 @@
 import os
 
-from src import dbservice as db
-from src.logger import MeasureDataLogger
+from src.parser import dbservice as db
+from src.parser.logger import MeasureDataLogger
 from src.etrm.models import (
     Measure,
     Permutation,
@@ -11,7 +11,7 @@ from src.etrm.models import (
     Characterization
 )
 from src.htmlparser import CharacterizationParser
-from src.parserdata import (
+from src.parser.parserdata import (
     parser_data_factory,
     MissingValueTableColumnData,
     InvalidValueTableColumnUnitData,

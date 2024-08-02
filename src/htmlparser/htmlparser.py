@@ -6,7 +6,7 @@ from bs4 import (
     NavigableString
 )
 
-import src.parserdata as pd
+import src.parser.parserdata as pd
 from src.etrm.models import (
     Characterization
 )

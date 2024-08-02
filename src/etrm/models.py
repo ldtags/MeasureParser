@@ -8,7 +8,7 @@ from typing import Literal, Any, overload
 from pandas import DataFrame, Series
 
 from src.etrm import utils
-from src.utils import getc
+from src.utils import getc, JSONObject
 from src.exceptions import RequiredContentError
 from src.etrm.exceptions import ETRMResponseError, ETRMConnectionError
 
@@ -236,26 +236,6 @@ class PermutationsTable:
         return not self.__eq__(other)
 
 
-class Permutation:
-    """Class representation of a measure permutation."""
-
-    def __init__(self,
-                 reporting_name: str,
-                 mapped_name: str | None,
-                 derivation: str = 'mapped'):
-        self.reporting_name = reporting_name
-        self.mapped_name = mapped_name
-        self.derivation = derivation
-
-
-class Characterization:
-    """Class representation of a characterization."""
-
-    def __init__(self, name: str, content: str):
-        self.name = name
-        self.content = content
-
-
 class MeasureInfo:
     def __init__(self, res_json: dict[str, Any]):
         try:
@@ -338,6 +318,70 @@ class MeasureVersionsResponse:
 
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
+
+
+class Reference:
+    def __init__(self, res_json: dict[str, Any]):
+        self.json = res_json
+        try:
+            self.reference_code = getc(res_json, 'reference_code', str)
+            self.reference_citation = getc(res_json, 'reference_citation', str)
+            self.source_reference = getc(
+                res_json,
+                'source_reference',
+                str | None
+            )
+            self.source_url = getc(res_json, 'source_url', str | None)
+            self.reference_location = getc(
+                res_json,
+                'reference_location',
+                str | None
+            )
+            self.reference_type = getc(res_json, 'reference_type', str)
+            self.publication_title = getc(
+                res_json,
+                'publication_title',
+                str | None
+            )
+            self.lead_author = getc(res_json, 'lead_author', str | None)
+            self.lead_author_org = getc(
+                res_json,
+                'lead_author_org',
+                str | None
+            )
+            self.sponsor_org = getc(res_json, 'sponsor_org', str | None)
+            self.source_document = getc(res_json, 'source_document', str)
+        except IndexError:
+            raise ETRMResponseError()
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Reference):
+            return False
+
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+
+class Permutation:
+    """Class representation of a measure permutation."""
+
+    def __init__(self,
+                 reporting_name: str,
+                 mapped_name: str | None,
+                 derivation: str = 'mapped'):
+        self.reporting_name = reporting_name
+        self.mapped_name = mapped_name
+        self.derivation = derivation
+
+
+class Characterization:
+    """Class representation of a characterization."""
+
+    def __init__(self, name: str, content: str):
+        self.name = name
+        self.content = content
 
 
 class Version:
@@ -605,61 +649,60 @@ class ExclusionTable:
         return not self.__eq__(other)
 
 
-class Measure:
-    def __init__(self,
-                 res_json: dict[str, Any],
-                 source: Literal['etrm', 'json']):
-        self._json = res_json
+class Measure(JSONObject):
+    def __init__(self, res_json: dict[str, Any], source: Literal['etrm', 'json']):
+        """Initializes a new eTRM measure object.
+
+        Measures can be generated from two sources:
+            1. eTRM measure JSON files
+            2. The eTRM API
+
+        If the measure is generated from a JSON file:
+            - The measure will contain permutation mappings
+
+        If the measure is generated from an eTRM API response:
+            - The measure object will not contain any permutation mappings.
+            Instead, permutations must be acquired from another eTRM API call.
+        """
+
+        JSONObject.__init__(self, res_json)
+
         self.source = source
-        match source:
-            case 'etrm':
-                self.owner = getc(res_json, 'owner', str)
-                self.statewide_id = getc(res_json, 'statewide_measure_id', str)
-                self.version_id = getc(res_json, 'full_version_id', str)
-                self.name = getc(res_json, 'name', str)
-                self.use_category = getc(res_json, 'use_category', str)
-                self.pa_lead = getc(res_json, 'pa_lead', str)
-                self.start_date = getc(res_json, 'effective_start_date', str)
-                self.end_date = getc(res_json, 'sunset_date', str | None)
-                self.status = getc(res_json, 'status', str)
-                self.is_published = getc(res_json, 'is_published', bool)
-                self.permutation_method = getc(
-                    res_json,
-                    'permutation_method',
-                    int
-                )
-                self.workpaper_cover_sheet = getc(
-                    res_json,
+        try:
+            if source == 'etrm':
+                self.owner = self.get('owner', str)
+                self.statewide_id = self.get('statewide_measure_id', str)
+                self.version_id = self.get('full_version_id', str)
+                self.name = self.get('name', str)
+                self.use_category = self.get('use_category', str)
+                self.pa_lead = self.get('pa_lead', str)
+                self.start_date = self.get('effective_start_date', str)
+                self.end_date = self.get('sunset_date', str | None)
+                self.status = self.get('status', str)
+                self.is_published = self.get('is_published', bool)
+                self.permutation_method = self.get('permutation_method', int)
+                self.workpaper_cover_sheet = self.get(
                     'workpaper_cover_sheet',
                     str
                 )
-                self.characterization_source_file = getc(
-                    res_json,
+                self.characterization_source_file = self.get(
                     'characterization_source_file',
                     str | None
                 )
-                self.date_committed = getc(res_json, 'date_committed', str)
-                self.change_description = getc(
-                    res_json,
-                    'change_description',
-                    str
-                )
-                self.permutations_url = getc(res_json, 'permutations_url', str)
-                self.property_data_url = getc(
-                    res_json,
-                    'property_data_url',
-                    str
-                )
-            case 'json':
-                self.owner = getc(res_json, 'owned_by_user', str)
-                self.statewide_id = getc(res_json, 'MeasureID', str)
-                self.version_id = getc(res_json, 'MeasureVersionID', str)
-                self.name = getc(res_json, 'MeasureName', str)
-                self.use_category = getc(res_json, 'UseCategory', str)
-                self.pa_lead = getc(res_json, 'PALead', str)
-                self.start_date = getc(res_json, 'StartDate', str)
-                self.end_date = getc(res_json, 'EndDate', str | None)
-                self.status = getc(res_json, 'Status', str)
+                self.date_committed = self.get('date_committed', str)
+                self.change_description = self.get('change_description', str)
+                self.permutations_url = self.get('permutations_url', str)
+                self.property_data_url = self.get('property_data_url', str)
+            elif source == 'json':
+                self.owner = self.get('owned_by_user', str)
+                self.statewide_id = self.get('MeasureID', str)
+                self.version_id = self.get('MeasureVersionID', str)
+                self.name = self.get('MeasureName', str)
+                self.use_category = self.get('UseCategory', str)
+                self.pa_lead = self.get('PALead', str)
+                self.start_date = self.get('StartDate', str)
+                self.end_date = self.get('EndDate', str | None)
+                self.status = self.get('Status', str)
                 self.is_published = None
                 self.permutation_method = None
                 self.workpaper_cover_sheet = None
@@ -668,9 +711,6 @@ class Measure:
                 self.change_description = None
                 self.permutations_url = None
                 self.property_data_url = None
-            case other:
-                raise RuntimeError(f'Invalid measure source: {other}')
-        try:
 
             self.determinants = getc(
                 res_json,
@@ -734,12 +774,12 @@ class Measure:
         return utils.to_date(self.end_date)
 
     def __get_characterizations(self) -> list[Characterization]:
-        from src import dbservice as db
+        from src.parser import dbservice as db
         
         char_dict: dict[str, str] = {}
         for char_name in db.get_all_characterization_names(self.source):
             try:
-                uchar = self._json[char_name]
+                uchar = self.get(char_name, str)
                 char_dict[char_name] = unicodedata.normalize('NFKD', uchar)
             except KeyError:
                 pass
@@ -750,7 +790,7 @@ class Measure:
         return characterizations
 
     def __get_permutations(self) -> list[Permutation]:
-        from src import dbservice as db
+        from src.parser import dbservice as db
 
         if self.source != 'json':
             return []
@@ -759,7 +799,7 @@ class Measure:
         permutation_names = db.get_permutation_names()
         for name in permutation_names:
             try:
-                value = getc(self._json, name, str)
+                value = self.get(name, str)
             except:
                 continue
             permutations.append(Permutation(name, value))
@@ -1133,47 +1173,3 @@ class Measure:
     @staticmethod
     def sorting_key(measure: Measure) -> int:
         return utils.version_key(measure.version_id)
-
-
-class Reference:
-    def __init__(self, res_json: dict[str, Any]):
-        self.json = res_json
-        try:
-            self.reference_code = getc(res_json, 'reference_code', str)
-            self.reference_citation = getc(res_json, 'reference_citation', str)
-            self.source_reference = getc(
-                res_json,
-                'source_reference',
-                str | None
-            )
-            self.source_url = getc(res_json, 'source_url', str | None)
-            self.reference_location = getc(
-                res_json,
-                'reference_location',
-                str | None
-            )
-            self.reference_type = getc(res_json, 'reference_type', str)
-            self.publication_title = getc(
-                res_json,
-                'publication_title',
-                str | None
-            )
-            self.lead_author = getc(res_json, 'lead_author', str | None)
-            self.lead_author_org = getc(
-                res_json,
-                'lead_author_org',
-                str | None
-            )
-            self.sponsor_org = getc(res_json, 'sponsor_org', str | None)
-            self.source_document = getc(res_json, 'source_document', str)
-        except IndexError:
-            raise ETRMResponseError()
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, Reference):
-            return False
-
-        return self.__dict__ == other.__dict__
-
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
