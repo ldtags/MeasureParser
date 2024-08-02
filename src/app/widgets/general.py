@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
 import tkinter as tk
-import tkinter.ttk as ttk
+import ttkbootstrap as ttk
 from typing import Literal, Callable
 
 from .frames import Frame
@@ -132,6 +132,7 @@ class OptionCheckBox(Frame):
                  **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
+        self.style = ttk.Style(self)
         self.text_label = Label(
             self,
             text=text,
@@ -144,15 +145,17 @@ class OptionCheckBox(Frame):
         )
 
         self.check_box_var = tk.IntVar(self, 0)
-        self.check_box = tk.Checkbutton(
+        self.style.configure(
+            'TCheckbutton',
+            font=fonts.BODY_SM,
+            relief=tk.FLAT
+        )
+        self.check_box = ttk.Checkbutton(
             self,
             text=sub_text,
-            font=fonts.BODY_SM,
-            justify='left',
-            anchor=tk.NW,
             cursor='hand2',
-            offrelief=tk.SOLID,
-            variable=self.check_box_var
+            variable=self.check_box_var,
+            style='TCheckbutton'
         )
         self.check_box.pack(
             side=tk.TOP,
@@ -171,7 +174,10 @@ class OptionCheckBox(Frame):
 
     def __wrap(self, *args) -> None:
         self.update()
-        self.check_box.config(wraplength=self.winfo_width())
+        self.style.configure(
+            'TCheckbutton',
+            wraplength=self.winfo_width()
+        )
 
     def disable(self) -> None:
         self.check_box.config(

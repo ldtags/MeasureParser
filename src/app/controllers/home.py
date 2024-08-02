@@ -47,9 +47,9 @@ class HomeController:
     
         checkbox_options = self.view.output_frame.checkbox_options
         if app_config.override_file:
-            checkbox_options.override_file.check_box.select()
+            checkbox_options.override_file.set(True)
         else:
-            checkbox_options.override_file.check_box.deselect()
+            checkbox_options.override_file.set(False)
 
 
 class SourceController:
