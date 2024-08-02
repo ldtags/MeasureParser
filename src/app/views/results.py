@@ -35,8 +35,7 @@ class ResultsPage(Page):
                               anchor=tk.NW,
                               fill=tk.X)
 
-        self.scroll_frame = ScrollableFrame(self,
-                                            canvas_bg='#ffffff')
+        self.scroll_frame = ScrollableFrame(self, scrollbar=True)
         self.scroll_frame.pack(side=tk.TOP,
                                anchor=tk.NW,
                                fill=tk.BOTH,
