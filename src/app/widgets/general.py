@@ -1,7 +1,7 @@
 from __future__ import annotations
 import math
 import tkinter as tk
-import ttkbootstrap as ttk
+import tkinter.ttk as ttk
 from typing import Literal, Callable
 
 from .frames import Frame
@@ -132,7 +132,7 @@ class OptionCheckBox(Frame):
                  **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.style = ttk.Style(self)
+        self.style = ttk.Style()
         self.text_label = Label(
             self,
             text=text,
