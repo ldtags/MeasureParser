@@ -71,7 +71,6 @@ class SourceController:
 
     def disable_etrm_source(self, text: str) -> bool:
         source = self.view.source_frame
-        text = source.json_frame.file_entry.get()
         if text != '':
             source.etrm_frame.api_key_entry.disable()
             source.etrm_frame.measure_entry.disable()
