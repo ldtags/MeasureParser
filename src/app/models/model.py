@@ -1,6 +1,6 @@
 from typing import Literal
 
-from src.app.enums import MeasureSource
+from src.app.enums import MeasureSource, MeasureTool
 from src.app.models.home import HomeModel
 from src.etrm import sanitizers
 from src.parserdata import ParserData
@@ -14,6 +14,7 @@ class Model:
 
     def __init__(self):
         self.home = HomeModel()
+        self.tool = MeasureTool.PARSER
         self.__api_key: str | None = None
         self.__measure_id: str | None = None
         self.measure_source: MeasureSource | None = None

@@ -12,6 +12,13 @@ FAILURE = Result.FAILURE
 VALID = Result.VALID
 INVALID = Result.INVALID
 
+
+class MeasureTool(Enum):
+    PARSER = 'parser'
+    PERM_QA_QC = 'permutations_wa_qc'
+    SUMMARIZER = 'summarizer'
+
+
 class MeasureSource(Enum):
     JSON = 'json'
     ETRM = 'etrm'

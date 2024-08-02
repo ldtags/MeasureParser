@@ -12,7 +12,7 @@ from src.app import fonts
 from src.app.exceptions import GUIError
 
 
-class OptionLabel(Frame):
+class OptionLabel(ttk.Frame):
     def __init__(self,
                  parent: tk.Frame,
                  title: str,
@@ -22,9 +22,9 @@ class OptionLabel(Frame):
                  ipady: tuple[float, float]=(0, 0),
                  img_name: str | None=None,
                  **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+        ttk.Frame.__init__(self, parent, **kwargs)
 
-        self.content_frame = Frame(self)
+        self.content_frame = ttk.Frame(self)
         self.content_frame.pack(side=tk.TOP,
                                 anchor=tk.NW,
                                 fill=tk.BOTH,
@@ -42,6 +42,7 @@ class OptionLabel(Frame):
                                           level)
         self.text_frame.grid(column=0,
                              row=1,
+                             columnspan=2 if img_name is None else 1,
                              sticky=tk.NSEW)
 
         if img_name is not None:
@@ -61,14 +62,14 @@ class OptionLabel(Frame):
                                 expand=True,
                                 pady=(5, 0))
 
-    class _TextFrame(Frame):
+    class _TextFrame(ttk.Frame):
         def __init__(self,
                      parent: Frame,
                      title: str,
                      sub_title: str | None=None,
                      level: Literal[0, 1]=0,
                      **kwargs):
-            Frame.__init__(self, parent, **kwargs)
+            ttk.Frame.__init__(self, parent, **kwargs)
 
             sub_title_font = fonts.BODY
             match level:
@@ -83,28 +84,28 @@ class OptionLabel(Frame):
             self.grid_rowconfigure((0, 3), weight=1)
             self.grid_rowconfigure((1, 2), weight=0)
 
-            self.title = Label(self,
-                               text=title,
-                               font=title_font)
+            self.title = ttk.Label(self,
+                                   text=title,
+                                   font=title_font)
             self.title.grid(column=0,
                             row=1,
                             sticky=tk.EW)
 
             if sub_title is not None:
-                self.sub_title = Label(self,
-                                       text=sub_title,
-                                       font=sub_title_font)
+                self.sub_title = ttk.Label(self,
+                                           text=sub_title,
+                                           font=sub_title_font)
                 self.sub_title.grid(column=0,
                                     row=2,
                                     sticky=tk.EW)
 
-    class _ImageFrame(Frame):
+    class _ImageFrame(ttk.Frame):
         def __init__(self,
                      parent: Frame,
                      outer: OptionLabel,
                      img_name: str,
                      **kwargs):
-            Frame.__init__(self, parent, **kwargs)
+            ttk.Frame.__init__(self, parent, **kwargs)
 
             img = assets.get_image(img_name)
             base_width = img.width
@@ -116,9 +117,7 @@ class OptionLabel(Frame):
             img_width = img_height * aspect_ratio
             size = (math.floor(img_height), math.floor(img_width))
             tk_img = assets.get_tkimage(img_name, size)
-            self.img_label = Label(self,
-                                   image=tk_img,
-                                   bg=self['bg'])
+            self.img_label = ttk.Label(self, image=tk_img)
             self.img_label.pack(side=tk.RIGHT,
                                 anchor=tk.NE,
                                 fill=tk.BOTH)
@@ -132,7 +131,7 @@ class OptionCheckBox(Frame):
                  **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.style = ttk.Style(self)
+        self.style = ttk.Style()
         self.text_label = Label(
             self,
             text=text,

@@ -1,7 +1,9 @@
 import tkinter as tk
-import tkinter.ttk as ttk
+import ttkbootstrap as ttk
 from typing import Literal
+from ttkbootstrap.scrolled import ScrolledFrame
 
+from src import assets
 from src.app import fonts
 from src.app.widgets import (
     Frame,
@@ -15,90 +17,113 @@ from src.app.widgets import (
     OptionCheckBox,
     ScrollableFrame
 )
+from src.app.views.toolframes import (
+    ParserFrame,
+    SummarizerFrame,
+    PermutationsFrame
+)
 from src.config import app_config
 
 
 class HomePage(Page):
-    key = 'home'
+    def __init__(self, parent: ttk.Frame, root: tk.Tk, **kwargs):
+        super().__init__(parent, root, **kwargs)
 
-    def __init__(self, parent: Frame, root: tk.Tk, **kwargs):
-        Page.__init__(self, parent, root, **kwargs)
-
-        self.config(bg='#f0f0f0')
-        self.grid(row=0,
-                  column=0,
-                  sticky=tk.NSEW)
-
-        self.intro_label = OptionLabel(self,
-                                       title='eTRM Measure Parser',
-                                       sub_title='Simplifies the eTRM measure'
-                                                 ' QA/QC process by providing'
-                                                 ' accurate measure data'
-                                                 ' validation.',
-                                       img_name='etrm.png',
-                                       ipadx=(15, 15),
-                                       ipady=(20, 20),
-                                       bg='#ffffff')
+        self.intro_label = OptionLabel(
+            self,
+            title='eTRM Utility Tool',
+            sub_title='Centralized repository for various eTRM measure'
+                ' utility tools.',
+            img_name='etrm.png',
+            ipadx=(15, 15),
+            ipady=(20, 20)
+        )
         self.intro_label.pack(side=tk.TOP,
                               anchor=tk.NW,
                               fill=tk.X)
         
-        self.home_container = HomeContainer(self)
+        self.home_container = HomeContainer(self, bootstyle='light')
         self.home_container.pack(side=tk.TOP,
                                  anchor=tk.NW,
                                  fill=tk.BOTH,
-                                 expand=True)
+                                 expand=tk.TRUE)
 
-        self.controls_frame = ControlsFrame(self,
-                                            bg='#f0f0f0')
+        self.controls_frame = ControlsFrame(self)
         self.controls_frame.pack(side=tk.BOTTOM,
                                  anchor=tk.S,
                                  fill=tk.X)
 
         # top-level references to child widgets
-        self.source_frame = self.home_container.source_frame
-        self.output_frame = self.home_container.output_frame
+        # self.source_frame = self.home_container.source_frame
+        # self.output_frame = self.home_container.output_frame
 
     def show(self) -> None:
-        sources = self.source_frame
-        checkboxes = self.output_frame.checkbox_options
-        if not sources.etrm_frame.is_empty():
-            sources.json_frame.disable()
-            sources.etrm_frame.enable()
-            checkboxes.validate_permutations.disable()
+        # sources = self.source_frame
+        # checkboxes = self.output_frame.checkbox_options
+        # if not sources.etrm_frame.is_empty():
+        #     sources.json_frame.disable()
+        #     sources.etrm_frame.enable()
+        #     checkboxes.validate_permutations.disable()
 
-        if not sources.json_frame.is_empty():
-            sources.etrm_frame.disable()
-            sources.json_frame.enable()
-            checkboxes.validate_permutations.enable()
+        # if not sources.json_frame.is_empty():
+        #     sources.etrm_frame.disable()
+        #     sources.json_frame.enable()
+        #     checkboxes.validate_permutations.enable()
 
         super().show()
 
 
-class HomeContainer(ScrollableFrame):
-    def __init__(self, parent: tk.Frame, **kwargs):
-        ScrollableFrame.__init__(self, parent, scrollbar=True, **kwargs)
+class HomeContainer(ttk.Frame):
+    def __init__(self, parent: ttk.Frame, **kwargs):
+        super().__init__(parent, padding=0, **kwargs)
 
-        self.source_frame = MeasureSourceFrame(self.interior)
-        self.source_frame.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.BOTH,
-                               expand=True,
-                               padx=(10, 10),
-                               pady=(10, 0))
+        style = ttk.Style()
+        style.configure(
+            'TNotebook',
+            background='#e6e6e6'
+        )
+        self.notebook = ttk.Notebook(
+            self,
+            bootstyle='light',
+            style='TNotebook'
+        )
+        self.notebook.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
 
-        self.output_frame = OutputFrame(self.interior)
-        self.output_frame.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.BOTH,
-                               expand=True,
-                               padx=(10, 10),
-                               pady=(0, 10))
+        self.parser_frame = ParserFrame(self.notebook)
+        self.parser_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
+        self.notebook.add(self.parser_frame, text='Measure Parser')
 
+        self.summarizer_frame = SummarizerFrame(self.notebook)
+        self.summarizer_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
+        self.notebook.add(self.summarizer_frame, text='Summary Generator', state=tk.DISABLED)
 
-class MeasureSourceFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+        self.permutations_frame = PermutationsFrame(self.notebook)
+        self.permutations_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
+        self.notebook.add(self.permutations_frame, text='Permutations QA/QC', state=tk.DISABLED)
+
+class MeasureSourceFrame(ttk.Frame):
+    def __init__(self, parent: ttk.Frame, **kwargs):
+        ttk.Frame.__init__(self, parent, **kwargs)
 
         self.source_label = OptionLabel(self,
                                         title='Measure Sources',
@@ -116,9 +141,9 @@ class MeasureSourceFrame(Frame):
                                pady=(10, 0))
 
         self.source_err_var = tk.StringVar(self, ' ')
-        self.source_err_label = Label(self,
-                                      textvariable=self.source_err_var,
-                                      fg='#ff0000')
+        self.source_err_label = ttk.Label(self,
+                                          textvariable=self.source_err_var,
+                                          bootstyle='danger')
         self.source_err_label.pack(side=tk.TOP,
                                    anchor=tk.NW,
                                    fill=tk.X,
@@ -134,9 +159,9 @@ class MeasureSourceFrame(Frame):
     def clear_err(self) -> None:
         self.source_err_var.set('')
 
-    class _SourceFrame(Frame):
-        def __init__(self, parent: Frame, **kwargs):
-            Frame.__init__(self, parent, **kwargs)
+    class _SourceFrame(ttk.Frame):
+        def __init__(self, parent: ttk.Frame, **kwargs):
+            ttk.Frame.__init__(self, parent, **kwargs)
 
             self.grid_rowconfigure((0), weight=1)
             self.grid_columnconfigure((0, 2),
@@ -162,9 +187,9 @@ class MeasureSourceFrame(Frame):
                                 padx=(10, 10))
 
 
-class JSONSourceFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+class JSONSourceFrame(ttk.Frame):
+    def __init__(self, parent: ttk.Frame, **kwargs):
+        ttk.Frame.__init__(self, parent, **kwargs)
 
         self.grid_columnconfigure((0), weight=1)
         self.grid_rowconfigure((0, 4), weight=1)
@@ -574,28 +599,19 @@ class OutputFrame(Frame):
             )
 
 
-class ControlsFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+class ControlsFrame(ttk.Frame):
+    def __init__(self, parent: ttk.Frame, **kwargs):
+        ttk.Frame.__init__(self, parent, **kwargs)
 
-        self.separator = ttk.Separator(self)
-        self.separator.pack(side=tk.TOP,
-                            anchor=tk.S,
-                            fill=tk.X)
-
-        self.start_btn = Button(self,
-                                pady=0,
-                                padx=30,
-                                text='Start')
+        self.start_btn = ttk.Button(self,
+                                    text='Start')
         self.start_btn.pack(side=tk.RIGHT,
                             anchor=tk.E,
                             padx=(15, 30),
                             pady=(20, 20))
 
-        self.close_btn = Button(self,
-                                pady=0,
-                                padx=30,
-                                text='Close')
+        self.close_btn = ttk.Button(self,
+                                    text='Close')
         self.close_btn.pack(side=tk.RIGHT,
                             anchor=tk.E,
                             padx=(30, 15),

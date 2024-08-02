@@ -16,39 +16,34 @@ class ProgressPage(Page):
     def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):
         Page.__init__(self, parent, root, **kwargs)
 
-        self.config(bg='#f0f0f0')
-        self.grid(row=0,
-                  column=0,
-                  sticky=tk.NSEW)
+        # self.intro_label = OptionLabel(self,
+        #                                title='Parsing',
+        #                                sub_title='Please wait while the'
+        #                                          ' measure is being parsed.'
+        #                                          '\nThis may take a few'
+        #                                          ' minutes.',
+        #                                img_name='etrm.png',
+        #                                ipadx=(15, 15),
+        #                                ipady=(20, 20),
+        #                                bg='#ffffff')
+        # self.intro_label.pack(side=tk.TOP,
+        #                       anchor=tk.NW,
+        #                       fill=tk.X)
 
-        self.intro_label = OptionLabel(self,
-                                       title='Parsing',
-                                       sub_title='Please wait while the'
-                                                 ' measure is being parsed.'
-                                                 '\nThis may take a few'
-                                                 ' minutes.',
-                                       img_name='etrm.png',
-                                       ipadx=(15, 15),
-                                       ipady=(20, 20),
-                                       bg='#ffffff')
-        self.intro_label.pack(side=tk.TOP,
-                              anchor=tk.NW,
-                              fill=tk.X)
+        # self.log_frame = ScrollableFrame(self,
+        #                                  canvas_bg='#ffffff',
+        #                                  scrollbar=True)
+        # self.log_frame.pack(side=tk.TOP,
+        #                     anchor=tk.NW,
+        #                     fill=tk.BOTH,
+        #                     expand=tk.TRUE,
+        #                     padx=(20, 20),
+        #                     pady=(20, 20))
 
-        self.log_frame = ScrollableFrame(self,
-                                         canvas_bg='#ffffff',
-                                         scrollbar=True)
-        self.log_frame.pack(side=tk.TOP,
-                            anchor=tk.NW,
-                            fill=tk.BOTH,
-                            expand=tk.TRUE,
-                            padx=(20, 20),
-                            pady=(20, 20))
-
-        self.controls_frame = ControlsFrame(self)
-        self.controls_frame.pack(side=tk.BOTTOM,
-                                 anchor=tk.S,
-                                 fill=tk.X)
+        # self.controls_frame = ControlsFrame(self)
+        # self.controls_frame.pack(side=tk.BOTTOM,
+        #                          anchor=tk.S,
+        #                          fill=tk.X)
 
     def show(self) -> None:
         self.log_frame.clear()

@@ -45,7 +45,7 @@ class ProgressController:
         self.root_view = view
         self.view = view.progress
         self.model = model
-        self.__bind_controls()
+        # self.__bind_controls()
 
     @parser_function('Logging measure details')
     def log_measure_details(self, _logger: MeasureDataLogger) -> None:
@@ -218,10 +218,10 @@ class ProgressController:
             self.view.controls_frame.cont_btn.set_state('normal')
 
     def handle_back(self) -> None:
-        self.root_view.show(HomePage.key)
+        self.root_view.show(HomePage)
 
     def handle_continue(self) -> None:
-        # self.root_view.show(ResultsPage.key)
+        # self.root_view.show(ResultsPage)
         self.root_view.close()
 
     def __bind_controls(self) -> None:

@@ -1,7 +1,8 @@
 from src.app.models import Model
 from src.app.views import View
-from src.app.views.home import HomePage
-from src.app.views.progress import ProgressPage
+from src.app.views.pages import MainPage
+from src.app.views.pages.home import HomePage
+from src.app.views.pages.progress import ProgressPage
 from src.app.controllers.home import HomeController
 from src.app.controllers.progress import ProgressController
 from src.app.controllers.results import ResultsController
@@ -29,10 +30,10 @@ class Controller:
             self.model.measure_id = measure_id
             self.view.set_measure(self.model.measure_id)
 
-        self.view.show(HomePage.key)
+        self.view.show(MainPage)
         self.view.start()
 
     def start_process(self) -> None:
-        self.view.show(ProgressPage.key)
+        self.view.show(ProgressPage)
         self.view.progress.update()
         self.progress.parse()

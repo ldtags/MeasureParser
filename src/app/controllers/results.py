@@ -7,7 +7,7 @@ class ResultsController:
         self.model = model
         self.root_view = view
         self.view = view.results
-        self.__bind_controls()
+        # self.__bind_controls()
 
     def __bind_controls(self) -> None:
         controls = self.view.controls_frame

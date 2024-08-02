@@ -32,10 +32,10 @@ class HomeController:
         self.view = view.home
         self.model = model
         self.start_func = start_func
-        self.source_controller = SourceController(model, view)
-        self.output_controller = OutputController(model, view)
-        self.controls_controller = ControlsController(model, view, start_func)
-        self.__update_view()
+        # self.source_controller = SourceController(model, view)
+        # self.output_controller = OutputController(model, view)
+        # self.controls_controller = ControlsController(model, view, start_func)
+        # self.__update_view()
 
     def __update_view(self) -> None:
         """Sets default options in the view.

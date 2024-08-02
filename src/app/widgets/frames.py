@@ -1,5 +1,5 @@
 import tkinter as tk
-import tkinter.ttk as ttk
+import ttkbootstrap as ttk
 
 from .misc import Widget
 from .labels import Label
@@ -19,13 +19,19 @@ class Frame(Widget):
         self.bind('<Button-1>', lambda _: self.focus())
 
 
-class Page(Frame):
-    key: str
-
+class Page(ttk.Frame):
     def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+        ttk.Frame.__init__(self, parent, **kwargs)
         self.parent = parent
         self.root = root
+        self.grid(
+            column=0,
+            row=0,
+            sticky=tk.NSEW
+        )
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
 
     def show(self) -> None:
         self.tkraise()
