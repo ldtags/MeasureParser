@@ -37,6 +37,8 @@ class _Entry(Widget, tk.XView):
 
 
 class Entry(Widget):
+    """Custom Tkinter entry widget."""
+
     def __init__(self,
                  parent: tk.Misc,
                  placeholder: str | None=None,
@@ -51,7 +53,7 @@ class Entry(Widget):
                  disabledbackground: str='#dfdfdf',
                  ipadx: float=3,
                  **kwargs):
-        """Custom Tkinter entry widget.
+        """Initializes a new custom Tkinter entry widget.
 
         Used to create a Tkinter entry with more customization options.
 
