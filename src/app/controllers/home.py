@@ -45,7 +45,7 @@ class HomeController:
         Use when the home page is shown.
         """
     
-        checkbox_options = self.view.output_frame.checkbox_options
+        checkbox_options = self.view.options_frame
         if app_config.override_file:
             checkbox_options.override_file.set(True)
         else:
@@ -82,7 +82,7 @@ class SourceController:
             return False
 
         source = self.view.source_frame
-        checkboxes = self.view.output_frame.checkbox_options
+        checkboxes = self.view.options_frame
         is_placeholder = source.etrm_frame.measure_entry.is_placeholder
         if text == '' or is_placeholder:
             source.json_frame.file_entry.enable()
@@ -134,17 +134,17 @@ class OutputController:
         )
 
     def handle_override_file(self) -> None:
-        checkbox_options = self.view.output_frame.checkbox_options
+        checkbox_options = self.view.options_frame
         state = checkbox_options.override_file.get()
         self.model.home.override_file = state
 
     def handle_validate_permutations(self) -> None:
-        checkbox_options = self.view.output_frame.checkbox_options
+        checkbox_options = self.view.options_frame
         state = checkbox_options.validate_permutations.get()
         self.model.home.validate_permutations = state
 
     def __bind_events(self) -> None:
-        checkbox_options = self.view.output_frame.checkbox_options
+        checkbox_options = self.view.options_frame
         checkbox_options.override_file.check_box.config(
             command=self.handle_override_file
         )
@@ -401,7 +401,7 @@ class ControlsController:
         return file_path
 
     def update_model(self) -> None:
-        checkboxes = self.view.output_frame.checkbox_options
+        checkboxes = self.view.options_frame
         checkbox = checkboxes.validate_permutations
         if checkbox.state == tk.DISABLED:
             self.model.home.validate_permutations = False

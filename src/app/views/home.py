@@ -25,52 +25,62 @@ class HomePage(Page):
         Page.__init__(self, parent, root, **kwargs)
 
         self.config(bg='#f0f0f0')
-        self.grid(row=0,
-                  column=0,
-                  sticky=tk.NSEW)
+        self.grid(
+            row=0,
+            column=0,
+            sticky=tk.NSEW
+        )
 
-        self.intro_label = OptionLabel(self,
-                                       title='eTRM Measure Parser',
-                                       sub_title='Simplifies the eTRM measure'
-                                                 ' QA/QC process by providing'
-                                                 ' accurate measure data'
-                                                 ' validation.',
-                                       img_name='etrm.png',
-                                       ipadx=(15, 15),
-                                       ipady=(20, 20),
-                                       bg='#ffffff')
-        self.intro_label.pack(side=tk.TOP,
-                              anchor=tk.NW,
-                              fill=tk.X)
+        self.intro_label = OptionLabel(
+            self,
+            title='eTRM Measure Parser',
+            sub_title='Simplifies the eTRM measure QA/QC process by providing'
+                ' accurate measure data validation.',
+            img_name='etrm.png',
+            ipadx=(15, 15),
+            ipady=(20, 20),
+            bg='#ffffff'
+        )
+        self.intro_label.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.X
+        )
         
         self.home_container = HomeContainer(self)
-        self.home_container.pack(side=tk.TOP,
-                                 anchor=tk.NW,
-                                 fill=tk.BOTH,
-                                 expand=True)
+        self.home_container.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
 
-        self.controls_frame = ControlsFrame(self,
-                                            bg='#f0f0f0')
-        self.controls_frame.pack(side=tk.BOTTOM,
-                                 anchor=tk.S,
-                                 fill=tk.X)
+        self.controls_frame = ControlsFrame(self)
+        self.controls_frame.pack(
+            side=tk.BOTTOM,
+            anchor=tk.S,
+            fill=tk.X
+        )
 
         # top-level references to child widgets
         self.source_frame = self.home_container.source_frame
         self.output_frame = self.home_container.output_frame
+        self.options_frame = self.home_container.options_frame
 
     def show(self) -> None:
         sources = self.source_frame
-        checkboxes = self.output_frame.checkbox_options
+        checkboxes = self.options_frame
         if not sources.etrm_frame.is_empty():
             sources.json_frame.disable()
             sources.etrm_frame.enable()
             checkboxes.validate_permutations.disable()
+            checkboxes.qa_qc_permutations.enable()
 
         if not sources.json_frame.is_empty():
             sources.etrm_frame.disable()
             sources.json_frame.enable()
             checkboxes.validate_permutations.enable()
+            checkboxes.qa_qc_permutations.disable()
 
         super().show()
 
@@ -80,20 +90,34 @@ class HomeContainer(ScrollableFrame):
         ScrollableFrame.__init__(self, parent, scrollbar=True, **kwargs)
 
         self.source_frame = MeasureSourceFrame(self.interior)
-        self.source_frame.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.BOTH,
-                               expand=True,
-                               padx=(10, 10),
-                               pady=(10, 0))
+        self.source_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE,
+            padx=(10, 10),
+            pady=(10, 0)
+        )
 
         self.output_frame = OutputFrame(self.interior)
-        self.output_frame.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.BOTH,
-                               expand=True,
-                               padx=(10, 10),
-                               pady=(0, 10))
+        self.output_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE,
+            padx=(10, 10),
+            pady=(0, 10)
+        )
+
+        self.options_frame = OptionsFrame(self.interior)
+        self.options_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE,
+            padx=(10, 10),
+            pady=(10, 25)
+        )
 
 
 class MeasureSourceFrame(Frame):
@@ -407,28 +431,22 @@ class OutputFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.output_label = OptionLabel(self,
-                                        title='Parser Options',
-                                        level=0)
-        self.output_label.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.X)
+        self.output_label = OptionLabel(self, title='Parser Output')
+        self.output_label.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.X
+        )
 
         self.options_frame = self._OutputOptionsFrame(self)
-        self.options_frame.pack(side=tk.TOP,
-                                anchor=tk.NW,
-                                fill=tk.BOTH,
-                                expand=True,
-                                padx=(10, 10),
-                                pady=(10, 0))
-
-        self.checkbox_options = self._CheckboxOptionsFrame(self)
-        self.checkbox_options.pack(side=tk.TOP,
-                                   anchor=tk.NW,
-                                   fill=tk.BOTH,
-                                   expand=True,
-                                   padx=(10, 10),
-                                   pady=(10, 0))
+        self.options_frame.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=True,
+            padx=(10, 10),
+            pady=(10, 0)
+        )
 
     class _OutputOptionsFrame(Frame):
         def __init__(self, parent: Frame, **kwargs):
@@ -537,38 +555,48 @@ class OutputFrame(Frame):
                 case _:
                     pass
 
-    class _CheckboxOptionsFrame(Frame):
-        def __init__(self, parent: Frame, **kwargs):
-            Frame.__init__(self, parent, **kwargs)
-    
-
-
 
 class OptionsFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.grid_columnconfigure(
+        self.label = OptionLabel(self, title='Parser Options')
+        self.label.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.X,
+            pady=(0, 10)
+        )
+
+        self.container = Frame(self)
+        self.container.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE,
+            padx=(10, 10)
+        )
+
+        self.container.grid_columnconfigure(
             (0, 1, 2),
             weight=1,
             uniform='OptionsFrameCols'
         )
-        self.grid_rowconfigure((0), weight=1)
+        self.container.grid_rowconfigure((0), weight=1)
 
         self.override_file = OptionCheckBox(
-            self,
+            self.container,
             text='Override File',
             sub_text='Override the existing file if a file conflict occurs'
         )
         self.override_file.grid(
             row=0,
             column=0,
-            sticky=tk.NSEW,
-            padx=(0, 5)
+            sticky=tk.NSEW
         )
 
         self.validate_permutations = OptionCheckBox(
-            self,
+            self.container,
             text='Validate Permutations',
             sub_text='Validate the mapped permutation fields (JSON file'
                 ' only)'
@@ -576,6 +604,18 @@ class OptionsFrame(Frame):
         self.validate_permutations.grid(
             row=0,
             column=1,
+            sticky=tk.NSEW,
+            padx=(0, 5)
+        )
+
+        self.qa_qc_permutations = OptionCheckBox(
+            self.container,
+            text='QA/QC Permutations',
+            sub_text='QA/QC the measure\'s permutations (eTRM API only)'
+        )
+        self.qa_qc_permutations.grid(
+            row=0,
+            column=2,
             sticky=tk.NSEW,
             padx=(5, 5)
         )

@@ -176,7 +176,7 @@ class OptionCheckBox(Frame):
         self.update()
         self.style.configure(
             'TCheckbutton',
-            wraplength=self.winfo_width()
+            wraplength=self.winfo_width() - 20
         )
 
     def disable(self) -> None:
