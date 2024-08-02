@@ -85,7 +85,7 @@ class HomeContainer(ScrollableFrame):
                                fill=tk.BOTH,
                                expand=True,
                                padx=(10, 10),
-                               pady=(10, 10))
+                               pady=(10, 0))
 
         self.output_frame = OutputFrame(self.interior)
         self.output_frame.pack(side=tk.TOP,
@@ -93,7 +93,7 @@ class HomeContainer(ScrollableFrame):
                                fill=tk.BOTH,
                                expand=True,
                                padx=(10, 10),
-                               pady=(10, 10))
+                               pady=(0, 10))
 
 
 class MeasureSourceFrame(Frame):
