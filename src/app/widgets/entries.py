@@ -10,7 +10,7 @@ __all__ = [
 
 import tkinter as tk
 import tkinter.filedialog as filedialog
-from typing import Literal
+from typing import Literal, overload
 
 from .misc import Widget
 from .labels import Label
@@ -21,7 +21,7 @@ from src import utils, _ROOT
 from src.app import fonts
 
 
-class _Entry(Widget, tk.XView):
+class _Entry(Widget):
     def __init__(self,
                  parent: tk.Misc,
                  text_color: str='black',
@@ -39,7 +39,7 @@ class _Entry(Widget, tk.XView):
         Widget.__init__(self, parent, 'entry', kw=kw)
 
 
-class Entry(Widget):
+class Entry(Widget, tk.XView):
     """Custom Tkinter entry widget."""
 
     def __init__(self,
@@ -78,19 +78,6 @@ class Entry(Widget):
 
         If a standard Tkinter entry options that has been replaced is included
         in `kwargs`, it will override the replacement arg.
-
-        Some standard Tkinter entry methods are not currently supported, such as:
-            - `scan_dragto`
-            - `scan_mark`
-            - `select_adjust`
-            - `select_clear`
-            - `select_from`
-            - `select_present`
-            - `select_range`
-            - `select_to`
-            - `xview`
-            - `xview_moveto`
-            - `xview_scroll`
         """
 
         kw = {
@@ -170,8 +157,61 @@ class Entry(Widget):
 
         self.entry.tk.call(self.entry._w, 'insert', index, string)
 
+    def scan_mark(self, x: int) -> None:
+        """Remember the current X, Y coordinates."""
+
+        self.entry.tk.call(self.entry._w, 'scan', 'mark', x)
+
+    def scan_dragto(self, x: int) -> None:
+        """Adjust the view of the canvas to 10 times the
+        difference between X and Y and the coordinates given in
+        scan_mark.
+        """
+
+        self.entry.tk.call(self.entry._w, 'scan', 'dragto', x)
+
+    def selection_adjust(self, index: int) -> None:
+        """Adjust the end of the selection near the cursor to INDEX."""
+
+        self.entry.tk.call(self.entry._w, 'selection', 'adjust', index)
+    select_adjust = selection_adjust
+
+    def selection_clear(self) -> None:
+        """Clear the selection if it is in this widget."""
+
+        self.entry.tk.call(self.entry._w, 'selection', 'clear')
+    select_clear = selection_clear
+
+    def selection_from(self, index: int) -> None:
+        """Set the fixed end of a selection to INDEX."""
+
+        self.entry.tk.call(self.entry._w, 'selection', 'from', index)
+    select_from = selection_from
+
+    def selection_present(self) -> bool:
+        """Return True if there are characters selected in the entry, False
+        otherwise.
+        """
+
+        return self.entry.tk.getboolean(
+            self.entry.tk.call(self.entry._w, 'selection', 'present')
+        )
+    select_present = selection_present
+
+    def selection_range(self, start: str | int, end: str | int) -> None:
+        """Set the selection from START to END (not included)."""
+
+        self.entry.tk.call(self.entry._w, 'selection', 'range', start, end)
+    select_range = selection_range
+
+    def selection_to(self, index: int) -> None:
+        """Set the variable end of a selection to INDEX."""
+
+        self.entry.tk.call(self.entry._w, 'selection', 'to', index)
+    select_to = selection_to
+
     def disable(self) -> None:
-        self.config(cursor='arrow')
+        # self.config(cursor='arrow')
         self.entry.config(
             cursor='arrow',
             state=tk.DISABLED
@@ -183,7 +223,7 @@ class Entry(Widget):
         )
 
     def enable(self) -> None:
-        self.config(cursor='xterm')
+        # self.config(cursor='xterm')
         self.entry.config(
             cursor='xterm',
             state=tk.NORMAL
@@ -218,9 +258,10 @@ class Entry(Widget):
     def set_text(self, text: str) -> None:
         if (self.placeholder is not None
                 and self.entry['fg'] == self.placeholder_color):
-            self.delete(0, tk.END)
             self.entry['fg'] = self.text_color
-            self.insert(0, text)
+        self.is_placeholder = False
+        self.delete(0, tk.END)
+        self.insert(0, text)
 
     def set_validator(self, validate: str, command: tuple[str, str]) -> None:
         self.entry.config(validate=validate, validatecommand=command)
