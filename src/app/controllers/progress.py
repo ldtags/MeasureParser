@@ -166,13 +166,20 @@ class ProgressController:
             progress_max -= 200
         self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
 
-        if self.model.measure_source == MeasureSource.ETRM:
-            measure = self.get_etrm_measure()
-        elif self.model.measure_source == MeasureSource.JSON:
-            measure = self.get_json_measure()
-        else:
+        try:
+            if self.model.measure_source == MeasureSource.ETRM:
+                measure = self.get_etrm_measure()
+            elif self.model.measure_source == MeasureSource.JSON:
+                measure = self.get_json_measure()
+            else:
+                self.view.log_frame.add(
+                    text='Input validation failed, no measure source detected',
+                    fg='#ff0000'
+                )
+                return
+        except Exception as err:
             self.view.log_frame.add(
-                text='Input validation failed, no measure source detected',
+                text=str(err),
                 fg='#ff0000'
             )
             return
