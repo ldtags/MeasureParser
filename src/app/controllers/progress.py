@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import json
+import time
 from typing import Callable, TypeVar
 
 from src.app.enums import MeasureSource
@@ -86,39 +87,26 @@ class ProgressController:
                   ) -> None:
         out_dir, file_name = os.path.split(file_path)
         if not os.path.exists(out_dir):
-            self.view.log_frame.add(
-                text=f'Invalid File Path: directory {out_dir} does not exist',
-                fg='#ff0000'
+            raise RuntimeError(
+                f'Invalid File Path: directory {out_dir} does not exist'
             )
-            return
 
         if os.path.exists(file_path) and not self.model.home.override_file:
-            self.view.log_frame.add(
-                text=f'Invalid File Path: a file named {file_name} already'
-                    f' exists at {out_dir}',
-                fg='#ff0000'
+            raise RuntimeError(
+                f'Invalid File Path: a file named {file_name} already'
+                f' exists at {out_dir}'
             )
-            return
 
-        try:
-            with MeasureDataLogger(measure, file_path, data) as _logger:
-                self.log_measure_details(_logger)
-                self.log_parameter_data(_logger)
-                self.log_exclusion_table_data(_logger)
-                self.log_value_table_data(_logger)
-                self.log_value_tables(_logger)
-                self.log_calculations(_logger)
-                if self.model.home.validate_permutations:
-                    self.log_permutations(_logger)
-                self.log_characterization_data(_logger)
-        except Exception as err:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            self.view.log_frame.add(
-                text=str(err),
-                fg='#ff0000'
-            )
-            return
+        with MeasureDataLogger(measure, file_path, data) as _logger:
+            self.log_measure_details(_logger)
+            self.log_parameter_data(_logger)
+            self.log_exclusion_table_data(_logger)
+            self.log_value_table_data(_logger)
+            self.log_value_tables(_logger)
+            self.log_calculations(_logger)
+            if self.model.home.validate_permutations:
+                self.log_permutations(_logger)
+            self.log_characterization_data(_logger)
 
     @parser_function('Validating parameters')
     def parse_parameters(self, parser: MeasureParser) -> None:
@@ -149,7 +137,13 @@ class ProgressController:
             measure = connection.get_measure(self.model.measure_id)
             return measure
 
+        start = time.time()
         measure = get_measure(self)
+        end = time.time()
+        self.view.log_frame.add(
+            f'Retrieved measure {measure.version_id} in {end - start:.4f}'
+            ' secomds'
+        )
         return measure
 
     def get_json_measure(self) -> Measure:
@@ -183,22 +177,36 @@ class ProgressController:
             )
             return
 
-        parser = MeasureParser(measure)
-        self.parse_parameters(parser)
-        self.parse_value_tables(parser)
-        self.parse_exclusion_tables(parser)
-        if self.model.home.validate_permutations:
-            self.parse_permutations(parser)
-        self.parse_characterizations(parser)
-        self.log_output(
-            self.model.output_file_path,
-            parser.data,
-            parser.measure
-        )
-
-        self.view.controls_frame.progress_bar.config(maximum=0)
-        self.view.controls_frame.cont_btn.set_state('normal')
-        self.view.controls_frame.back_btn.set_state('normal')
+        start = time.time()
+        try:
+            parser = MeasureParser(measure)
+            self.parse_parameters(parser)
+            self.parse_value_tables(parser)
+            self.parse_exclusion_tables(parser)
+            if self.model.home.validate_permutations:
+                self.parse_permutations(parser)
+            self.parse_characterizations(parser)
+            self.log_output(
+                self.model.output_file_path,
+                parser.data,
+                parser.measure
+            )
+        except Exception as err:
+            if os.path.exists(self.model.output_file_path):
+                os.remove(self.model.output_file_path)
+            self.view.log_frame.add(
+                text=str(err),
+                fg='#ff0000'
+            )
+        else:
+            end = time.time()
+            self.view.log_frame.add(
+                f'Parsing finished in {end - start:.4f} seconds'
+            )
+        finally:
+            self.view.controls_frame.progress_bar.config(maximum=0)
+            self.view.controls_frame.cont_btn.set_state('normal')
+            self.view.controls_frame.back_btn.set_state('normal')
 
     def handle_back(self) -> None:
         self.root_view.show(HomePage.key)
