@@ -203,9 +203,10 @@ class ProgressController:
             self.view.log_frame.add(
                 f'Parsing finished in {end - start:.4f} seconds'
             )
+            self.model.parser_data = parser.data
+            self.view.controls_frame.cont_btn.set_state('normal')
         finally:
             self.view.controls_frame.progress_bar.config(maximum=0)
-            self.view.controls_frame.cont_btn.set_state('normal')
             self.view.controls_frame.back_btn.set_state('normal')
 
     def handle_back(self) -> None:
