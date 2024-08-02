@@ -7,7 +7,7 @@ from bs4 import (
 )
 
 import src.parserdata as pd
-from src.models import (
+from src.etrm.models import (
     Characterization
 )
 
