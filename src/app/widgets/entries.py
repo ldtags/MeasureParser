@@ -4,10 +4,18 @@ from typing import Literal
 
 from .misc import Widget
 from .labels import Label
+from .frames import Frame
 from .buttons import Button
 
 from src import utils, _ROOT
 from src.app import fonts
+
+
+__all__ = [
+    'Entry',
+    'FileNameEntry',
+    'FileEntry'
+]
 
 
 class _Entry(Widget, tk.XView):
@@ -39,16 +47,52 @@ class Entry(Widget):
                  border_width: float=1,
                  border_color: str='#adadad',
                  font: tuple[str, int, str | None]=fonts.BODY,
+                 bg: str='#ffffff',
+                 disabledbackground: str='#dfdfdf',
+                 ipadx: float=3,
                  **kwargs):
+        """Custom Tkinter entry widget.
+
+        Used to create a Tkinter entry with more customization options.
+
+        Supports all standard Tkinter entry options, as well as:
+            - `placeholder` placeholder text that disappears when the entry
+            is focused.
+
+            - `placeholder_color` the color of the placeholder text. This
+            cannot be the same color as `text_color`.
+
+            - `ipadx` the left-sided internal padding of the entry.
+
+            - `border_width` specifies the width of the entry border.
+
+            - `border_color` specifies the color of the entry border.
+
+        Some standard Tkinter entry options have been renamed; such as:
+            - `text_color` replaces `fg`
+
+        If a standard Tkinter entry options that has been replaced is included
+        in `kwargs`, it will override the replacement arg.
+        """
+
         kw = {
             'highlightcolor': border_color,
             'highlightbackground': border_color,
             'highlightthickness': border_width,
-            'height': font[1]
+            'height': font[1],
+            'bg': bg
         }
         Widget.__init__(self, parent, 'frame', cnf={}, kw=kw)
 
         assert text_color != placeholder_color
+
+        self.pad_frame = Frame(self, relief=relief, bg=bg)
+        self.pad_frame.pack(
+            side=tk.RIGHT,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE
+        )
 
         self.is_placeholder = False
         self.placeholder = placeholder
@@ -56,16 +100,21 @@ class Entry(Widget):
         self.text_color = text_color
         self.text = text
         self.entry = _Entry(
-            self,
+            self.pad_frame,
             text_color,
             relief,
             font,
+            bg=bg,
+            disabledbackground=disabledbackground,
             **kwargs
         )
-        self.entry.pack(side=tk.RIGHT,
-                        anchor=tk.NW,
-                        fill=tk.BOTH,
-                        expand=tk.TRUE)
+        self.entry.pack(
+            side=tk.TOP,
+            anchor=tk.NW,
+            fill=tk.BOTH,
+            expand=tk.TRUE,
+            padx=(ipadx, 0)
+        )
 
         if text:
             self.insert(0, text)
@@ -74,6 +123,7 @@ class Entry(Widget):
 
         self.bind('<FocusIn>', self.focus_in)
         self.bind('<FocusOut>', self.focus_out)
+        self.pad_frame.bind('<Button-1>', self.__on_pad_frame_click)
 
     def delete(self, first: str | int, last: str | int | None=None) -> None:
         """Delete text from FIRST to LAST (not included)."""
@@ -108,12 +158,22 @@ class Entry(Widget):
             cursor='arrow',
             state=tk.DISABLED
         )
+        self.pad_frame.unbind('<Button-1>')
+        self.pad_frame.config(
+            cursor='arrow',
+            bg=self.entry.cget('disabledbackground')
+        )
 
     def enable(self) -> None:
         self.config(cursor='xterm')
         self.entry.config(
             cursor='xterm',
             state=tk.NORMAL
+        )
+        self.pad_frame.bind('<Button-1>', self.__on_pad_frame_click)
+        self.pad_frame.config(
+            cursor='xterm',
+            bg=self.entry.cget('bg')
         )
 
     def clear(self) -> None:
@@ -146,6 +206,10 @@ class Entry(Widget):
 
     def set_validator(self, validate: str, command: tuple[str, str]) -> None:
         self.entry.config(validate=validate, validatecommand=command)
+
+    def __on_pad_frame_click(self, event: tk.Event) -> None:
+        self.entry.focus()
+        self.icursor(0)
 
 
 class FileNameEntry(Entry):
