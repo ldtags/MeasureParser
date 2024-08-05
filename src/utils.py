@@ -1,5 +1,4 @@
 import json
-import os
 import sys
 from types import UnionType, NoneType
 from typing import (
@@ -11,6 +10,7 @@ from typing import (
     get_args,
     get_origin
 )
+from urllib.parse import urlparse
 
 from src import _ROOT, get_path
 from src.assets import (
@@ -240,3 +240,33 @@ class JSONObject:
             default: _U | Type[_NotDefined]=_NotDefined
            ) -> _T | _U | None:
         return getc(self.json, name, _type, default)
+
+
+class ParsedUrl:
+    def __init__(self, url: str):
+        parsed_result = urlparse(url)
+        self.scheme = parsed_result.scheme
+        self.netloc = parsed_result.netloc
+        self.path = parsed_result.path
+        self.query = self.get_queries(parsed_result.query)
+
+    def get_queries(self, query_str: str | bytes) -> dict[str, str | None]:
+        if isinstance(query_str, bytes):
+            query_str = query_str.decode()
+
+        if query_str == '':
+            return {}
+
+        url_queries: dict[str, str | None] = {}
+        queries = query_str.split('&')
+        for query in queries:
+            try:
+                key, val = query.split('=')
+                url_queries[key] = val
+            except ValueError:
+                url_queries[query] = None
+        return url_queries
+
+
+def parse_url(url: str) -> ParsedUrl:
+    return ParsedUrl(url)
