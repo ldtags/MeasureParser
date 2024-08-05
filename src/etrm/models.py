@@ -849,10 +849,8 @@ class Measure(JSONObject):
         except IndexError as err:
             raise ETRMResponseError from err
 
-    def __json_init(self, perm_names: list[str]) -> None:
+    def __json_init(self) -> None:
         try:
-            assert perm_names is not None
-
             self.owner = self.get('owned_by_user', str)
             self.statewide_id = self.get('MeasureID', str)
             self.version_id = self.get('MeasureVersionID', str)
