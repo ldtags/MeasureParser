@@ -12,7 +12,11 @@ from pandas import DataFrame, Series
 from src.etrm import utils
 from src.utils import getc, JSONObject
 from src.exceptions import RequiredContentError
-from src.etrm.exceptions import ETRMResponseError, ETRMConnectionError
+from src.etrm.exceptions import (
+    ETRMResponseError,
+    ETRMConnectionError,
+    ETRMError
+)
 
 
 ETRM_URL = 'https://www.caetrm.com'
@@ -45,6 +49,15 @@ class Baseline(Enum):
 
 
 class PermutationsTable:
+    __json_baselines = {
+        'PEDR_1': 'UnitkW1stBaseline',
+        'PEDR_2': 'UnitkW2ndBaseline',
+        'ES_1': 'UnitkWh1stBaseline',
+        'ES_2': 'UnitkWh2ndBaseline',
+        'GS_1': 'UnitTherm1stBaseline',
+        'GS_2': 'UnitTherm2ndBaseline',
+        'MTC_1': 'UnitMeaCost1stBaseline'
+    }
     @overload
     def __init__(self, csv_path: str):
         ...
@@ -142,15 +155,15 @@ class PermutationsTable:
 
         self.results.extend(table.results)
 
-    def average(self, column_name: str) -> float | None:
-        column = self.data.get(column_name, None)
-        if column == None:
-            return None
+    def get_average(self,
+                    column: str,
+                    *columns: str,
+                    df: DataFrame | None=None
+                   ) -> list[str]:
+        count = 1 + len(columns)
+        df = df or self.data
+        averages: list[float] = []
 
-        if not all([type(item) is float for item in column]):
-            return None
-
-        return sum(column) / len(column)
 
     def get_standard_costs(self) -> tuple[float, float, float]:
         """Returns a three-tuple of the (Peak Electric Demand Reduction,
@@ -705,7 +718,11 @@ class ExclusionTable:
 
 
 class Measure(JSONObject):
-    def __init__(self, res_json: dict[str, Any], source: Literal['etrm', 'json']):
+    def __init__(self,
+                 res_json: dict[str, Any],
+                 source: Literal['etrm', 'json'],
+                 char_names: list[str],
+                 perm_names: list[str] | None=None):
         """Initializes a new eTRM measure object.
 
         Measures can be generated from two sources:
@@ -723,90 +740,77 @@ class Measure(JSONObject):
         JSONObject.__init__(self, res_json)
 
         self.source = source
-        try:
-            if source == 'etrm':
-                self.owner = self.get('owner', str)
-                self.statewide_id = self.get('statewide_measure_id', str)
-                self.version_id = self.get('full_version_id', str)
-                self.name = self.get('name', str)
-                self.use_category = self.get('use_category', str)
-                self.pa_lead = self.get('pa_lead', str)
-                self.start_date = self.get('effective_start_date', str)
-                self.end_date = self.get('sunset_date', str | None)
-                self.status = self.get('status', str)
-                self.is_published = self.get('is_published', bool)
-                self.permutation_method = self.get('permutation_method', int)
-                self.workpaper_cover_sheet = self.get(
-                    'workpaper_cover_sheet',
-                    str
-                )
-                self.characterization_source_file = self.get(
-                    'characterization_source_file',
-                    str | None
-                )
-                self.date_committed = self.get('date_committed', str)
-                self.change_description = self.get('change_description', str)
-                self.permutations_url = self.get('permutations_url', str)
-                self.property_data_url = self.get('property_data_url', str)
-            elif source == 'json':
-                self.owner = self.get('owned_by_user', str)
-                self.statewide_id = self.get('MeasureID', str)
-                self.version_id = self.get('MeasureVersionID', str)
-                self.name = self.get('MeasureName', str)
-                self.use_category = self.get('UseCategory', str)
-                self.pa_lead = self.get('PALead', str)
-                self.start_date = self.get('StartDate', str)
-                self.end_date = self.get('EndDate', str | None)
-                self.status = self.get('Status', str)
-                self.is_published = None
-                self.permutation_method = None
-                self.workpaper_cover_sheet = None
-                self.characterization_source_file = None
-                self.date_committed = None
-                self.change_description = None
-                self.permutations_url = None
-                self.property_data_url = None
+        if source == 'etrm':
+            self.__etrm_init()
+        elif source == 'json':
+            self.__json_init()
+        else:
+            raise ETRMError(f'Invalid source type: {source}')
 
-            self.determinants = getc(
-                res_json,
-                'determinants',
-                list[Determinant]
-            )
-            self.shared_determinant_refs = getc(
-                res_json,
+        try:
+            self.determinants = self.get('determinants', list[Determinant])
+            self.shared_determinant_refs = self.get(
                 'shared_determinant_refs',
                 list[SharedDeterminantRef]
             )
-            self.shared_lookup_refs = getc(
-                res_json,
+            self.shared_lookup_refs = self.get(
                 'shared_lookup_refs',
                 list[SharedLookupRef]
             )
-            self.value_tables = getc(
-                res_json,
-                'value_tables',
-                list[ValueTable]
-            )
-            self.calculations = getc(
-                res_json,
-                'calculations',
-                list[Calculation]
-            )
-            self.exclusion_tables = getc(
-                res_json,
+            self.value_tables = self.get('value_tables', list[ValueTable])
+            self.calculations = self.get('calculations', list[Calculation])
+            self.exclusion_tables = self.get(
                 'exclusion_tables',
                 list[ExclusionTable]
             )
         except IndexError:
-            raise ETRMResponseError()
+            raise ETRMError()
 
         id_path = '/'.join(self.version_id.split('-'))
         self.link = f'{ETRM_URL}/measure/{id_path}'
 
-        self.characterizations = self.__get_characterizations()
-        self.permutations = self.__get_permutations()
+        self.characterizations = self.__get_characterizations(char_names)
+        self.permutations = self.__get_permutations(perm_names or [])
 
-        self.value_table_cache: dict[str, ValueTable] = {}
+        self._determinant_map: dict[str, Determinant] = {}
+        for determinant in self.determinants:
+            self._determinant_map[determinant.api_name.lower()] = determinant
+            self._determinant_map[determinant.name.lower()] = determinant
+
+        self._shared_det_ref_map: dict[str, SharedDeterminantRef] = {}
+        for ref in self.shared_determinant_refs:
+            self._shared_det_ref_map[ref.name.lower()] = ref
+
+        self._shared_lookup_ref_map: dict[str, SharedLookupRef] = {}
+        for ref in self.shared_lookup_refs:
+            self._shared_lookup_ref_map[ref.name.lower()] = ref
+
+        self._value_table_map: dict[str, ValueTable] = {}
+        for table in self.value_tables:
+            self._value_table_map[table.api_name.lower()] = table
+            self._value_table_map[table.name.lower()] = table
+
+        self._calculation_map: dict[str, Calculation] = {}
+        for calculation in self.calculations:
+            self._calculation_map[calculation.api_name.lower()] = calculation
+            self._calculation_map[calculation.name.lower()] = calculation
+
+        self._exclusion_table_map: dict[str, ExclusionTable] = {}
+        for table in self.exclusion_tables:
+            self._exclusion_table_map[table.api_name.lower()] = table
+            self._exclusion_table_map[table.name.lower()] = table
+
+        self._characterization_map: dict[str, Characterization] = {}
+        for characterization in self.characterizations:
+            key = characterization.name.lower()
+            self._characterization_map[key] = characterization
+        del key
+
+        self._permutation_map: dict[str, Permutation] = {}
+        for permutation in self.permutations:
+            key = permutation.reporting_name.lower()
+            self._permutation_map[key] = permutation
+        del key
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Measure):
@@ -816,6 +820,58 @@ class Measure(JSONObject):
 
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
+
+    def __etrm_init(self) -> None:
+        try:
+            self.owner = self.get('owner', str)
+            self.statewide_id = self.get('statewide_measure_id', str)
+            self.version_id = self.get('full_version_id', str)
+            self.name = self.get('name', str)
+            self.use_category = self.get('use_category', str)
+            self.pa_lead = self.get('pa_lead', str)
+            self.start_date = self.get('effective_start_date', str)
+            self.end_date = self.get('sunset_date', str | None)
+            self.status = self.get('status', str)
+            self.is_published = self.get('is_published', bool)
+            self.permutation_method = self.get('permutation_method', int)
+            self.workpaper_cover_sheet = self.get(
+                'workpaper_cover_sheet',
+                str
+            )
+            self.characterization_source_file = self.get(
+                'characterization_source_file',
+                str | None
+            )
+            self.date_committed = self.get('date_committed', str)
+            self.change_description = self.get('change_description', str)
+            self.permutations_url = self.get('permutations_url', str)
+            self.property_data_url = self.get('property_data_url', str)
+        except IndexError as err:
+            raise ETRMResponseError from err
+
+    def __json_init(self, perm_names: list[str]) -> None:
+        try:
+            assert perm_names is not None
+
+            self.owner = self.get('owned_by_user', str)
+            self.statewide_id = self.get('MeasureID', str)
+            self.version_id = self.get('MeasureVersionID', str)
+            self.name = self.get('MeasureName', str)
+            self.use_category = self.get('UseCategory', str)
+            self.pa_lead = self.get('PALead', str)
+            self.start_date = self.get('StartDate', str)
+            self.end_date = self.get('EndDate', str | None)
+            self.status = self.get('Status', str)
+            self.is_published = None
+            self.permutation_method = None
+            self.workpaper_cover_sheet = None
+            self.characterization_source_file = None
+            self.date_committed = None
+            self.change_description = None
+            self.permutations_url = None
+            self.property_data_url = None
+        except IndexError as err:
+            raise ETRMResponseError from err
 
     @property
     def start_date_time(self) -> datetime.date:
@@ -828,70 +884,61 @@ class Measure(JSONObject):
 
         return utils.to_date(self.end_date)
 
-    def __get_characterizations(self) -> list[Characterization]:
-        from src.parser import dbservice as db
-        
-        char_dict: dict[str, str] = {}
-        for char_name in db.get_all_characterization_names(self.source):
+    def __get_characterizations(self,
+                                names: list[str]
+                               ) -> list[Characterization]:
+        characterizations: list[str] = []
+        for name in names:
             try:
-                uchar = self.get(char_name, str)
-                char_dict[char_name] = unicodedata.normalize('NFKD', uchar)
-            except KeyError:
-                pass
+                raw_content = self.get(name, str)
+            except IndexError:
+                continue
 
-        characterizations: list[Characterization] = []
-        for name, content in char_dict.items():
+            content = unicodedata.normalize('NFKD', raw_content)
             characterizations.append(Characterization(name, content))
+
         return characterizations
 
-    def __get_permutations(self) -> list[Permutation]:
-        from src.parser import dbservice as db
-
+    def __get_permutations(self, names: list[str]) -> list[Permutation]:
         if self.source != 'json':
             return []
 
         permutations: list[Permutation] = []
-        permutation_names = db.get_permutation_names()
-        for name in permutation_names:
+        for name in names:
             try:
-                value = self.get(name, str)
-            except:
+                mapped_value = self.get(name, str)
+            except IndexError:
                 continue
-            permutations.append(Permutation(name, value))
+
+            permutations.append(Permutation(name, mapped_value))
+
         return permutations
 
     def get_determinant(self, name: str) -> Determinant | None:
-        for determinant in self.determinants:
-            if (determinant.api_name.lower() == name.lower()
-                    or determinant.name.lower() == name.lower()):
-                return determinant
-        return None
+        return self._determinant_map.get(name.lower())
+
+    def contains_determinant(self, name: str) -> bool:
+        return self.get_determinant(name) is not None
 
     def get_shared_parameter(self, name: str) -> SharedDeterminantRef | None:
-        for parameter in self.shared_determinant_refs:
-            if parameter.name.lower() == name.lower():
-                return parameter
-        return None
+        return self._shared_det_ref_map.get(name.lower())
 
     def get_shared_parameters(self,
                               names: list[str]
                              ) -> list[SharedDeterminantRef]:
-        parameters: list[SharedDeterminantRef] = []
-        for parameter in self.shared_determinant_refs:
-            if parameter.name in names:
-                parameters.append(parameter)
-        return parameters
+        """Returns a list of shared determinant references associated
+        with the shared determinant names in `names`.
+        """
 
-    def __get_value_table(self, name: str) -> ValueTable | None:
-        table = self.value_table_cache.get(name, None)
-        if table is not None:
-            return table
+        refs: list[SharedDeterminantRef] = []
+        for name in names:
+            ref = self.get_shared_parameter(name)
+            if ref is not None:
+                refs.append(ref)
+        return refs
 
-        for table in self.value_tables:
-            if (table.name.lower() == name.lower()
-                    or table.api_name.lower() == name.lower()):
-                return table
-        return None
+    def contains_parameter(self, name: str) -> bool:
+        return self.get_shared_parameter(name) is not None
     
     @overload
     def get_value_table(self, name: str) -> ValueTable | None:
@@ -902,63 +949,50 @@ class Measure(JSONObject):
         ...
 
     def get_value_table(self, *names: str) -> ValueTable | None:
-        value_table: ValueTable | None = None
+        """Returns the value table associated with the first name
+        in `names` that has an associated value table.
+
+        Returns `None` if no name has an associated value table.
+        """
+
         for name in names:
-            value_table = self.__get_value_table(name)
-            if value_table != None:
-                break
-        return value_table
+            table = self._value_table_map.get(name.lower())
+            if table is not None:
+                return table
+        return None
 
     def get_value_tables(self, names: list[str]) -> list[ValueTable]:
+        """Returns a list of value tables associated with the non-shared
+        value table names in `names`.
+        """
+
         tables: list[ValueTable] = []
-        for table in self.value_tables:
-            if table.name in names or table.api_name in names:
+        for name in names:
+            table = self.get_value_table(name)
+            if table is not None:
                 tables.append(table)
         return tables
-
-    def get_shared_lookup(self, name: str) -> SharedLookupRef | None:
-        for lookup_ref in self.shared_lookup_refs:
-            if lookup_ref.name.lower() == name.lower():
-                return lookup_ref
-        return None
-
-    def get_shared_lookups(self, names: list[str]) -> list[SharedLookupRef]:
-        tables: list[SharedLookupRef] = []
-        for table in self.shared_lookup_refs:
-            if table.name in names:
-                tables.append(table)
-        return tables
-
-    def get_permutation(self, name: str) -> Permutation | None:
-        for permutation in self.permutations:
-            if permutation.reporting_name.lower() == name.lower():
-                return permutation
-        return None
-
-    def get_characterization(self, name: str) -> Characterization | None:
-        for characterization in self.characterizations:
-            if characterization.name.lower() == name.lower():
-                return characterization
-        return None
-
-    def contains_parameter(self, name: str) -> bool:
-        for parameter in self.shared_determinant_refs:
-            if parameter.name.lower() == name.lower():
-                return True
-        return False
 
     def contains_value_table(self, name: str) -> bool:
-        for table in self.value_tables:
-            if (table.name.lower() == name.lower()
-                    or table.api_name.lower() == name.lower()):
-                return True
-        return False
+        return self.get_value_table(name) is not None
+
+    def get_shared_lookup(self, name: str) -> SharedLookupRef | None:
+        return self._shared_lookup_ref_map.get(name.lower())
+
+    def get_shared_lookups(self, names: list[str]) -> list[SharedLookupRef]:
+        """Returns a list of shared lookup references associated with the
+        shared value table names in `names`.
+        """
+
+        refs: list[SharedLookupRef] = []
+        for name in names:
+            ref = self.get_shared_lookup(name)
+            if ref is not None:
+                refs.append(ref)
+        return refs
 
     def contains_shared_table(self, name: str) -> bool:
-        for table in self.shared_lookup_refs:
-            if table.name.lower() == name.lower():
-                return True
-        return False
+        return self.get_shared_lookup(name) is not None
 
     def contains_table(self, name: str) -> bool:
         if self.contains_value_table(name):
@@ -969,18 +1003,29 @@ class Measure(JSONObject):
 
         return False
 
+    def get_calculation(self, name: str) -> Calculation | None:
+        return self._calculation_map.get(name.lower())
+
     def contains_calculation(self, name: str) -> bool:
-        for calculation in self.calculations:
-            if (calculation.api_name.lower() == name.lower()
-                    or calculation.name.lower() == name.lower()):
-                return True
-        return False
+        return self.get_calculation(name) is not None
+
+    def get_exclusion_table(self, name: str) -> ExclusionTable | None:
+        return self._exclusion_table_map.get(name.lower())
+
+    def contains_exclusion_table(self, name: str) -> bool:
+        return self.get_exclusion_table(name) is not None
+
+    def get_permutation(self, name: str) -> Permutation | None:
+        return self._permutation_map.get(name.lower())
 
     def contains_permutation(self, name: str) -> bool:
-        for permutation in self.permutations:
-            if permutation.reporting_name.lower() == name.lower():
-                return True
-        return False
+        return self.get_permutation(name) is not None
+
+    def get_characterization(self, name: str) -> Characterization | None:
+        return self._characterization_map.get(name.lower())
+
+    def contains_characterization(self, name: str) -> bool:
+        return self.get_characterization(name) is not None
 
     def contains_mat_label(self, *labels: str) -> bool:
         mat = self.get_shared_parameter('MeasAppType')
