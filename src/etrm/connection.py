@@ -16,6 +16,7 @@ from src.etrm.models import (
     PermutationsTable
 )
 from src.etrm.exceptions import (
+    ETRMError,
     ETRMResponseError,
     ETRMRequestError,
     ETRMConnectionError
@@ -372,42 +373,56 @@ class ETRMConnection:
         ...
 
     @overload
+    def get_permutations(self, measure_id: str) -> PermutationsTable:
+        ...
+
+    @overload
     def get_permutations(self,
                          statewide_id: str,
-                         version_id: str
+                         version: str
                         ) -> PermutationsTable:
         ...
 
     def get_permutations(self, *args) -> PermutationsTable:
-        match len(args):
-            case 1:
-                measure = args[0]
-                if not isinstance(measure, Measure):
-                    raise ETRMRequestError('Invalid arg type: measure must be'
-                                           ' a Measure object')
-
-                ids = measure.full_version_id.split('-', 1)
-                if len(ids) != 2:
-                    raise ETRMConnectionError('Invalid measure id:'
-                                              f' {measure.full_version_id}')
-
-                statewide_id = ids[0]
-                version = ids[1]
-            case 2:
+        def parse_args() -> tuple[str, str]:
+            arg_len = len(args)
+            if arg_len == 1:
+                if isinstance(args[0], str):
+                    measure_id = args[0]
+                elif isinstance(args[0], Measure):
+                    measure_id = args[0].version_id
+                else:
+                    raise ETRMError(
+                        f'Unsupported single arg type: {type(args[0])}'
+                    )
+                split_id = measure_id.split('-', 1)
+                if len(split_id) != 2:
+                    raise ETRMConnectionError(
+                        f'Invalid measure id: {measure_id}'
+                    )
+                statewide_id = split_id[0]
+                version = split_id[1]
+            if arg_len == 2:
                 statewide_id = args[0]
                 if not isinstance(statewide_id, str):
-                    raise ETRMRequestError('Invalid arg type: statewide_id'
-                                           ' must be a str object')
-
+                    raise ETRMRequestError(
+                        'Invalid arg type: statewide_id must be a str object'
+                    )
                 version = args[1]
                 if not isinstance(version, str):
-                    raise ETRMRequestError('Invalid arg type: version_id'
-                                           ' must be a str object')
-            case _:
-                raise ETRMRequestError('Unsupported arg count')
+                    raise ETRMRequestError(
+                        'Invalid arg type: version_id must be a str object'
+                    )
+            else:
+                raise ETRMRequestError(
+                    f'Expected 1 or 2 args, but got {arg_len}'
+                )
+            return (statewide_id, version)
 
-        logger.info('Retrieving permutations of measure'
-                        f' {statewide_id}-{version}')
+        statewide_id, version = parse_args()
+        logger.info(
+            f'Retrieving permutations of measure {statewide_id}-{version}'
+        )
 
         try:
             statewide_id = sanitizers.sanitize_statewide_id(statewide_id)
