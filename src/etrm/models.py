@@ -3,8 +3,8 @@ import os
 import csv
 import math
 import pandas as pd
-import datetime
-import unicodedata
+import datetime as dt
+import unicodedata as ud
 from enum import Enum
 from typing import Literal, Any, overload
 from pandas import DataFrame, Series
@@ -872,11 +872,11 @@ class Measure(JSONObject):
             raise ETRMResponseError from err
 
     @property
-    def start_date_time(self) -> datetime.date:
+    def start_date_time(self) -> dt.date:
         return utils.to_date(self.start_date)
 
     @property
-    def end_date_time(self) -> datetime.date | None:
+    def end_date_time(self) -> dt.date | None:
         if self.end_date is None:
             return None
 
@@ -892,7 +892,7 @@ class Measure(JSONObject):
             except IndexError:
                 continue
 
-            content = unicodedata.normalize('NFKD', raw_content)
+            content = ud.normalize('NFKD', raw_content)
             characterizations.append(Characterization(name, content))
 
         return characterizations
