@@ -2,6 +2,7 @@ import sys
 from traceback import print_exc
 from argparse import ArgumentParser, Namespace
 
+from src import etrm
 from src.app import Controller
 from src.etrm import sanitizers
 from src.utils import perror
@@ -37,14 +38,6 @@ def parse_arguments() -> Namespace:
     parser = ArgumentParser(description='parser for eTRM measure JSON files')
 
     parser.add_argument(
-        '-k', '--key',
-        type=valid_api_key,
-        default=None,
-        required=False,
-        help='An eTRM API key (i.e., Token ae163fba910e9c021)'
-    )
-
-    parser.add_argument(
         '-m', '--measure',
         type=valid_measure_id,
         default=None,
@@ -52,13 +45,32 @@ def parse_arguments() -> Namespace:
         help='A full measure version ID (i.e., SWAP001-06)'
     )
 
+    key_group = parser.add_mutually_exclusive_group()
+
+    key_group.add_argument(
+        '-k', '--key',
+        type=valid_api_key,
+        default=None,
+        required=False,
+        help='An eTRM API key (i.e., Token ae163fba910e9c021)'
+    )
+
+    key_group.add_argument(
+        '-d', '--dev',
+        action='store_true'
+    )
+
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_arguments()
-    api_key = getattr(args, 'key', None)
     measure_id = getattr(args, 'measure', None)
+    dev_mode = getattr(args, 'dev', False)
+    if dev_mode:
+        api_key = etrm.get_api_key()
+    else:
+        api_key = getattr(args, 'key', None)
 
     app = Controller()
     app.start(api_key=api_key, measure_id=measure_id)
