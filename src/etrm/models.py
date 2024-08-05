@@ -4,6 +4,7 @@ import csv
 import math
 import pandas as pd
 import datetime as dt
+import statistics as st
 import unicodedata as ud
 from enum import Enum
 from typing import Literal, Any, overload
@@ -22,42 +23,29 @@ from src.etrm.exceptions import (
 ETRM_URL = 'https://www.caetrm.com'
 
 
-class Baseline(Enum):
-    PEDR_1 = 'UnitkW1stBaseline'
-    """First Baseline - Peak Electric Demand Reduction"""
-
-    PEDR_2 = 'UnitkW2ndBaseline'
-    """Second Baseline - Peak Electric Demand Reduction"""
-
-    ES_1 = 'UnitkWh1stBaseline'
-    """First Baseline - Electric Savings"""
-
-    ES_2 = 'UnitkWh2ndBaseline'
-    """Second Baseline - Electric Savings"""
-
-    GS_1 = 'UnitTherm1stBaseline'
-    """First Baseline - Gas Savings"""
-
-    GS_2 = 'UnitTherm2ndBaseline'
-    """Second Baseline - Gas Savings"""
-
-    MTC_1 = 'UnitMeaCost1stBaseline'
-    """Measure Total Cost 1st Baseline"""
-
-    MTC_2 = 'UnitMeaCost2ndBaseline'
-    """Measure Total Cost 2nd Baseline"""
-
-
 class PermutationsTable:
-    __json_baselines = {
+    reporting_baselines = {
         'PEDR_1': 'UnitkW1stBaseline',
         'PEDR_2': 'UnitkW2ndBaseline',
         'ES_1': 'UnitkWh1stBaseline',
         'ES_2': 'UnitkWh2ndBaseline',
         'GS_1': 'UnitTherm1stBaseline',
         'GS_2': 'UnitTherm2ndBaseline',
-        'MTC_1': 'UnitMeaCost1stBaseline'
+        'MTC_1': 'UnitMeaCost1stBaseline',
+        'MTC_2': 'UnitMeaCost2ndBaseline'
     }
+
+    verbose_baselines = {
+        'PEDR_1': 'First Baseline - Peak Electric Demand Reduction',
+        'PEDR_2': 'Second Baseline - Peak Electric Demand Reduction',
+        'ES_1': 'First Baseline - Electric Savings',
+        'ES_2': 'Second Baseline - Electric Savings',
+        'GS_1': 'First Baseline - Gas Savings',
+        'GS_2': 'Second Baseline - Gas Savings',
+        'MTC_1': 'Measure Total Cost 1st Baseline',
+        'MTC_2': 'Measure Total Cost 2nd Baseline'
+    }
+
     @overload
     def __init__(self, csv_path: str):
         ...
@@ -88,6 +76,31 @@ class PermutationsTable:
             data[header] = columns[x]
         self.data = DataFrame(data)
 
+    def __getitem__(self, header: str) -> Series:
+        try:
+            return self.data[header]
+        except KeyError as err:
+            raise ETRMConnectionError(
+                f'Permutation column {header} not found'
+            ) from err
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, PermutationsTable):
+            return False
+
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+    class _Links:
+        def __init__(self, links: dict[str, str | None] | None=None):
+            if links is None:
+                links = {}
+
+            self.next = links.get('next', None)
+            self.previous = links.get('previous', None)
+
     def __csv_init(self, csv_path: str) -> None:
         if not os.path.exists(csv_path):
             raise ETRMConnectionError(
@@ -115,6 +128,7 @@ class PermutationsTable:
                 self.results.append(line)
         self.count = len(self.results)
         self.links = self._Links()
+        self.baselines = self.verbose_baselines
 
     def __json_init(self, _json: dict[str, Any]) -> None:
         self.json = _json
@@ -129,22 +143,7 @@ class PermutationsTable:
             )
         except IndexError:
             raise ETRMResponseError()
-
-    class _Links:
-        def __init__(self, links: dict[str, str | None] | None=None):
-            if links is None:
-                links = {}
-
-            self.next = links.get('next', None)
-            self.previous = links.get('previous', None)
-
-    def __getitem__(self, header: str) -> Series:
-        try:
-            return self.data[header]
-        except KeyError as err:
-            raise ETRMConnectionError(
-                f'Permutation column {header} not found'
-            ) from err
+        self.baselines = self.reporting_baselines
 
     def join(self, table: PermutationsTable) -> None:
         if table.count == 0:
@@ -155,19 +154,39 @@ class PermutationsTable:
 
         self.results.extend(table.results)
 
-    def get_average(self,
-                    column: str,
-                    *columns: str,
-                    df: DataFrame | None=None
-                   ) -> list[str]:
-        count = 1 + len(columns)
-        df = df or self.data
-        averages: list[float] = []
+    def get_baseline_avg(self,
+                         baseline: str,
+                         *mat_labels: str,
+                         negate: bool=False
+                        ) -> float | None:
+        column = self.baselines.get(baseline)
+        if column is None:
+            raise ETRMError(f'Unknown baseline: {baseline}')
 
+        if mat_labels != ():
+            if negate:
+                df = self.data.loc[
+                    ~self.data['MeasAppType'].isin([*mat_labels])
+                ]
+            else:
+                df = self.data.loc[
+                    self.data['MeasAppType'].isin([*mat_labels])
+                ]
+        else:
+            df = self.data
+
+        if df.empty:
+            return None
+
+        avg = df[column].mean()
+        if math.isnan(avg):
+            return 0
+
+        return avg
 
     def get_standard_costs(self) -> tuple[float, float, float]:
         """Returns a three-tuple of the (Peak Electric Demand Reduction,
-         Electric Savings, Gas Savings) standard costs.
+        Electric Savings, Gas Savings) standard costs.
 
         The standard costs are either:
             First Baseline  (NC or NR)
@@ -175,73 +194,63 @@ class PermutationsTable:
             None            (other)
         """
 
-        baseline_count = 0
-        pedr = 0.0
-        es = 0.0
-        gs = 0.0
+        pedr_vals: list[float] = []
+        pedr = self.get_baseline_avg('PEDR_1', 'NC', 'NR')
+        if pedr is not None:
+            pedr_vals.append(pedr)
 
-        nc_nr_rows = self.data.loc[
-            self.data['MeasAppType'].isin(['NC', 'NR'])
-        ]
-        if not nc_nr_rows.empty:
-            pedr += nc_nr_rows[Baseline.PEDR_1.value].mean()
-            es += nc_nr_rows[Baseline.ES_1.value].mean()
-            gs += nc_nr_rows[Baseline.GS_1.value].mean()
-            baseline_count += 1
+        pedr = self.get_baseline_avg('PEDR_2', 'AR')
+        if pedr is not None:
+            pedr_vals.append(pedr)
 
-        ar_rows = self.data.loc[
-            self.data['MeasAppType'] == 'AR'
-        ]
-        if not ar_rows.empty:
-            pedr += ar_rows[Baseline.PEDR_2.value].mean()
-            es += ar_rows[Baseline.ES_2.value].mean()
-            gs += ar_rows[Baseline.GS_2.value].mean()
-            baseline_count += 1
-
-        if baseline_count == 0:
-            return (0.0, 0.0, 0.0)
-
-        if math.isnan(pedr):
+        if len(pedr_vals) == 0:
             pedr = 0.0
         else:
-            pedr /= baseline_count
+            pedr = st.fmean(pedr_vals)
 
-        if math.isnan(es):
+        es_vals: list[float] = []
+        es = self.get_baseline_avg('ES_1', 'NC', 'NR')
+        if es is not None:
+            es_vals.append(es)
+
+        es = self.get_baseline_avg('ES_2', 'AR')
+        if es is not None:
+            es_vals.append(es)
+
+        if len(es_vals) == 0:
             es = 0.0
         else:
-            es /= baseline_count
+            es = st.fmean(es_vals)
 
-        if math.isnan(gs):
+        gs_vals: list[float] = []
+        gs = self.get_baseline_avg('GS_1', 'NC', 'NR')
+        if gs is not None:
+            gs_vals.append(gs)
+
+        gs = self.get_baseline_avg('GS_2', 'AR')
+        if gs is not None:
+            gs_vals.append(gs)
+
+        if len(gs_vals) == 0:
             gs = 0.0
         else:
-            gs /= baseline_count
+            gs = st.fmean(gs_vals)
 
         return (pedr, es, gs)
 
+
     def get_pre_existing_costs(self) -> tuple[float, float, float]:
         """Returns a three-tuple of the (Peak Electric Demand Reduction,
-         Electric Savings, Gas Savings) pre-existing costs.
+        Electric Savings, Gas Savings) pre-existing costs.
 
         The pre-existing costs are either:
             None            (NC or NR)
             First Baseline  (other)
         """
 
-        rows = self.data.loc[
-            ~self.data['MeasAppType'].isin(['NC', 'NR'])
-        ]
-
-        pedr = rows[Baseline.PEDR_1.value].mean()
-        if math.isnan(pedr):
-            pedr = 0.0
-
-        es = rows[Baseline.ES_1.value].mean()
-        if math.isnan(es):
-            es = 0.0
-
-        gs = rows[Baseline.GS_1.value].mean()
-        if math.isnan(gs):
-            gs = 0.0
+        pedr = self.get_baseline_avg('PEDR_1', 'NC', 'NR', negate=True) or 0.0
+        es = self.get_baseline_avg('ES_1', 'NC', 'NR', negate=True) or 0.0
+        gs = self.get_baseline_avg('GS_1', 'NC', 'NR', negate=True) or 0.0
         return (pedr, es, gs)
 
     def get_incremental_cost(self) -> float:
@@ -253,30 +262,19 @@ class PermutationsTable:
             None                            (other)
         """
 
-        mtc_1_col = self.data.loc[
-            self.data['MeasAppType'].isin(['NC', 'NR'])
-        ][Baseline.MTC_1.value]
+        mtc_1 = self.get_baseline_avg('MTC_1', 'NC', 'NR')
+        mtc_2 = self.get_baseline_avg('MTC_2', 'AR')
 
-        mtc_2_col = self.data.loc[
-            self.data['MeasAppType'] == 'AR'
-        ][Baseline.MTC_2.value]
-
-        if mtc_1_col.empty and mtc_2_col.empty:
+        if mtc_1 is None and mtc_2 is None:
             return 0.0
 
-        if mtc_1_col.empty:
-            mtc = mtc_2_col.mean()
-        elif mtc_2_col.empty:
-            mtc = mtc_1_col.mean()
-        else:
-            mtc_col = pd.concat([mtc_1_col, mtc_2_col],
-                                ignore_index=True,
-                                sort=False)
-            mtc = mtc_col.mean()
+        if mtc_1 is None:
+            return mtc_2
 
-        if math.isnan(mtc):
-            return 0.0
-        return mtc
+        if mtc_2 is None:
+            return mtc_1
+
+        return st.fmean([mtc_1, mtc_2])
 
     def get_total_cost(self) -> float:
         """Returns the total cost of the measure.
@@ -286,22 +284,7 @@ class PermutationsTable:
             Measure Total Cost 1st Baseline (other)
         """
 
-        mtc_col = self.data.loc[
-            ~self.data['MeasAppType'].isin(['NC', 'NR'])
-        ][Baseline.MTC_1.value]
-        mtc = mtc_col.mean()
-        if math.isnan(mtc):
-            mtc = 0.0
-        return mtc
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, PermutationsTable):
-            return False
-
-        return self.__dict__ == other.__dict__
-
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
+        return self.get_baseline_avg('MTC_1', 'NC', 'NR', negate=True) or 0.0
 
 
 class MeasureInfo:
