@@ -5,8 +5,7 @@ import requests
 import http.client as httpc
 from typing import TypeVar, Callable, overload
 
-from src import utils
-from src.etrm import sanitizers
+from src.etrm import utils, sanitizers
 from src.etrm.models import (
     MeasuresResponse,
     MeasureVersionsResponse,
@@ -31,8 +30,6 @@ STAGE_API = 'https://stage.caetrm.com/api/v1'
 
 
 _T = TypeVar('_T')
-
-
 _DEC_TYPE = Callable[..., _T | None]
 def etrm_cache_request(func: _DEC_TYPE) -> _DEC_TYPE:
     """Decorator for eTRM cache request methods.

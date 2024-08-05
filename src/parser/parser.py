@@ -1,7 +1,7 @@
 import os
 
-from src.parser import dbservice as db
 from src.parser.logger import MeasureDataLogger
+from src.etrm import db
 from src.etrm.models import (
     Measure,
     Permutation,

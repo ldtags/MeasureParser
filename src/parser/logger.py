@@ -1,7 +1,7 @@
 from typing import Self
 
+from src.etrm import db
 from src.etrm.models import Measure
-from src.parser import dbservice as db
 from src.parser.parserdata import (
     ParserData
 )

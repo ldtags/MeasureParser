@@ -1,12 +1,19 @@
 import re
-import datetime
+import json
+import datetime as dt
+import jsonschema as jschema
+from typing import Any
 from urllib.parse import urlparse
+
+from src.etrm import resources, patterns
+from src.etrm.exceptions import (
+    ETRMError,
+    SchemaError
+)
 
 
 def version_key(full_version_id: str) -> int:
     """Sorting key for measure versions."""
-
-    from src.etrm import patterns
 
     re_match = re.fullmatch(patterns.VERSION_ID, full_version_id)
     if re_match is None:
@@ -36,12 +43,10 @@ def version_key(full_version_id: str) -> int:
     return key
 
 
-def to_date(date_str: str) -> datetime.date:
+def to_date(date_str: str) -> dt.date:
     """Converts a date string of format `YYYY-MM-DD` to a
     datetime object.
     """
-
-    from src.etrm import patterns
 
     if not re.fullmatch(patterns.DATE, date_str):
         raise RuntimeError(
@@ -50,7 +55,7 @@ def to_date(date_str: str) -> datetime.date:
 
     year, month, day = date_str.split('-', 2)
     try:
-        end_date = datetime.date(int(year), int(month), int(day))
+        end_date = dt.date(int(year), int(month), int(day))
     except ValueError as err:
         raise RuntimeError(
             f'Invalid Date Format: {date_str}'
@@ -87,3 +92,37 @@ class ParsedUrl:
 
 def parse_url(url: str) -> ParsedUrl:
     return ParsedUrl(url)
+
+
+def is_etrm_measure(measure_json: dict[str, Any]) -> bool:
+    """Validates the provided measure json against a JSON schema."""
+
+    try:
+        schema_path = resources.get_path('measure.schema.json')
+    except FileNotFoundError:
+        raise ETRMError(
+            'Measure schema is either missing or has been renamed'
+        )
+
+    try:
+        with open(schema_path, 'r') as fp:
+            schema_json = json.load(fp)
+    except json.JSONDecodeError as err:
+        raise SchemaError(
+            'An error occurred while parsing the eTRM measure JSON schema,'
+            ' please reaquire the correct schema file or reinstall the'
+            ' application'
+        ) from err
+    except OSError as err:
+        raise ETRMError(
+            'An error occurred while reading the measure JSON schema'
+            f' file {schema_path}'
+        ) from err
+
+    try:
+        jschema.validate(instance=measure_json, schema=schema_json)
+        return True
+    except jschema.ValidationError:
+        pass
+
+    return False
