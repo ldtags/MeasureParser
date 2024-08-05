@@ -1,4 +1,6 @@
 from __future__ import annotations
+import os
+import csv
 import math
 import pandas as pd
 import datetime
@@ -43,30 +45,83 @@ class Baseline(Enum):
 
 
 class PermutationsTable:
-    def __init__(self, res_json: dict[str, Any]):
-        self.json = res_json
-        try:
-            self.count = getc(res_json, 'count', int)
-            self.links = getc(res_json, 'links', self._Links)
-            self.headers = getc(res_json, 'headers', list[str])
-            self.results = getc(res_json, 'results', list[list[str | float | None]])
+    @overload
+    def __init__(self, csv_path: str):
+        ...
 
-            self.data = DataFrame(
-                data=self.results,
-                columns=self.headers
+    @overload
+    def __init__(self, res_json: dict[str, Any]):
+        ...
+
+    def __init__(self, _input: dict[str, Any] | str):
+        if isinstance(_input, str):
+            self.__csv_init(_input)
+        elif isinstance(_input, dict):
+            self.__json_init(_input)
+        else:
+            raise ETRMConnectionError(
+                'Invalid input type: cannot build permutations table from'
+                f' input of type {type(_input)}'
             )
 
-            columns = [list(col) for col in zip(*self.results)]
-            data: dict[str, list[str | float | None]] = {}
-            for x, header in enumerate(self.headers):
-                data[header] = columns[x]
-            self.data = DataFrame(data)
+        self.data = DataFrame(
+            data=self.results,
+            columns=self.headers
+        )
 
+        columns = [list(col) for col in zip(*self.results)]
+        data: dict[str, list[str | float | None]] = {}
+        for x, header in enumerate(self.headers):
+            data[header] = columns[x]
+        self.data = DataFrame(data)
+
+    def __csv_init(self, csv_path: str) -> None:
+        if not os.path.exists(csv_path):
+            raise ETRMConnectionError(
+                f'Invalid file path: {csv_path} does not exist'
+            )
+
+        if not os.path.isfile(csv_path):
+            raise ETRMConnectionError(
+                f'Invalid file path: {csv_path} is a folder, not a csv file'
+            )
+
+        _, ext = os.path.splitext(csv_path)
+        if not ext == 'csv':
+            raise ETRMConnectionError(
+                f'Invalid file path: {csv_path} is a {ext} file, not a csv'
+                ' file'
+            )
+
+        self.headers: list[str] = []
+        self.results: list[list[str]] = []
+        with open(csv_path) as fp:
+            csv_reader = csv.reader(fp)
+            self.headers.extend(next(csv_reader))
+            for line in csv_reader:
+                self.results.append(line)
+        self.count = len(self.results)
+        self.links = self._Links()
+
+    def __json_init(self, _json: dict[str, Any]) -> None:
+        self.json = _json
+        try:
+            self.count = getc(_json, 'count', int)
+            self.links = getc(_json, 'links', self._Links)
+            self.headers = getc(_json, 'headers', list[str])
+            self.results = getc(
+                _json,
+                'results',
+                list[list[str | float | None]]
+            )
         except IndexError:
             raise ETRMResponseError()
 
     class _Links:
-        def __init__(self, links: dict[str, str | None]):
+        def __init__(self, links: dict[str, str | None] | None=None):
+            if links is None:
+                links = {}
+
             self.next = links.get('next', None)
             self.previous = links.get('previous', None)
 
