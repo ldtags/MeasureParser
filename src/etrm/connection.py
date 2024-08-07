@@ -5,7 +5,7 @@ import requests
 import http.client as httpc
 from typing import TypeVar, Callable, overload
 
-from src.etrm import utils, sanitizers
+from src.etrm import utils, sanitizers, lookups
 from src.etrm.models import (
     MeasuresResponse,
     MeasureVersionsResponse,
@@ -225,17 +225,12 @@ class ETRMConnection:
     def get_measure(self, measure_id: str) -> Measure:
         logger.info(f'Retrieving measure: {measure_id}')
 
-        try:
-            measure_version = sanitizers.sanitize_measure_id(measure_id)
-        except:
-            logger.info(f'Invalid measure ID: {measure_id}')
-            raise
-
-        cached_measure = self.cache.get_measure(measure_version)
+        sanitized_id = sanitizers.sanitize_measure_id(measure_id)
+        cached_measure = self.cache.get_measure(sanitized_id)
         if cached_measure != None:
             return cached_measure
 
-        statewide_id, version_id = measure_version.split('-', 1)
+        statewide_id, version_id = sanitized_id.split('-', 1)
         response = self.get(f'/measures/{statewide_id}/{version_id}')
         measure = Measure(response.json(), source='etrm')
         self.cache.add_measure(measure)
@@ -247,6 +242,26 @@ class ETRMConnection:
                         use_category: str | None=None
                        ) -> tuple[list[str], int]:
         logger.info(f'Retrieving measure IDs')
+
+        if offset < 0:
+            raise ETRMRequestError(
+                f'Invalid offset: {offset} must be a non-negative integer'
+            )
+
+        if limit < 0:
+            raise ETRMRequestError(
+                f'Invalid limit: {limit} must be a non-negative integer'
+            )
+
+        if use_category is not None:
+            try:
+                lookups.USE_CATEGORIES[use_category]
+            except KeyError:
+                keys = lookups.USE_CATEGORIES.keys()
+                raise ETRMRequestError(
+                    f'Invalid use category: {use_category} must be one of'
+                    f' [{",".join(keys)}]'
+                )
 
         cache_response = self.cache.get_ids(offset, limit, use_category)
         if cache_response is not None:
@@ -262,34 +277,37 @@ class ETRMConnection:
 
         response = self.get('/measures', params=params)
         response_body = MeasuresResponse(response.json())
-        measure_ids = list(map(lambda result: self.extract_id(result.url),
-                               response_body.results))
+        statewide_ids: list[str] = []
+        for result in response_body.results:
+            statewide_id = self.extract_id(result.url)
+            sanitized_id = sanitizers.sanitize_statewide_id(statewide_id)
+            statewide_ids.append(sanitized_id)
+
         count = response_body.count
-        self.cache.add_ids(measure_ids=measure_ids,
-                           offset=offset,
-                           limit=limit,
-                           count=count,
-                           use_category=use_category)
-        return (measure_ids, count)
+        self.cache.add_ids(
+            measure_ids=statewide_ids,
+            offset=offset,
+            limit=limit,
+            count=count,
+            use_category=use_category
+        )
+        return (statewide_ids, count)
 
     def get_all_measure_ids(self, use_category: str | None=None) -> list[str]:
         logger.info('Retrieving all measure ids')
 
         _, count = self.get_measure_ids(use_category=use_category)
-        measure_ids, _ = self.get_measure_ids(offset=0,
-                                              limit=count,
-                                              use_category=use_category)
+        measure_ids, _ = self.get_measure_ids(
+            offset=0,
+            limit=count,
+            use_category=use_category
+        )
         return measure_ids
 
     def get_measure_versions(self, statewide_id: str) -> list[str]:
         logger.info(f'Retrieving versions of measure {statewide_id}')
 
-        try:
-            statewide_id = sanitizers.sanitize_statewide_id(statewide_id)
-        except:
-            logger.info(f'Invalid statewide ID: {statewide_id}')
-            raise
-
+        statewide_id = sanitizers.sanitize_statewide_id(statewide_id)
         cached_versions = self.cache.get_versions(statewide_id)
         if cached_versions is not None:
             return list(reversed(cached_versions))
@@ -298,7 +316,8 @@ class ETRMConnection:
         response_body = MeasureVersionsResponse(response.json())
         measure_versions: list[str] = []
         for version_info in response_body.versions:
-            measure_versions.append(version_info.version)
+            sanitized_id = sanitizers.sanitize_measure_id(version_info.version)
+            measure_versions.append(sanitized_id)
 
         self.cache.add_versions(statewide_id, measure_versions)
         return list(reversed(measure_versions))
@@ -306,19 +325,14 @@ class ETRMConnection:
     def get_reference(self, ref_id: str) -> Reference:
         logger.info(f'Retrieving reference {ref_id}')
 
-        try:
-            ref_id = sanitizers.sanitize_reference(ref_id)
-        except:
-            logger.info(f'Invalid reference ID: {ref_id}')
-            raise
-
-        cached_ref = self.cache.get_reference(ref_id)
+        sanitized_ref = sanitizers.sanitize_reference(ref_id)
+        cached_ref = self.cache.get_reference(sanitized_ref)
         if cached_ref is not None:
             return cached_ref
 
-        response = self.get(f'/references/{ref_id}/')
+        response = self.get(f'/references/{sanitized_ref}/')
         reference = Reference(response.json())
-        self.cache.add_reference(ref_id, reference)
+        self.cache.add_reference(sanitized_ref, reference)
         return reference
 
     @overload
@@ -335,37 +349,39 @@ class ETRMConnection:
         ...
 
     def get_shared_value_table(self, *args) -> SharedValueTable:
-        if len(args) == 1:
-            if not isinstance(args[0], SharedLookupRef):
-                raise ETRMRequestError(f'unknown overload args: {args}')
-            table_name = args[0].name
-            version = args[0].version
-            url = args[0].url
-        elif len(args) == 2:
-            if not (isinstance(args[0], str)
-                        and isinstance(args[1], str | int)):
-                raise ETRMRequestError(f'unknown overload args: {args}')
-            table_name = args[0]
-            version = f'{args[1]:03d}'
-            url = f'/shared-value-tables/{table_name}/{version}'
-        else:
-            raise ETRMRequestError('missing required parameters')
+        def parse_args() -> tuple[str, str, str]:
+            if len(args) == 1:
+                if not isinstance(args[0], SharedLookupRef):
+                    raise ETRMRequestError(f'unknown overload args: {args}')
+                table_name = args[0].name
+                version = args[0].version
+                url = args[0].url
+            elif len(args) == 2:
+                if not (isinstance(args[0], str)
+                            and isinstance(args[1], str | int)):
+                    raise ETRMRequestError(f'unknown overload args: {args}')
+                table_name = args[0]
+                version = f'{args[1]:03d}'
+                url = f'/shared-value-tables/{table_name}/{version}'
+            else:
+                raise ETRMRequestError('missing required parameters')
+            return table_name, version, url
+
+        table_name, version, url = parse_args()
 
         logger.info(f'Retrieving shared value table {table_name}')
 
-        try:
-            sanitizers.sanitize_table_name(table_name)
-        except:
-            logger.info(f'Invalid value table name: {table_name}')
-            raise
-
-        cached_table = self.cache.get_shared_value_table(table_name, version)
+        sanitized_name = sanitizers.sanitize_table_name(table_name)
+        cached_table = self.cache.get_shared_value_table(
+            sanitized_name,
+            version
+        )
         if cached_table is not None:
             return cached_table
 
         response = self.get(url)
         value_table = SharedValueTable(response.json())
-        self.cache.add_shared_value_table(table_name, version, value_table)
+        self.cache.add_shared_value_table(sanitized_name, version, value_table)
         return value_table
 
     @overload
@@ -420,16 +436,12 @@ class ETRMConnection:
             return (statewide_id, version)
 
         statewide_id, version = parse_args()
+
         logger.info(
             f'Retrieving permutations of measure {statewide_id}-{version}'
         )
 
-        try:
-            statewide_id = sanitizers.sanitize_statewide_id(statewide_id)
-        except:
-            logger.info(f'Invalid statewide ID: {statewide_id}')
-            raise
-
+        statewide_id = sanitizers.sanitize_statewide_id(statewide_id)
         url = f'/measures/{statewide_id}/{version}/permutations'
         permutations_table: PermutationsTable | None = None
         while url is not None:
