@@ -293,6 +293,11 @@ class Entry(Widget, tk.XView):
         )
         self.__bind_dynamic_events()
 
+        if self.is_placeholder:
+            self.entry.config(
+                fg=self.placeholder_color
+            )
+
     def clear(self) -> None:
         self.delete(0, tk.END)
         self.__put_placeholder()
