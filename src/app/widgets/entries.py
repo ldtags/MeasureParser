@@ -94,6 +94,8 @@ class Entry(Widget, tk.XView):
             - `set_validator` sets an input validator
         """
 
+        assert text_color != placeholder_color
+
         kw = {
             'highlightcolor': border_color,
             'highlightbackground': border_color,
@@ -102,8 +104,6 @@ class Entry(Widget, tk.XView):
             'bg': bg
         }
         Widget.__init__(self, parent, 'frame', cnf={}, kw=kw)
-
-        assert text_color != placeholder_color
 
         self.pad_frame = Frame(self, relief=relief, bg=bg)
         self.pad_frame.pack(
@@ -145,14 +145,18 @@ class Entry(Widget, tk.XView):
         self.__bind_dynamic_events()
 
     def __put_placeholder(self) -> None:
-        if self.placeholder is not None:
-            self.is_placeholder = True
-            self.insert(0, self.placeholder)
-            self.entry['fg'] = self.placeholder_color
+        if self.placeholder is None:
+            return        
+
+        if self.is_placeholder:
+            return
+
+        self.is_placeholder = True
+        self.entry['fg'] = self.placeholder_color
+        self.insert(0, self.placeholder)
 
     def __focus_in(self, event: tk.Event) -> None:
-        if (self.placeholder is not None
-                and self.entry['fg'] == self.placeholder_color):
+        if self.placeholder is not None and self.is_placeholder:
             self.is_placeholder = False
             self.delete(0, tk.END)
             self.entry['fg'] = self.text_color
@@ -192,6 +196,9 @@ class Entry(Widget, tk.XView):
 
     def get(self) -> str:
         """Return the text."""
+
+        if self.is_placeholder:
+            return ''
 
         return self.entry.tk.call(self.entry._w, 'get')
 
@@ -303,8 +310,7 @@ class Entry(Widget, tk.XView):
         self.__put_placeholder()
 
     def set_text(self, text: str) -> None:
-        if (self.placeholder is not None
-                and self.entry['fg'] == self.placeholder_color):
+        if self.placeholder is not None and self.is_placeholder:
             self.entry['fg'] = self.text_color
         self.is_placeholder = False
         self.delete(0, tk.END)
