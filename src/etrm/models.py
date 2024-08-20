@@ -53,6 +53,7 @@ class PermutationsTable:
         ...
 
     def __init__(self, _input: dict[str, Any] | str):
+        self.source: Literal['etrm', 'csv']
         if isinstance(_input, str):
             self.__csv_init(_input)
         elif isinstance(_input, dict):
@@ -111,7 +112,7 @@ class PermutationsTable:
             )
 
         _, ext = os.path.splitext(csv_path)
-        if not ext == 'csv':
+        if not ext == '.csv':
             raise ETRMConnectionError(
                 f'Invalid file path: {csv_path} is a {ext} file, not a csv'
                 ' file'
@@ -127,6 +128,7 @@ class PermutationsTable:
         self.count = len(self.results)
         self.links = self._Links()
         self.baselines = self.verbose_baselines
+        self.source = 'csv'
 
     def __json_init(self, _json: dict[str, Any]) -> None:
         self.json = _json
@@ -142,6 +144,7 @@ class PermutationsTable:
         except IndexError:
             raise ETRMResponseError()
         self.baselines = self.reporting_baselines
+        self.source = 'etrm'
 
     def join(self, table: PermutationsTable) -> None:
         if table.count == 0:
@@ -785,13 +788,13 @@ class Measure(JSONObject):
         for characterization in self.characterizations:
             key = characterization.name.lower()
             self._characterization_map[key] = characterization
-        del key
+            del key
 
         self._permutation_map: dict[str, Permutation] = {}
         for permutation in self.permutations:
             key = permutation.reporting_name.lower()
             self._permutation_map[key] = permutation
-        del key
+            del key
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Measure):

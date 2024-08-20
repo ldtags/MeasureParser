@@ -1,14 +1,4 @@
-"""eTRM Measure JSON Parser"""
-
-__author__ = 'Liam Tangney'
-__version__ = '1.1.0'
-__all__ = ['parser']
-
 import os
-import logging
-
-
-logging.basicConfig(filename='parser.log', level=logging.INFO)
 
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))

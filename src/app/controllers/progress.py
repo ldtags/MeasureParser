@@ -5,7 +5,7 @@ import time
 from typing import Callable, TypeVar
 
 from src.app.enums import MeasureSource
-from src.app.views import View, HomePage, ResultsPage
+from src.app.views import View, HomePage
 from src.app.models import Model
 from src.etrm.models import Measure
 from src.etrm.connection import ETRMConnection
@@ -19,12 +19,12 @@ _DEC_TYPE = Callable[..., _T]
 _DEC_WRAPPER_TYPE = Callable[[_DEC_TYPE], _DEC_TYPE]
 
 
-def make_parser_decorator() -> Callable[[str | None], _DEC_WRAPPER_TYPE]:
+def make_parser_decorator() -> Callable[[str | None], _DEC_TYPE]:
     registry: dict[str, _DEC_TYPE] = {}
     def arg_wrapper(log: str | None=None) -> _DEC_WRAPPER_TYPE:
         def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
             registry[func.__name__] = func
-            def wrapper(self: ProgressController, *args, **kwargs):
+            def wrapper(self: ProgressController, *args, **kwargs) -> _T:
                 self.view.log_frame.add(log)
                 value = func(self, *args, **kwargs)
                 progress = self.view.controls_frame.progress_var.get()

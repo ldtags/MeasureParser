@@ -1,16 +1,13 @@
 import sqlite3 as sql
+import pylightxl as xl
 from typing import (
     Any,
     Optional,
     Literal,
-    TypeVar,
-    Callable,
-    ParamSpec,
-    Concatenate,
     Type
 )
 
-from src.etrm import resources
+from src.etrm import resources, constants as cnst
 from src.etrm.models import Measure
 from src.etrm.exceptions import ETRMError, DatabaseError
 
@@ -697,8 +694,23 @@ def get_delivery_types() -> dict[str, tuple[str, str | None]]:
     return deliv_types
 
 
+def get_measure_impact_types() -> dict[str, tuple[str, str | None]]:
+    query = (
+        'SELECT type, start_date, expire_date'
+        ' FROM measure_impact_type'
+    )
+    with _DB as cursor:
+        response = cursor.execute(query).fetchall()
+
+    mit_types: dict[str, tuple[str, str | None]] = {}
+    for item in response:
+        mit_types[item[0]] = (item[1], item[2])
+
+    return mit_types
+
+
 def get_exclusions(verbose_name: str,
-                   value: str,
+                   value: str | None=None,
                    valid: bool=True,
                    allowed: bool=True
                   ) -> dict[str, list[str]]:
@@ -715,7 +727,7 @@ def get_exclusions(verbose_name: str,
     allowed_int = 0 if allowed else 1
 
     query = (
-        'SELECT labels, values'
+        'SELECT labels, exclusion_values'
         ' FROM exclusions'
        f' WHERE allowed = {allowed_int}'
            f' AND valid = {valid_int}'
@@ -725,9 +737,9 @@ def get_exclusions(verbose_name: str,
                f' OR labels LIKE \'%:{verbose_name}:%\''
             ' )'
             ' AND ('
-               f' values LIKE \'{value}:%\''
-               f' OR values LIKE \'%:{value}\''
-               f' OR values LIKE \'%:{value}:%\''
+               f' exclusion_values LIKE \'{value}:%\''
+               f' OR exclusion_values LIKE \'%:{value}\''
+               f' OR exclusion_values LIKE \'%:{value}:%\''
             ' )'
     )
     with _DB as cursor:
@@ -748,6 +760,170 @@ def get_exclusions(verbose_name: str,
                 exclusions[_label] = [_value]
 
     return exclusions
+
+
+def get_exclusion_map(key_name: str,
+                      mapped_name: str,
+                      valid: bool=True,
+                      allowed: bool=True
+                     ) -> dict[str, set[str]]:
+    """Returns a mapping of `key_name` exclusion values to allowed
+    `mapped_name` exclusion values.
+    """
+
+    valid_int = 0 if valid else 1
+    allowed_int = 0 if allowed else 1
+    query = (
+        'SELECT labels, exclusion_values'
+        ' FROM exclusions'
+       f' WHERE allowed = {allowed_int}'
+           f' AND valid = {valid_int}'
+    )
+    for verbose_name in [key_name, mapped_name]:
+        query += (
+            ' AND ('
+               f' labels LIKE \'{verbose_name}:%\''
+               f' OR labels LIKE \'%:{verbose_name}\''
+               f' OR labels LIKE \'%:{verbose_name}:%\''
+            ' )'
+        )
+
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    exclusions: dict[str, set[str]] = {}
+    for label_join, value_join in response:
+        labels = str(label_join).split(':')
+        values = str(value_join).split(':')
+        key_index = labels.index(key_name)
+        mapped_index = labels.index(mapped_name)
+        try:
+            exclusions[values[key_index]].add(values[mapped_index])
+        except KeyError:
+            exclusions[values[key_index]] = {values[mapped_index]}
+
+    return exclusions
+
+
+def get_all_exclusions(*permutations: str,
+                       valid: bool=True,
+                       allowed: bool=True
+                      ) -> list[list[str]]:
+    valid_int = 0 if valid else 1
+    allowed_int = 0 if allowed else 1
+    query = (
+        'SELECT labels, exclusion_values'
+        ' FROM exclusions'
+       f' WHERE allowed = {allowed_int}'
+           f' AND valid = {valid_int}'
+    )
+    for verbose_name in permutations:
+        query += (
+            ' AND ('
+               f' labels LIKE \'{verbose_name}:%\''
+               f' OR labels LIKE \'%:{verbose_name}\''
+               f' OR labels LIKE \'%:{verbose_name}:%\''
+            ' )'
+        )
+
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    perm_list = list(permutations)
+    exclusions: list[list[str]] = []
+    for labels, values in response:
+        try:
+            label_split = str(labels).split(':')
+        except ValueError:
+            raise DatabaseError(f'Invalid exclusion labels: {labels}')
+
+        if set(label_split) != set(permutations):
+            continue
+
+        perm_indexes: dict[int, int] = []
+        for i, label in enumerate(label_split):
+            try:
+                perm_indexes[i] = perm_list.index(label)
+            except ValueError:
+                raise DatabaseError(
+                    f'Incorrect response: {label} not in {permutations}'
+                )
+
+        try:
+            value_split = str(values).split(':')
+        except ValueError:
+            raise DatabaseError(f'Invalid exclusion values: {values}')
+
+        if len(value_split) != len(label_split):
+            raise DatabaseError(
+                f'Invalid exclusion value length: expected {len(label_split)},'
+                f' but got {len(value_split)}'
+            )
+
+        value_list: list[str] = [''] * len(perm_indexes)
+        for i, value in enumerate(value_split):
+            index = perm_indexes[i]
+            value_list[index] = value
+
+        exclusions.append(value_split)
+
+    return exclusions
+
+def get_version_sources() -> set[str]:
+    query = (
+        'SELECT value'
+        ' FROM permutation_valid_data'
+       f' WHERE verbose_name = \'{cnst.VERSION_SOURCE}\''
+    )
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    return set(map(lambda item: item[0], response))
+
+
+def get_technology_groups() -> set[str]:
+    query = (
+        'SELECT value'
+        ' FROM permutation_valid_data'
+       f' WHERE verbose_name = \'{cnst.TECH_GROUP}\''
+    )
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    return set(map(lambda item: item[0], response))
+
+
+def get_technology_types() -> set[str]:
+    query = (
+        'SELECT value'
+        ' FROM permutation_valid_data'
+       f' WHERE verbose_name = \'{cnst.TECH_TYPE}\''
+    )
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    return set(map(lambda item: item[0], response))
+
 
 # used to insert shared or non-shared value tables
 def __insert_table(api_name: str,
@@ -915,16 +1091,7 @@ def __insert_eul_table() -> None:
         connection.commit()
 
 
-_T = TypeVar('_T')
-
-
-def xl_parser() -> Callable[[Callable[..., _T]], Callable[..., _T]]:
-
-
-
 def __insert_ntg_table() -> None:
-    import pylightxl as xl
-
     file_path = resources.get_path('permutation_tool.xlsm')
     db = xl.readxl(file_path)
     eul = db.ws('netToGrossRatio')
@@ -979,8 +1146,6 @@ def __insert_ntg_table() -> None:
 
 
 def __insert_valid_data() -> None:
-    import pylightxl as xl
-
     file_path = resources.get_path('permutation_tool.xlsm')
     db = xl.readxl(file_path)
     dv = db.ws('DataValue')
@@ -1092,8 +1257,6 @@ def __insert_valid_data() -> None:
 
 
 def __insert_exclusions() -> None:
-    import pylightxl as xl
-
     file_path = resources.get_path('permutation_tool.xlsm')
     db = xl.readxl(file_path)
     sheet = db.ws('Exclusion')

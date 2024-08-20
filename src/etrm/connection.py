@@ -5,7 +5,7 @@ import requests
 import http.client as httpc
 from typing import TypeVar, Callable, overload
 
-from src.etrm import utils, sanitizers, lookups
+from src.etrm import utils, sanitizers, lookups, db
 from src.etrm.models import (
     MeasuresResponse,
     MeasureVersionsResponse,
@@ -232,7 +232,11 @@ class ETRMConnection:
 
         statewide_id, version_id = sanitized_id.split('-', 1)
         response = self.get(f'/measures/{statewide_id}/{version_id}')
-        measure = Measure(response.json(), source='etrm')
+        measure = Measure(
+            response.json(),
+            source='etrm',
+            char_names=db.get_all_characterization_names('etrm')
+        )
         self.cache.add_measure(measure)
         return measure
 
