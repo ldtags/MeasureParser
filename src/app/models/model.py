@@ -18,6 +18,7 @@ class Model:
         self.__measure_id: str | None = None
         self.measure_source: MeasureSource | None = None
         self.measure_file_path: str | None = None
+        self.permutations_file_path: str | None = None
         self.output_file_path: str | None = None
         self.parser_data: ParserData | None = None
 

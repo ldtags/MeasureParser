@@ -72,9 +72,9 @@ class SourceController:
     def disable_etrm_source(self, text: str) -> bool:
         source = self.view.source_frame
         if text != '':
-            source.etrm_frame.measure_entry.disable()
+            source.etrm_frame.disable()
         else:
-            source.etrm_frame.measure_entry.enable()
+            source.etrm_frame.enable()
         return True
 
     def disable_json_source(self, text: str) -> bool:
@@ -85,13 +85,13 @@ class SourceController:
         checkboxes = self.view.options_frame
         is_placeholder = source.etrm_frame.measure_entry.is_placeholder
         if text == '' or is_placeholder:
-            source.json_frame.file_entry.enable()
+            source.json_frame.enable()
             checkboxes.validate_permutations.config(
                 state=tk.NORMAL,
                 cursor='hand2'
             )
         else:
-            source.json_frame.file_entry.disable()
+            source.json_frame.disable()
             checkboxes.validate_permutations.config(
                 state=tk.DISABLED,
                 cursor='arrow'

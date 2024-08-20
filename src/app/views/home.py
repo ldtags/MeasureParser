@@ -191,8 +191,8 @@ class JSONSourceFrame(Frame):
         Frame.__init__(self, parent, **kwargs)
 
         self.grid_columnconfigure((0), weight=1)
-        self.grid_rowconfigure((0, 4), weight=1)
-        self.grid_rowconfigure((1, 2, 3), weight=0)
+        self.grid_rowconfigure((0, 7), weight=1)
+        self.grid_rowconfigure((1, 2, 3, 4, 5, 6), weight=0)
 
         self.file_label = OptionLabel(
             self,
@@ -231,23 +231,89 @@ class JSONSourceFrame(Frame):
             pady=(2.5, 0)
         )
 
-    def print_err(self, err: str) -> None:
-        self.file_err_var.set(err)
+        self.csv_label = OptionLabel(
+            self,
+            title='Permutations CSV File (*Optional)',
+            sub_title='Select an existing eTRM measure permutations'
+                ' CSV file.',
+            level=1
+        )
+        self.csv_label.grid(
+            column=0,
+            row=4,
+            sticky=tk.NSEW
+        )
 
-    def clear_err(self) -> None:
-        self.file_err_var.set('')
+        self.csv_entry = FileEntry(
+            self,
+            file_type='file',
+            types=[('CSV File', '.csv')]
+        )
+        self.csv_entry.grid(
+            column=0,
+            row=5,
+            sticky=tk.NSEW,
+            pady=(5, 0)
+        )
+
+        self.csv_err_var = tk.StringVar(self, '')
+        self.csv_err_label = Label(
+            self,
+            variable=self.csv_err_var,
+            text_color='#ff0000'
+        )
+        self.csv_err_label.grid(
+            column=0,
+            row=6,
+            sticky=tk.NSEW,
+            pady=(2.5, 0)
+        )
+
+    def print_err(self,
+                  err: str,
+                  entry: Literal['json', 'csv']
+                 ) -> None:
+        match entry:
+            case 'json':
+                self.file_err_var.set(err)
+            case 'csv':
+                self.csv_err_var.set(err)
+            case other:
+                raise RuntimeError(f'Unknown entry: {other}')
+
+    def clear_err(self,
+                  entry: Literal['json', 'csv'] | None=None
+                 ) -> None:
+        if entry is None:
+            self.file_err_var.set('')
+            self.csv_err_var.set('')
+            return
+        
+        match entry:
+            case 'json':
+                self.file_err_var.set('')
+            case 'csv':
+                self.csv_err_var.set('')
+            case other:
+                raise RuntimeError(f'Unknown entry: {other}')
 
     def disable(self) -> None:
         self.file_entry.disable()
+        self.csv_entry.disable()
 
     def enable(self) -> None:
         self.file_entry.enable()
+        self.csv_entry.enable()
 
     def clear(self) -> None:
         self.file_entry.clear()
+        self.csv_entry.clear()
 
     def is_empty(self) -> bool:
         if self.file_entry.get() != '':
+            return False
+
+        if self.csv_entry.get() != '':
             return False
 
         return True
