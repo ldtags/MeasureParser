@@ -2,7 +2,6 @@ import unittest as ut
 from typing import Type
 
 from src.etrm import constants as cnst
-from src.etrm.models import PermutationsTable
 from src.permqaqc import PermutationQAQC
 from tests.permqaqc import resources
 
