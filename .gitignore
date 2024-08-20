@@ -8,6 +8,7 @@ Lib/
 pyvenv.cfg
 venv/
 .venv/
+*.code-workspace
 
 # pyinstaller
 build/
@@ -17,12 +18,22 @@ dist/
 # Output
 out.txt
 output-*.txt
+outputs/
+*.log
 
 # Database
 database.db-journal
+database.ini
 
 # Testing Items
 measures/
 tested/
 /measure.json
 visualized-*.txt
+tests/*/resources/*
+!tests/*/resources/*.py
+
+# security
+config.ini
+*permutation_tool.xlsm
+inserter.py
