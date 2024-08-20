@@ -1,4 +1,3 @@
-import re
 import pandas as pd
 import logging
 import numbers
