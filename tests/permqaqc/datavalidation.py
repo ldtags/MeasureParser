@@ -1,4 +1,5 @@
 import unittest as ut
+from abc import abstractmethod
 from typing import Type
 
 from src.etrm import constants as cnst
@@ -80,6 +81,10 @@ class MeasureTestCase(ut.TestCase):
         for tool_column, ordered_column in zip(columns, COLUMN_ORDER):
             self.assertEqual(tool_column, ordered_column)
 
+    @abstractmethod
+    def test_validation(self) -> None:
+        ...
+
 
 class SWHC052_02(MeasureTestCase):
     def setUp(self) -> None:
@@ -87,7 +92,7 @@ class SWHC052_02(MeasureTestCase):
         file_path = resources.get_path('SWHC052-02.csv')
         tool.set_permutations(file_path)
 
-    def test_file(self) -> None:
+    def test_validation(self) -> None:
         self.tool.rearrange_columns()
         self.tool.validate_data()
 
