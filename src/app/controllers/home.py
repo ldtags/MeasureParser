@@ -60,29 +60,35 @@ class SourceController:
         self.model = model
         self.__bind_entry_validations()
 
-    def validate_api_key_entry(self, text: str) -> bool:
+    def validate_measure_id_characters(self, text: str) -> bool:
         if text == '':
             return True
 
         re_match = re.search(patterns.VERSION_WHITELIST, text)
         if re_match is None:
             return True
+
         return False
 
     def disable_etrm_source(self, text: str) -> bool:
         source = self.view.source_frame
+        controls = self.view.controls_frame
         if text != '':
             source.etrm_frame.disable()
+            controls.start_btn.enable()
         else:
             source.etrm_frame.enable()
+            controls.start_btn.disable()
+
         return True
 
     def disable_json_source(self, text: str) -> bool:
-        if not self.validate_api_key_entry(text):
+        if not self.validate_measure_id_characters(text):
             return False
 
         source = self.view.source_frame
         checkboxes = self.view.options_frame
+        controls = self.view.controls_frame
         is_placeholder = source.etrm_frame.measure_entry.is_placeholder
         if text == '' or is_placeholder:
             source.json_frame.enable()
@@ -96,6 +102,15 @@ class SourceController:
                 state=tk.DISABLED,
                 cursor='arrow'
             )
+
+        try:
+            sanitizers.sanitize_measure_id(text)
+        except ETRMRequestError:
+            controls.start_btn.disable()
+        else:
+            if not is_placeholder:
+                controls.start_btn.enable()
+
         return True
 
     def __bind_entry_validations(self) -> None:
