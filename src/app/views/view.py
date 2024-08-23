@@ -41,12 +41,14 @@ class View:
             raise GUIError(f'No page named {page_name} exists')
 
     def set_api_key(self, api_key: str) -> None:
-        etrm_frame = self.home.source_frame.source_frame.etrm_frame
-        etrm_frame.api_key_entry.set_text(api_key)
+        # etrm_frame = self.home.source_frame.source_frame.etrm_frame
+        # etrm_frame.api_key_entry.set_text(api_key)
+        ...
 
     def set_measure(self, measure_id: str) -> None:
-        etrm_frame = self.home.source_frame.source_frame.etrm_frame
-        etrm_frame.measure_entry.set_text(measure_id)
+        # etrm_frame = self.home.source_frame.source_frame.etrm_frame
+        # etrm_frame.measure_entry.set_text(measure_id)
+        ...
 
     def start(self) -> None:
         self.root.mainloop()

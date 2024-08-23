@@ -464,7 +464,7 @@ class _Dropdown(Frame):
                        pady=(5, 5))
             self.labels.append(label)
 
-        self.bind('<FocusOut>', parent.__close_dropdown)
+        self.bind('<FocusOut>', parent._close_dropdown)
 
     def clear(self)-> None:
         for label in self.labels:
@@ -497,12 +497,12 @@ class DropdownEntry(Frame):
                              highlightbackground='grey',
                              highlightcolor='grey',
                              highlightthickness=1,
-                             command=self.__open_dropdown)
+                             command=self._open_dropdown)
         self.button.pack(side=tk.RIGHT,
                          anchor=tk.NW,
                          fill=tk.Y)
 
-    def __open_dropdown(self, event: tk.Event) -> None:
+    def _open_dropdown(self, event: tk.Event | None=None) -> None:
         if self.dropdown is None or not self.dropdown.winfo_exists():
             self.dropdown = _Dropdown(self)
         self.button.update()
@@ -513,7 +513,7 @@ class DropdownEntry(Frame):
         y = btn_y + btn_height
         self.dropdown.place(x=x, y=y)
 
-    def __close_dropdown(self, event: tk.Event) -> None:
+    def _close_dropdown(self, event: tk.Event | None=None) -> None:
         if self.dropdown is not None:
             self.dropdown.clear()
             self.dropdown.destroy()

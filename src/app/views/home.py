@@ -1,9 +1,10 @@
+import os
 import tkinter as tk
 import tkinter.ttk as ttk
 import ttkbootstrap as tb
 from typing import Literal
 
-from src import utils
+from src import utils, etrm
 from src.app import fonts
 from src.app.widgets import (
     Frame,
@@ -20,6 +21,7 @@ from src.app.widgets import (
     Toplevel
 )
 from src.app.exceptions import GUIError
+from src.etrm.exceptions import ETRMError
 from src.config import app_config
 
 
@@ -73,20 +75,6 @@ class HomePage(Page):
         self.options_frame = self.home_container.options_frame
 
     def show(self) -> None:
-        sources = self.source_frame
-        checkboxes = self.options_frame
-        if not sources.etrm_frame.is_empty():
-            sources.json_frame.disable()
-            sources.etrm_frame.enable()
-            checkboxes.validate_permutations.disable()
-            checkboxes.qa_qc_permutations.enable()
-
-        if not sources.json_frame.is_empty():
-            sources.etrm_frame.disable()
-            sources.json_frame.enable()
-            checkboxes.validate_permutations.enable()
-            checkboxes.qa_qc_permutations.disable()
-
         super().show()
 
 
@@ -94,51 +82,54 @@ class HomeContainer(ScrollableFrame):
     def __init__(self, parent: tk.Frame, **kwargs):
         ScrollableFrame.__init__(self, parent, scrollbar=True, **kwargs)
 
+        self.interior.grid_rowconfigure((0, 1), weight=1)
+        self.interior.grid_columnconfigure((0, 1),
+                                  weight=1,
+                                  uniform='HomeContainerCols')
+
         self.source_frame = MeasureSourceFrame(self.interior)
-        self.source_frame.pack(
-            side=tk.TOP,
-            anchor=tk.NW,
-            fill=tk.BOTH,
-            expand=tk.TRUE,
+        self.source_frame.grid(
+            row=0,
+            column=0,
+            sticky=tk.NSEW,
+            padx=(10, 10),
+            pady=(10, 0)
+        )
+
+        self.options_frame = OptionsFrame(self.interior)
+        self.options_frame.grid(
+            row=0,
+            column=1,
+            sticky=tk.NSEW,
             padx=(10, 10),
             pady=(10, 0)
         )
 
         self.output_frame = OutputFrame(self.interior)
-        self.output_frame.pack(
-            side=tk.TOP,
-            anchor=tk.NW,
-            fill=tk.BOTH,
-            expand=tk.TRUE,
+        self.output_frame.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky=tk.NSEW,
             padx=(10, 10),
             pady=(0, 10)
-        )
-
-        self.options_frame = OptionsFrame(self.interior)
-        self.options_frame.pack(
-            side=tk.TOP,
-            anchor=tk.NW,
-            fill=tk.BOTH,
-            expand=tk.TRUE,
-            padx=(10, 10),
-            pady=(10, 25)
         )
 
 
 class MeasureSourceFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
-        Frame.__init__(self, parent, **kwargs)
+        Frame.__init__(self, parent, bg=parent['bg'], **kwargs)
 
         self.toplevel: Toplevel | None = None
 
         self.container = tb.Labelframe(self,
-                                       name='Measure')
+                                       text='Measure')
         self.container.pack(side=tk.TOP,
                             anchor=tk.NW,
                             fill=tk.BOTH,
-                            expand=tk.Y)
+                            expand=True)
 
-        self.entry_container = Frame(self.container)
+        self.entry_container = Frame(self.container, bg=self['bg'])
         self.entry_container.pack(side=tk.TOP,
                                   anchor=tk.NW,
                                   fill=tk.BOTH,
@@ -158,27 +149,25 @@ class MeasureSourceFrame(Frame):
         filter_btn.pack(side=tk.RIGHT,
                         anchor=tk.NE)
 
-        self.btn_container = Frame(self.container)
+        self.btn_container = Frame(self.container, bg=self['bg'])
         self.btn_container.pack(side=tk.BOTTOM,
                                 anchor=tk.SW,
                                 fill=tk.X,
                                 expand=True)
+        self.btn_container.grid_columnconfigure((0, 1),
+                                                weight=1,
+                                                uniform='btn_container_cols')
+        self.btn_container.grid_rowconfigure((0), weight=1)
 
         self.api_btn = Button(self.btn_container,
-                              text='Enter API Key',
-                              command=self.__open_api_toplevel)
-        self.api_btn.pack(side=tk.LEFT,
-                          anchor=tk.NW,
-                          fill=tk.X,
-                          expand=True)
+                              text='Enter API Key')
+        self.api_btn.grid(row=0,
+                          column=0)
 
         self.json_btn = Button(self.btn_container,
-                               text='Import JSON',
-                               command=self.__open_json_toplevel)
-        self.json_btn.pack(side=tk.RIGHT,
-                           anchor=tk.NE,
-                           fill=tk.X,
-                           expand=True)
+                               text='Import JSON')
+        self.json_btn.grid(row=0,
+                           column=1)
 
     def close_toplevel(self) -> None:
         if self.toplevel is not None:
@@ -197,11 +186,37 @@ class MeasureSourceFrame(Frame):
             case other:
                 raise GUIError(f'Unknown toplevel: {other}')
 
-    def __open_api_toplevel(self, event: tk.Event) -> None:
+    def open_api_toplevel(self, event: tk.Event | None=None) -> str | None:
         self.open_toplevel('api')
+        if not isinstance(self.toplevel, ApiKeyToplevel):
+            raise GUIError(f'Incorrect toplevel opened')
 
-    def __open_json_toplevel(self, event: tk.Event) -> None:
+        self.toplevel.wait_window()
+
+        api_key = self.toplevel.api_key_var.get()
+        if api_key == '':
+            return None
+
+        return api_key
+
+    def open_json_toplevel(self,
+                           event: tk.Event | None=None
+                          ) -> tuple[str, str | None] | None:
         self.open_toplevel('json')
+        if not isinstance(self.toplevel, JsonToplevel):
+            raise GUIError(f'Incorrect toplevel opened')
+
+        self.toplevel.wait_window()
+
+        json_path = self.toplevel.json_var.get()
+        if json_path == '':
+            return None
+
+        csv_path = self.toplevel.csv_var.get()
+        if csv_path == '':
+            csv_path = None
+
+        return json_path, csv_path
 
 
 class ApiKeyToplevel(Toplevel):
@@ -225,13 +240,118 @@ class ApiKeyToplevel(Toplevel):
                         anchor=tk.NW,
                         fill=tk.X)
 
+        self.err_var = tk.StringVar(self)
+        self.err_label = Label(self,
+                               text_color='#FF0000',
+                               textvariable=self.err_var)
+        self.err_label.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.X)
+
         self.controls_frame = Frame(self)
-        self.
+        self.controls_frame.pack(side=tk.BOTTOM,
+                                 anchor=tk.SW)
+
+        self.close_btn = Button(self.controls_frame,
+                                text='Close',
+                                command=self.__close_btn_event)
+        self.close_btn.pack(side=tk.RIGHT,
+                            anchor=tk.E)
+
+        self.cont_btn = Button(self.controls_frame,
+                               text='Continue',
+                               command=self.__continue_btn_event)
+        self.cont_btn.pack(side=tk.RIGHT,
+                           anchor=tk.E)
+
+    def __continue_btn_event(self, event: tk.Event) -> None:
+        api_key = self.api_key_var.get()
+        try:
+            etrm.sanitize_api_key(api_key)
+        except ETRMError:
+            self.err_var.set('Invalid eTRM API key')
+            return
+
+        self.err_var.set('')
+        self.destroy()
+
+    def __close_btn_event(self, event: tk.Event) -> None:
+        self.destroy()
 
 
 class JsonToplevel(Toplevel):
     def __init__(self, parent: Frame, **kwargs):
         Toplevel.__init__(self, parent, **kwargs)
+
+        self.json_label = Label(self, text='Measure JSON File')
+        self.json_label.pack(side=tk.TOP,
+                             anchor=tk.NW,
+                             fill=tk.X)
+
+        self.json_var = tk.StringVar(self)
+        self.json_entry = FileEntry(self,
+                                    types=[('JSON File', '*.json')],
+                                    textvariable=self.json_var)
+        self.json_entry.pack(side=tk.TOP,
+                             anchor=tk.NW,
+                             fill=tk.X)
+
+        self.csv_label = Label(self, text='Permutations CSV File')
+        self.csv_label.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.X)
+
+        self.csv_var = tk.StringVar(self)
+        self.csv_entry = FileEntry(self,
+                                   types=[('CSV File', '*.csv')],
+                                   textvariable=self.csv_var)
+        self.csv_entry.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.X)
+
+        self.err_var = tk.StringVar(self)
+        self.err_label = Label(self,
+                               text_color='#FF0000',
+                               textvariable=self.err_var)
+        self.err_label.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.X)
+
+        self.controls_frame = Frame(self)
+        self.controls_frame.pack(side=tk.BOTTOM,
+                                 anchor=tk.SW,
+                                 fill=tk.X)
+
+        self.close_btn = Button(self.controls_frame,
+                                text='Close',
+                                command=self.__close_btn_event)
+        self.close_btn.pack(side=tk.RIGHT,
+                            anchor=tk.E)
+
+        self.cont_btn = Button(self.controls_frame,
+                               text='Continue',
+                               command=self.__continue_btn_event)
+        self.cont_btn.pack(side=tk.RIGHT,
+                           anchor=tk.E)
+
+    def __continue_btn_event(self, event: tk.Event) -> None:
+        json_path = os.path.normpath(self.json_var.get())
+        if not os.path.exists(json_path):
+            self.err_var.set('Invalid JSON file path')
+            return
+
+        csv_path = self.csv_var.get()
+        if csv_path != '':
+            csv_path = os.path.normpath(csv_path)
+            if not os.path.exists(csv_path):
+                self.err_var.set('Invalid CSV file path')
+                return
+
+        self.err_var.set('')
+        self.destroy()
+
+    def __close_btn_event(self, event: tk.Event) -> None:
+        self.destroy()
 
 
 # class MeasureSourceFrame(Frame):
@@ -740,13 +860,13 @@ class OptionsFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.label = OptionLabel(self, title='Parser Options')
-        self.label.pack(
-            side=tk.TOP,
-            anchor=tk.NW,
-            fill=tk.X,
-            pady=(0, 10)
-        )
+        # self.label = OptionLabel(self, title='Parser Options')
+        # self.label.pack(
+        #     side=tk.TOP,
+        #     anchor=tk.NW,
+        #     fill=tk.X,
+        #     pady=(0, 10)
+        # )
 
         self.container = Frame(self)
         self.container.pack(
@@ -754,15 +874,15 @@ class OptionsFrame(Frame):
             anchor=tk.NW,
             fill=tk.BOTH,
             expand=tk.TRUE,
-            padx=(10, 10)
+            padx=(0, 0)
         )
 
-        self.container.grid_columnconfigure(
+        self.container.grid_rowconfigure(
             (0, 1, 2),
             weight=1,
             uniform='OptionsFrameCols'
         )
-        self.container.grid_rowconfigure((0), weight=1)
+        self.container.grid_columnconfigure((0), weight=1)
 
         self.override_file = OptionCheckBox(
             self.container,
@@ -782,10 +902,9 @@ class OptionsFrame(Frame):
                 ' only)'
         )
         self.validate_permutations.grid(
-            row=0,
-            column=1,
-            sticky=tk.NSEW,
-            padx=(0, 5)
+            row=1,
+            column=0,
+            sticky=tk.NSEW
         )
 
         self.qa_qc_permutations = OptionCheckBox(
@@ -794,10 +913,9 @@ class OptionsFrame(Frame):
             sub_text='QA/QC the measure\'s permutations (eTRM API only)'
         )
         self.qa_qc_permutations.grid(
-            row=0,
-            column=2,
-            sticky=tk.NSEW,
-            padx=(5, 5)
+            row=2,
+            column=0,
+            sticky=tk.NSEW
         )
 
 

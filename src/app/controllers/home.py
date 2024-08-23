@@ -52,92 +52,45 @@ class HomeController:
             checkbox_options.override_file.set(False)
 
 
+def validate_measure_id_characters(text: str) -> bool:
+    if text == '':
+        return True
+
+    re_match = re.search(patterns.VERSION_WHITELIST, text)
+    if re_match is None:
+        return True
+
+    return False
+
+
 class SourceController:
     def __init__(self, model: Model, view: View):
         self.root = view.root
         self.root_view = view
         self.view = view.home
-        self.model = model
-        self.__bind_entry_validations()
+        self.root_model = model
+        self.model = model.home
+        self.__bind_events()
 
-    def validate_measure_id_characters(self, text: str) -> bool:
-        if text == '':
-            return True
+    def set_api_key(self) -> None:
+        api_key = self.view.source_frame.open_api_toplevel()
+        if api_key is None:
+            return
 
-        re_match = re.search(patterns.VERSION_WHITELIST, text)
-        if re_match is None:
-            return True
+        self.model.api_key = api_key
 
-        return False
+    def set_file_paths(self) -> None:
+        json_path, csv_path = self.view.source_frame.open_json_toplevel()
+        if json_path is None:
+            return
 
-    def json_entry_validator(self, text: str) -> bool:
+        self.model.json_path = json_path
+        self.model.csv_path = csv_path
+
+    def __bind_events(self) -> None:
         source = self.view.source_frame
-        controls = self.view.controls_frame
-        checkboxes = self.view.options_frame
-        if text != '':
-            source.etrm_frame.disable()
-            checkboxes.validate_permutations.enable()
-            controls.start_btn.enable()
-        else:
-            source.etrm_frame.enable()
-            checkboxes.validate_permutations.disable()
-            controls.start_btn.disable()
-
-
-        return True
-
-    def csv_entry_validator(self, text: str) -> bool:
-        checkboxes = self.view.options_frame
-        if text != '':
-            checkboxes.qa_qc_permutations.enable()
-        else:
-            checkboxes.qa_qc_permutations.disable()
-
-    def measure_id_entry_validator(self, text: str) -> bool:
-        if not self.validate_measure_id_characters(text):
-            return False
-
-        source = self.view.source_frame
-        checkboxes = self.view.options_frame
-        controls = self.view.controls_frame
-        is_placeholder = source.etrm_frame.measure_entry.is_placeholder
-        if text == '' or is_placeholder:
-            source.json_frame.enable()
-            checkboxes.validate_permutations.disable()
-            checkboxes.qa_qc_permutations.disable()
-        else:
-            source.json_frame.disable()
-            checkboxes.qa_qc_permutations.enable()
-
-        try:
-            sanitizers.sanitize_measure_id(text)
-        except ETRMRequestError:
-            controls.start_btn.disable()
-        else:
-            if not is_placeholder:
-                controls.start_btn.enable()
-
-        return True
-
-    def __bind_entry_validations(self) -> None:
-        sources = self.view.source_frame
-        json_reg = self.root.register(self.json_entry_validator)
-        sources.json_frame.file_entry.set_validator(
-            validate='key',
-            command=(json_reg, r'%P')
-        )
-
-        csv_reg = self.root.register(self.csv_entry_validator)
-        sources.json_frame.csv_entry.set_validator(
-            validate='key',
-            command=(csv_reg, r'%P')
-        )
-
-        etrm_reg = self.root.register(self.measure_id_entry_validator)
-        sources.etrm_frame.measure_entry.set_validator(
-            validate='key',
-            command=(etrm_reg, r'%P')
-        )
+        source.api_btn.set_command(self.set_api_key)
+        source.json_btn.set_command(self.set_file_paths)
 
 
 class OutputController:
@@ -190,7 +143,7 @@ class ControlsController:
         self.view = view.home
         self.model = model
         self.start_func = start_func
-        self.__bind_events()
+        # self.__bind_events()
 
     def validate_measure_file(self, file_path: str) -> Result:
         _, file_name = os.path.split(file_path)
