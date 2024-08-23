@@ -70,19 +70,30 @@ class SourceController:
 
         return False
 
-    def disable_etrm_source(self, text: str) -> bool:
+    def json_entry_validator(self, text: str) -> bool:
         source = self.view.source_frame
         controls = self.view.controls_frame
+        checkboxes = self.view.options_frame
         if text != '':
             source.etrm_frame.disable()
+            checkboxes.validate_permutations.enable()
             controls.start_btn.enable()
         else:
             source.etrm_frame.enable()
+            checkboxes.validate_permutations.disable()
             controls.start_btn.disable()
+
 
         return True
 
-    def disable_json_source(self, text: str) -> bool:
+    def csv_entry_validator(self, text: str) -> bool:
+        checkboxes = self.view.options_frame
+        if text != '':
+            checkboxes.qa_qc_permutations.enable()
+        else:
+            checkboxes.qa_qc_permutations.disable()
+
+    def measure_id_entry_validator(self, text: str) -> bool:
         if not self.validate_measure_id_characters(text):
             return False
 
@@ -92,16 +103,11 @@ class SourceController:
         is_placeholder = source.etrm_frame.measure_entry.is_placeholder
         if text == '' or is_placeholder:
             source.json_frame.enable()
-            checkboxes.validate_permutations.config(
-                state=tk.NORMAL,
-                cursor='hand2'
-            )
+            checkboxes.validate_permutations.disable()
+            checkboxes.qa_qc_permutations.disable()
         else:
             source.json_frame.disable()
-            checkboxes.validate_permutations.config(
-                state=tk.DISABLED,
-                cursor='arrow'
-            )
+            checkboxes.qa_qc_permutations.enable()
 
         try:
             sanitizers.sanitize_measure_id(text)
@@ -115,13 +121,19 @@ class SourceController:
 
     def __bind_entry_validations(self) -> None:
         sources = self.view.source_frame
-        json_reg = self.root.register(self.disable_etrm_source)
+        json_reg = self.root.register(self.json_entry_validator)
         sources.json_frame.file_entry.set_validator(
             validate='key',
             command=(json_reg, r'%P')
         )
 
-        etrm_reg = self.root.register(self.disable_json_source)
+        csv_reg = self.root.register(self.csv_entry_validator)
+        sources.json_frame.csv_entry.set_validator(
+            validate='key',
+            command=(csv_reg, r'%P')
+        )
+
+        etrm_reg = self.root.register(self.measure_id_entry_validator)
         sources.etrm_frame.measure_entry.set_validator(
             validate='key',
             command=(etrm_reg, r'%P')
