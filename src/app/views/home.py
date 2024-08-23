@@ -1,7 +1,9 @@
 import tkinter as tk
 import tkinter.ttk as ttk
+import ttkbootstrap as tb
 from typing import Literal
 
+from src import utils
 from src.app import fonts
 from src.app.widgets import (
     Frame,
@@ -13,8 +15,11 @@ from src.app.widgets import (
     OptionLabel,
     Label,
     OptionCheckBox,
-    ScrollableFrame
+    ScrollableFrame,
+    DropdownEntry,
+    Toplevel
 )
+from src.app.exceptions import GUIError
 from src.config import app_config
 
 
@@ -124,66 +129,175 @@ class MeasureSourceFrame(Frame):
     def __init__(self, parent: Frame, **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
-        self.source_label = OptionLabel(self,
-                                        title='Measure Sources',
-                                        level=0)
-        self.source_label.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.X)
+        self.toplevel: Toplevel | None = None
 
-        self.source_frame = self._SourceFrame(self)
-        self.source_frame.pack(side=tk.TOP,
-                               anchor=tk.NW,
-                               fill=tk.BOTH,
-                               expand=True,
-                               padx=(10, 10),
-                               pady=(10, 0))
+        self.container = tb.Labelframe(self,
+                                       name='Measure')
+        self.container.pack(side=tk.TOP,
+                            anchor=tk.NW,
+                            fill=tk.BOTH,
+                            expand=tk.Y)
 
-        self.source_err_var = tk.StringVar(self, ' ')
-        self.source_err_label = Label(self,
-                                      textvariable=self.source_err_var,
-                                      fg='#ff0000')
-        self.source_err_label.pack(side=tk.TOP,
-                                   anchor=tk.NW,
-                                   fill=tk.X,
-                                   padx=(10, 10))
+        self.entry_container = Frame(self.container)
+        self.entry_container.pack(side=tk.TOP,
+                                  anchor=tk.NW,
+                                  fill=tk.BOTH,
+                                  expand=True)
 
-        # top-level child references
-        self.json_frame = self.source_frame.json_frame
-        self.etrm_frame = self.source_frame.etrm_frame
+        self.measure_entry = DropdownEntry(self.entry_container)
+        self.measure_entry.pack(side=tk.LEFT,
+                                anchor=tk.NW,
+                                fill=tk.BOTH,
+                                expand=True)
 
-    def print_err(self, err: str) -> None:
-        self.source_err_var.set(err)
+        self.measure_entry.update()
+        size = self.measure_entry.winfo_height()
+        filter_img = utils.get_tkimage('filter.png', (size, size))
+        filter_btn = Button(self.measure_entry,
+                            image=filter_img)
+        filter_btn.pack(side=tk.RIGHT,
+                        anchor=tk.NE)
 
-    def clear_err(self) -> None:
-        self.source_err_var.set('')
+        self.btn_container = Frame(self.container)
+        self.btn_container.pack(side=tk.BOTTOM,
+                                anchor=tk.SW,
+                                fill=tk.X,
+                                expand=True)
 
-    class _SourceFrame(Frame):
-        def __init__(self, parent: Frame, **kwargs):
-            Frame.__init__(self, parent, **kwargs)
+        self.api_btn = Button(self.btn_container,
+                              text='Enter API Key',
+                              command=self.__open_api_toplevel)
+        self.api_btn.pack(side=tk.LEFT,
+                          anchor=tk.NW,
+                          fill=tk.X,
+                          expand=True)
 
-            self.grid_rowconfigure((0), weight=1)
-            self.grid_columnconfigure((0, 2),
-                                      weight=1,
-                                      uniform='_SourceFrame')
-            self.grid_columnconfigure((1), weight=0)
+        self.json_btn = Button(self.btn_container,
+                               text='Import JSON',
+                               command=self.__open_json_toplevel)
+        self.json_btn.pack(side=tk.RIGHT,
+                           anchor=tk.NE,
+                           fill=tk.X,
+                           expand=True)
 
-            self.json_frame = JSONSourceFrame(self)
-            self.json_frame.grid(column=0,
-                                 row=0,
-                                 sticky=tk.NSEW,
-                                 padx=(10, 10))
+    def close_toplevel(self) -> None:
+        if self.toplevel is not None:
+            self.toplevel.destroy()
+            self.toplevel = None
 
-            self.source_separator = SourceSeparator(self)
-            self.source_separator.grid(column=1,
-                                       row=0,
-                                       sticky=tk.NSEW)
+    def open_toplevel(self, select: Literal['api', 'json']) -> None:
+        if self.toplevel is not None:
+            self.close_toplevel()
 
-            self.etrm_frame = ETRMSourceFrame(self)
-            self.etrm_frame.grid(column=2,
-                                row=0,
-                                sticky=tk.NSEW,
-                                padx=(10, 10))
+        match select:
+            case 'api':
+                self.toplevel = ApiKeyToplevel(self)
+            case 'json':
+                self.toplevel = JsonToplevel(self)
+            case other:
+                raise GUIError(f'Unknown toplevel: {other}')
+
+    def __open_api_toplevel(self, event: tk.Event) -> None:
+        self.open_toplevel('api')
+
+    def __open_json_toplevel(self, event: tk.Event) -> None:
+        self.open_toplevel('json')
+
+
+class ApiKeyToplevel(Toplevel):
+    def __init__(self, parent: Frame, **kwargs):
+        Toplevel.__init__(self, parent, **kwargs)
+
+        self.label_frame = Frame(self)
+        self.label_frame.pack(side=tk.TOP,
+                              anchor=tk.NW,
+                              fill=tk.X)
+
+        self.label = Label(self.label_frame, text='API Key')
+        self.label.pack(side=tk.LEFT,
+                        anchor=tk.NW,
+                        fill=tk.X)
+
+        self.api_key_var = tk.StringVar(self)
+        self.entry = Entry(self,
+                           textvariable=self.api_key_var)
+        self.entry.pack(side=tk.TOP,
+                        anchor=tk.NW,
+                        fill=tk.X)
+
+        self.controls_frame = Frame(self)
+        self.
+
+
+class JsonToplevel(Toplevel):
+    def __init__(self, parent: Frame, **kwargs):
+        Toplevel.__init__(self, parent, **kwargs)
+
+
+# class MeasureSourceFrame(Frame):
+#     def __init__(self, parent: Frame, **kwargs):
+#         Frame.__init__(self, parent, **kwargs)
+
+#         self.source_label = OptionLabel(self,
+#                                         title='Measure Sources',
+#                                         level=0)
+#         self.source_label.pack(side=tk.TOP,
+#                                anchor=tk.NW,
+#                                fill=tk.X)
+
+#         self.source_frame = self._SourceFrame(self)
+#         self.source_frame.pack(side=tk.TOP,
+#                                anchor=tk.NW,
+#                                fill=tk.BOTH,
+#                                expand=True,
+#                                padx=(10, 10),
+#                                pady=(10, 0))
+
+#         self.source_err_var = tk.StringVar(self, ' ')
+#         self.source_err_label = Label(self,
+#                                       textvariable=self.source_err_var,
+#                                       fg='#ff0000')
+#         self.source_err_label.pack(side=tk.TOP,
+#                                    anchor=tk.NW,
+#                                    fill=tk.X,
+#                                    padx=(10, 10))
+
+#         # top-level child references
+#         self.json_frame = self.source_frame.json_frame
+#         self.etrm_frame = self.source_frame.etrm_frame
+
+#     def print_err(self, err: str) -> None:
+#         self.source_err_var.set(err)
+
+#     def clear_err(self) -> None:
+#         self.source_err_var.set('')
+
+#     class _SourceFrame(Frame):
+#         def __init__(self, parent: Frame, **kwargs):
+#             Frame.__init__(self, parent, **kwargs)
+
+#             self.grid_rowconfigure((0), weight=1)
+#             self.grid_columnconfigure((0, 2),
+#                                       weight=1,
+#                                       uniform='_SourceFrame')
+#             self.grid_columnconfigure((1), weight=0)
+
+#             self.json_frame = JSONSourceFrame(self)
+#             self.json_frame.grid(column=0,
+#                                  row=0,
+#                                  sticky=tk.NSEW,
+#                                  padx=(10, 10))
+
+#             self.source_separator = SourceSeparator(self)
+#             self.source_separator.grid(column=1,
+#                                        row=0,
+#                                        sticky=tk.NSEW)
+
+#             self.etrm_frame = ETRMSourceFrame(self)
+#             self.etrm_frame.grid(column=2,
+#                                 row=0,
+#                                 sticky=tk.NSEW,
+#                                 padx=(10, 10))
 
 
 class JSONSourceFrame(Frame):

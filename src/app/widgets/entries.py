@@ -447,3 +447,82 @@ class FileEntry(Entry):
             self.file_path.set(file_path)
             self.delete(0, tk.END)
             self.insert(0, file_path)
+
+
+class _Dropdown(Frame):
+    def __init__(self, parent: 'DropdownEntry', **kwargs):
+        Frame.__init__(self, parent, **kwargs)
+
+        self.labels: list[Label] = []
+        self.items = parent.items or []
+        for item in parent.items or []:
+            label = Label(self, text=item)
+            label.pack(side=tk.TOP,
+                       anchor=tk.NW,
+                       fill=tk.X,
+                       padx=(5, 5),
+                       pady=(5, 5))
+            self.labels.append(label)
+
+        self.bind('<FocusOut>', parent.__close_dropdown)
+
+    def clear(self)-> None:
+        for label in self.labels:
+            label.destroy()
+
+
+class DropdownEntry(Frame):
+    def __init__(self,
+                 parent: tk.Misc,
+                 items: list[str] | None=None,
+                 **kwargs):
+        Frame.__init__(self, parent)
+
+        self.items = items
+        self.dropdown: _Dropdown | None = None
+
+        self.entry = entry = Entry(self, **kwargs)
+        self.entry.pack(side=tk.LEFT,
+                        anchor=tk.NW,
+                        fill=tk.X,
+                        expand=tk.Y)    
+
+        self.entry.update()
+        height = entry.winfo_height()
+        img = utils.get_tkimage('down.png', (height, height))
+        self.button = Button(self,
+                             padx=0,
+                             pady=0,
+                             image=img,
+                             highlightbackground='grey',
+                             highlightcolor='grey',
+                             highlightthickness=1,
+                             command=self.__open_dropdown)
+        self.button.pack(side=tk.RIGHT,
+                         anchor=tk.NW,
+                         fill=tk.Y)
+
+    def __open_dropdown(self, event: tk.Event) -> None:
+        if self.dropdown is None or not self.dropdown.winfo_exists():
+            self.dropdown = _Dropdown(self)
+        self.button.update()
+        btn_x = self.button.winfo_x()
+        btn_y = self.button.winfo_y()
+        btn_height = self.button.winfo_height()
+        x = btn_x
+        y = btn_y + btn_height
+        self.dropdown.place(x=x, y=y)
+
+    def __close_dropdown(self, event: tk.Event) -> None:
+        if self.dropdown is not None:
+            self.dropdown.clear()
+            self.dropdown.destroy()
+            self.dropdown = None
+
+    def disable(self) -> None:
+        self.button.disable()
+        self.entry.disable()
+
+    def enable(self) -> None:
+        self.button.enable()
+        self.entry.enable()
