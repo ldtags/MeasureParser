@@ -732,14 +732,14 @@ def get_exclusions(verbose_name: str,
        f' WHERE allowed = {allowed_int}'
            f' AND valid = {valid_int}'
             ' AND ('
-               f' labels LIKE \'{verbose_name}:%\''
-               f' OR labels LIKE \'%:{verbose_name}\''
-               f' OR labels LIKE \'%:{verbose_name}:%\''
+               f' labels LIKE \'{verbose_name};;%\''
+               f' OR labels LIKE \'%;;{verbose_name}\''
+               f' OR labels LIKE \'%;;{verbose_name};;%\''
             ' )'
             ' AND ('
-               f' exclusion_values LIKE \'{value}:%\''
-               f' OR exclusion_values LIKE \'%:{value}\''
-               f' OR exclusion_values LIKE \'%:{value}:%\''
+               f' exclusion_values LIKE \'{value};;%\''
+               f' OR exclusion_values LIKE \'%;;{value}\''
+               f' OR exclusion_values LIKE \'%;;{value};;%\''
             ' )'
     )
     with _DB as cursor:
@@ -747,10 +747,12 @@ def get_exclusions(verbose_name: str,
 
     exclusions: dict[str, list[str]] = {}
     for label_join, value_join in response:
-        labels = str(label_join).split(':')
+        labels = str(label_join).split(';;')
         labels.remove(verbose_name)
 
-        values = str(value_join).split(':')
+        values = str(value_join).split(';;')
+        if value not in values:
+            pass
         values.remove(value)
 
         for _label, _value in zip(labels, values):
@@ -782,9 +784,9 @@ def get_exclusion_map(key_name: str,
     for verbose_name in [key_name, mapped_name]:
         query += (
             ' AND ('
-               f' labels LIKE \'{verbose_name}:%\''
-               f' OR labels LIKE \'%:{verbose_name}\''
-               f' OR labels LIKE \'%:{verbose_name}:%\''
+               f' labels LIKE \'{verbose_name};;%\''
+               f' OR labels LIKE \'%;;{verbose_name}\''
+               f' OR labels LIKE \'%;;{verbose_name};;%\''
             ' )'
         )
 
@@ -797,8 +799,8 @@ def get_exclusion_map(key_name: str,
 
     exclusions: dict[str, set[str]] = {}
     for label_join, value_join in response:
-        labels = str(label_join).split(':')
-        values = str(value_join).split(':')
+        labels = str(label_join).split(';;')
+        values = str(value_join).split(';;')
         key_index = labels.index(key_name)
         mapped_index = labels.index(mapped_name)
         try:
@@ -824,9 +826,9 @@ def get_all_exclusions(*permutations: str,
     for verbose_name in permutations:
         query += (
             ' AND ('
-               f' labels LIKE \'{verbose_name}:%\''
-               f' OR labels LIKE \'%:{verbose_name}\''
-               f' OR labels LIKE \'%:{verbose_name}:%\''
+               f' labels LIKE \'{verbose_name};;%\''
+               f' OR labels LIKE \'%;;{verbose_name}\''
+               f' OR labels LIKE \'%;;{verbose_name};;%\''
             ' )'
         )
 
@@ -841,7 +843,7 @@ def get_all_exclusions(*permutations: str,
     exclusions: list[list[str]] = []
     for labels, values in response:
         try:
-            label_split = str(labels).split(':')
+            label_split = str(labels).split(';;')
         except ValueError:
             raise DatabaseError(f'Invalid exclusion labels: {labels}')
 
@@ -858,7 +860,7 @@ def get_all_exclusions(*permutations: str,
                 )
 
         try:
-            value_split = str(values).split(':')
+            value_split = str(values).split(';;')
         except ValueError:
             raise DatabaseError(f'Invalid exclusion values: {values}')
 
@@ -1312,10 +1314,10 @@ def __insert_exclusions() -> None:
                 cols[i].extend([''] * (max_len - col_len))
 
         rows = [list(row) for row in zip(*cols)]
-        label = ':'.join(rows[0])
+        label = ';;'.join(rows[0])
         values = []
         for row in rows[1:]:
-            values.append(':'.join([str(item) for item in row]))
+            values.append(';;'.join([str(item) for item in row]))
 
         for value in values:
             value = str(value)
