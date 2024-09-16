@@ -1190,12 +1190,13 @@ class PermutationQAQC:
         invalid_ntg_ids = df[
             df.apply(
                 lambda row: (
-                    row[ntg_id_index] in db.get_exclusions(
-                        cnst.SECTOR, row[sector_index]
+                    row.iloc[ntg_id_index] in db.get_exclusions(
+                        cnst.SECTOR, row.iloc[sector_index]
                     )
-                )
+                ),
+                axis=1
             )
-        ][cnst.NTG_ID]
+        ]
         for index in invalid_ntg_ids.index:
             self.field_data[int(index)][ntg_id_index].add(
                 'Invalid NTG ID'
@@ -1215,10 +1216,11 @@ class PermutationQAQC:
         invalid_gsia_ids = df[
             df.apply(
                 lambda row: (
-                    row[gsia_id_index] in db.get_exclusions(
-                        cnst.SECTOR, row[sector_index]
+                    row.iloc[gsia_id_index] in db.get_exclusions(
+                        cnst.SECTOR, row.iloc[sector_index]
                     )
-                )
+                ),
+                axis=1
             )
         ]
         for index in invalid_gsia_ids.index:
@@ -1279,10 +1281,11 @@ class PermutationQAQC:
 
         df = self.permutations.data
         us_flag_index = int(df.columns.get_loc(cnst.UPSTREAM_FLAG))
+        deliv_type_index = int(df.columns.get_loc(cnst.DELIV_TYPE))
         invalid_us_flags = df[
             df.apply(
                 lambda row: (
-                    row[cnst.UPSTREAM_FLAG] in list(
+                    row.iloc[us_flag_index] in list(
                         map(
                             lambda val: (
                                 True if val == '0'
@@ -1292,11 +1295,12 @@ class PermutationQAQC:
                             ),
                             db.get_exclusions(
                                 cnst.DELIV_TYPE,
-                                row[cnst.DELIV_TYPE]
+                                row.iloc[deliv_type_index]
                             )
                         )
                     )
-                )
+                ),
+                axis=1
             )
         ][cnst.UPSTREAM_FLAG]
         for index, value in invalid_us_flags.items():
@@ -1655,6 +1659,8 @@ class PermutationQAQC:
 
         df = self.permutations.data
         col_index = int(df.columns.get_loc(cnst.MEAS_IMPACT_TYPE))
+        ntg_version_index = int(df.columns.get_loc(cnst.NTG_VERSION))
+        ntg_id_index = int(df.columns.get_loc(cnst.NTG_ID))
         ntg_id_exclusions = db.get_exclusion_map(
             cnst.NTG_ID,
             cnst.MEAS_IMPACT_TYPE
@@ -1666,11 +1672,12 @@ class PermutationQAQC:
         invalid = df[
             df.apply(
                 lambda row: (
-                    row[cnst.MEAS_IMPACT_TYPE] in [
-                        *ntg_version_exclusions[row[cnst.NTG_VERSION]],
-                        *ntg_id_exclusions[row[cnst.NTG_ID]]
+                    row.iloc[col_index] in [
+                        *ntg_version_exclusions[row.iloc[ntg_version_index]],
+                        *ntg_id_exclusions[row.iloc[ntg_id_index]]
                     ]
-                )
+                ),
+                axis=1
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
@@ -1688,7 +1695,7 @@ class PermutationQAQC:
                     )
                 )
             ) > df[cnst.START_DATE].apply(
-                lambda val: dt.datetime.strptime(val, r'%m/%d/%Y')
+                lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
@@ -1707,7 +1714,7 @@ class PermutationQAQC:
                         )
                 )
             ) < df[cnst.START_DATE].apply(
-                lambda val: dt.datetime.strptime(val, r'%m/%d/%Y')
+                lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
@@ -1726,16 +1733,18 @@ class PermutationQAQC:
 
         df = self.permutations.data
         col_index = int(df.columns.get_loc(cnst.MEAS_DETAIL_ID))
-        duplicates = pd.concat(
+        duplicates = [
             col
                 for _, col 
                 in df.groupby(cnst.MEAS_DETAIL_ID)
                 if len(col) > 1
-        )[cnst.MEAS_DETAIL_ID]
-        for index, value in duplicates.items():
-            self.field_data[int(index)][col_index].add(
-                f'Duplicate value: {value}'
-            )
+        ]
+        if len(duplicates) > 0:
+            dupe_df = pd.concat(duplicates)[cnst.MEAS_DETAIL_ID]
+            for index, value in dupe_df.items():
+                self.field_data[int(index)][col_index].add(
+                    f'Duplicate value: {value}'
+                )
 
     def validate_implementation_eligibility(self) -> None:
         self.validate_ie_factor()
