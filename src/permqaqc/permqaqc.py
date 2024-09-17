@@ -1,10 +1,10 @@
-import re
 import pandas as pd
 import logging
 import numbers
 import datetime as dt
 from typing import TypeVar, Callable, ParamSpec, Concatenate, overload, Any
 
+from src.exceptions import ParserError
 from src.etrm import db, sanitizers, constants as cnst
 from src.etrm.models import PermutationsTable, Measure
 from src.etrm.connection import ETRMConnection
@@ -126,8 +126,7 @@ def qa_qc_method(func: Callable[_P, _T]
 class PermutationQAQC:
     def __init__(self):
         self.__permutations: PermutationsTable | None = None
-        self.__column_data: dict[str, FieldData] = {}
-        self.__field_data: list[list[FieldData]] = []
+        self.__field_data: FieldData | None = None
         self.__statewide_id: str | None = None
         self.__version_id: str | None = None
         self.measure: Measure | None = None
@@ -140,18 +139,7 @@ class PermutationQAQC:
     def permutations(self, permutations: PermutationsTable) -> None:
         self.__permutations = permutations
         self.__normalize_headers()
-        self.__column_data = {
-            column: FieldData()
-                for column
-                in self.__permutations.data.columns
-        }
-
-        height, width = self.__permutations.data.shape
-        self.__field_data = [
-            [FieldData() for _ in range(width)]
-                for _
-                in range(height)
-        ]
+        self.__field_data = FieldData(self.__permutations.headers)
 
         try:
             statewide_col = self.__permutations.data[cnst.STATEWIDE_MEASURE_ID]
@@ -166,11 +154,7 @@ class PermutationQAQC:
             self.__version_id = None
 
     @property
-    def column_data(self) -> dict[str, FieldData]:
-        return self.__column_data
-
-    @property
-    def field_data(self) -> list[list[FieldData]]:
+    def field_data(self) -> FieldData | None:
         return self.__field_data
 
     @property
@@ -327,7 +311,7 @@ class PermutationQAQC:
             et_flag_col_name = et_flag.columns[0]
             logger.info(f'ETP Flag column <{et_flag_col_name}> found')
             et_flag_col = df.pop(et_flag_col_name)
-            et_flag_col.name = cnst.ETP_FLAG
+            et_flag_col.name = et_flag_col_name
 
         etp_fy_index = int(df.columns.get_loc(cnst.ETP_FIRST_YEAR))
         self.permutations.data = pd.concat(
@@ -507,16 +491,6 @@ class PermutationQAQC:
             df = self.permutations.data
 
         for col_name in [column, *columns]:
-            logger.info(f'Checking for blanks in {col_name}')
-            try:
-                col_index = int(df.columns.get_loc(col_name))
-            except KeyError:
-                logger.warning(f'Missing column: {col_name}')
-                continue
-            except ValueError as e:
-                logger.error(str(e))
-                continue
-
             if func is not None:
                 validator = df[col_name].apply(func)
             else:
@@ -542,8 +516,12 @@ class PermutationQAQC:
                     logger.error(str(e))
                     continue
 
-                field_data = self.field_data[row_index][col_index]
-                field_data.add((description, severity))
+                self.field_data.add(
+                    column=col_name,
+                    description=description,
+                    severity=severity,
+                    y=row_index
+                )
 
     @qa_qc_method
     def validate_basic_descriptions(self) -> None:
@@ -743,9 +721,10 @@ class PermutationQAQC:
                 & ~df[cnst.FIRST_BASELINE_LC].eq(0)
         ]
         if non_zero_vals.empty:
-            self.column_data[cnst.FIRST_BASELINE_LC].add(
-                'All values are zero',
-                Severity.MINOR
+            self.field_data.add(
+                column=cnst.FIRST_BASELINE_LC,
+                description='All values are zero',
+                severity=Severity.MINOR
             )
 
         non_zero_vals = df[
@@ -753,9 +732,10 @@ class PermutationQAQC:
                 & ~df[cnst.FIRST_BASELINE_MC].eq(0)
         ]
         if non_zero_vals.empty:
-            self.column_data[cnst.FIRST_BASELINE_MC].add(
-                'All values are zero',
-                Severity.MINOR
+            self.field_data.add(
+                column=cnst.FIRST_BASELINE_MC,
+                description='All values are zero',
+                severity=Severity.MINOR
             )
 
         self.check_columns(
@@ -831,9 +811,10 @@ class PermutationQAQC:
                 & ~df[cnst.SECOND_BASELINE_LC].eq(0)
         ]
         if non_zero_vals.empty:
-            self.column_data[cnst.SECOND_BASELINE_LC].add(
-                'All values are zero',
-                Severity.MINOR
+            self.field_data.add(
+                column=cnst.SECOND_BASELINE_LC,
+                description='All values are zero',
+                severity=Severity.MINOR
             )
 
         non_zero_vals = df[
@@ -841,9 +822,10 @@ class PermutationQAQC:
                 & ~df[cnst.SECOND_BASELINE_MC].eq(0)
         ]
         if non_zero_vals.empty:
-            self.column_data[cnst.SECOND_BASELINE_MC].add(
-                'All values are zero',
-                Severity.MINOR
+            self.field_data.add(
+                column=cnst.SECOND_BASELINE_MC,
+                description='All values are zero',
+                severity=Severity.MINOR
             )
 
         self.check_columns(
@@ -922,15 +904,16 @@ class PermutationQAQC:
         )
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.EUL_YEARS))
         invalid = df[
             ~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                 & ~df[cnst.EUL_YEARS].eq(df[cnst.FIRST_BASELINE_LIFE_CYCLE])
         ][cnst.EUL_YEARS]
         for index, value in invalid.items():
             correct_value = df.loc[index, cnst.FIRST_BASELINE_LIFE_CYCLE]
-            self.field_data[int(index)][col_index].add(
-                f'Invalid EUL Year: {value} must be {correct_value}'
+            self.field_data.add(
+                column=cnst.EUL_YEARS,
+                description=f'Invalid EUL Year: {value} must be {correct_value}',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -985,11 +968,12 @@ class PermutationQAQC:
             df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                 & (df[cnst.RUL_YEARS] >= df[cnst.EUL_YEARS])
         ][cnst.RUL_YEARS]
-        col_index = int(df.columns.get_loc(cnst.RUL_YEARS))
         for index, value in invalid.items():
             eul_year = df.loc[index, cnst.EUL_YEARS]
-            self.field_data[int(index)][col_index].add(
-                f'Invalid RUL Year: {value} must be less than {eul_year}'
+            self.field_data.add(
+                column=cnst.RUL_YEARS,
+                description=f'Invalid RUL Year: {value} must be less than {eul_year}',
+                y=int(index)
             )
 
         self.check_columns(
@@ -1133,7 +1117,6 @@ class PermutationQAQC:
         )
 
         df = self.permutations.data
-        deliv_index = int(df.columns.get_loc(cnst.DELIV_TYPE))
 
         late_deliv_types = df.loc[
             df[cnst.DELIV_TYPE].isin(deliv_types)
@@ -1151,8 +1134,10 @@ class PermutationQAQC:
                 )
         ][cnst.DELIV_TYPE]
         for index in late_deliv_types.index:
-            self.field_data[int(index)][deliv_index].add(
-                'Delivery type cannot start after the measure\'s start date'
+            self.field_data.add(
+                column=cnst.DELIV_TYPE,
+                description='Delivery type cannot start after the measure\'s start date',
+                y=int(index)
             )
 
         early_deliv_types = df.loc[
@@ -1172,8 +1157,10 @@ class PermutationQAQC:
                 )
         ][cnst.DELIV_TYPE]
         for index in early_deliv_types.index:
-            self.field_data[int(index)][deliv_index].add(
-                'Delivery type cannot end before the measure\'s start date'
+            self.field_data.add(
+                column=cnst.DELIV_TYPE,
+                description='Delivery type cannot end before the measure\'s start date',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1198,8 +1185,10 @@ class PermutationQAQC:
             )
         ]
         for index in invalid_ntg_ids.index:
-            self.field_data[int(index)][ntg_id_index].add(
-                'Invalid NTG ID'
+            self.field_data.add(
+                column=cnst.NTG_ID,
+                description='Invalid NTG ID',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1224,8 +1213,10 @@ class PermutationQAQC:
             )
         ]
         for index in invalid_gsia_ids.index:
-            self.field_data[int(index)][gsia_id_index].add(
-                'Invalid GSIA ID'
+            self.field_data.add(
+                column=cnst.GSIA_ID,
+                description='Invalid GSIA ID',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1305,9 +1296,11 @@ class PermutationQAQC:
         ][cnst.UPSTREAM_FLAG]
         for index, value in invalid_us_flags.items():
             deliv_type = df.loc[index, cnst.DELIV_TYPE]
-            self.field_data[int(index)][us_flag_index].add(
-                f'Invalid Upstream Flag: {value} us not valid for'
-                f' delivery type {deliv_type}'
+            self.field_data.add(
+                column=cnst.UPSTREAM_FLAG,
+                description=f'Invalid Upstream Flag: {value} us not valid for'
+                    f' delivery type {deliv_type}',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1329,11 +1322,11 @@ class PermutationQAQC:
         invalid_version_sources = df[
             ~df[cnst.VERSION_SOURCE].isin(valid_version_sources)
         ][cnst.VERSION_SOURCE]
-        vs_index = int(df.columns.get_loc(cnst.VERSION_SOURCE))
         for index in invalid_version_sources.index:
-            self.field_data[int(index)][vs_index].add(
-                f'Invalid value, must be one of {valid_version_sources}',
-                Severity.CRITICAL
+            self.field_data.add(
+                column=cnst.VERSION_SOURCE,
+                description=f'Invalid value, must be one of {valid_version_sources}',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1394,14 +1387,15 @@ class PermutationQAQC:
 
         df = self.permutations.data
         for col_name in cnst.FIRST_BASELINE_WS_COLS:
-            col_index = int(df.columns.get_loc(col_name))
             invalid = df[
                 ~df[cnst.WATER_MEASURE_TYPE].isna()
                     & ~df[col_name].str.isnumeric()
             ][col_name]
             for index in invalid.index:
-                self.field_data[int(index)][col_index].add(
-                    'Value must be a number'
+                self.field_data.add(
+                    column=col_name,
+                    description='Value must be a number',
+                    y=int(index)
                 )
 
             invalid = df[
@@ -1409,8 +1403,10 @@ class PermutationQAQC:
                     & ~df[col_name].eq(0)
             ][col_name]
             for index in invalid.index:
-                self.field_data[int(index)][col_index].add(
-                    'Value must be 0'
+                self.field_data.add(
+                    column=col_name,
+                    description='Value must be 0',
+                    y=int(index)
                 )
 
     @qa_qc_method
@@ -1429,15 +1425,16 @@ class PermutationQAQC:
 
         df = self.permutations.data
         for col_name in cnst.SECOND_BASELINE_WS_COLS:
-            col_index = int(df.columns.get_loc(col_name))
             invalid = df[
                 df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                     & ~df[cnst.WATER_MEASURE_TYPE].isna()
                     & ~df[col_name].str.isnumeric()
             ][col_name]
             for index in invalid.index:
-                self.field_data[int(index)][col_index].add(
-                    'Value must be a number'
+                self.field_data.add(
+                    column=col_name,
+                    description='Value must be a number',
+                    y=int(index)
                 )
 
             invalid = df[
@@ -1448,8 +1445,10 @@ class PermutationQAQC:
                     )
             ][col_name]
             for index in invalid.index:
-                self.field_data[int(index)][col_index].add(
-                    'Value must be 0'
+                self.field_data.add(
+                    column=col_name,
+                    description='Value must be 0',
+                    y=int(index)
                 )
 
     def validate_water_savings(self) -> None:
@@ -1514,12 +1513,13 @@ class PermutationQAQC:
         df = self.permutations.data
         valid_tech_groups = db.get_technology_groups()
         for col_name in cnst.TECH_GROUP_COLS:
-            col_index = int(df.columns.get_loc(col_name))
             invalid = df[~df[col_name].isin(valid_tech_groups)][col_name]
             for index, value in invalid.items():
-                self.field_data[int(index)][col_index].add(
-                    f'Invalid tech group: {value}, must be one of'
-                    f' {valid_tech_groups}'
+                self.field_data.add(
+                    column=col_name,
+                    description=f'Invalid tech group: {value}, must be one of'
+                        f' {valid_tech_groups}',
+                    y=int(index)
                 )
 
     @qa_qc_method
@@ -1534,12 +1534,13 @@ class PermutationQAQC:
         df = self.permutations.data
         valid_tech_types = db.get_technology_types()
         for col_name in cnst.TECH_TYPE_COLS:
-            col_index = int(df.columns.get_loc(col_name))
             invalid = df[~df[col_name].isin(valid_tech_types)][col_name]
             for index, value in invalid.items():
-                self.field_data[int(index)][col_index].add(
-                    f'Invalid tech type: {value}, must be one of'
-                    f' {valid_tech_types}'
+                self.field_data.add(
+                    column=col_name,
+                    description=f'Invalid tech type: {value}, must be one of'
+                        f' {valid_tech_types}',
+                    y=int(index)
                 )
 
     def validate_tech(self) -> None:
@@ -1559,15 +1560,24 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.ETP_FLAG))
+        etp_cols = df.filter(regex=('ETP Flag.*')).columns.to_list()
+        if etp_cols == []:
+            raise ParserError('Missing ETP Flag column')
+
+        if len(etp_cols) > 1:
+            raise ParserError(f'Ambiguous ETP Flag column: {etp_cols}')
+
+        etp_flag = etp_cols[0]
         invalid = df[
-            df[cnst.ETP_FLAG].isna()
-                | ~df[cnst.ETP_FLAG].str.startswith('E')
-        ][cnst.ETP_FLAG]
+            df[etp_flag].isna()
+                | ~df[etp_flag].str.startswith('E')
+        ][etp_flag]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid ETP Flag: {value} must not be blank and must start'
-                ' with \'E\''
+            self.field_data.add(
+                column=etp_flag,
+                description=f'Invalid ETP Flag: {value} must not be blank and'
+                    ' must start with \'E\'',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1579,12 +1589,13 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        ief_index = int(df.columns.get_loc(cnst.IE_FACTOR))
         invalid = df[~df[cnst.IE_FACTOR].isin(['Yes', 'No'])][cnst.IE_FACTOR]
         for index, value in invalid.items():
-            self.field_data[int(index)][ief_index].add(
-                f'Invalid IE Factor value: {value}, must be either \'Yes\''
-                    ' or \'No\''
+            self.field_data.add(
+                column=cnst.IE_FACTOR,
+                description=f'Invalid IE Factor value: {value}, must be'
+                    ' either \'Yes\' or \'No\'',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1597,13 +1608,14 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.IE_TABLE_NAME))
         invalid = df[
             df[cnst.IE_FACTOR].eq('No') & ~df[cnst.IE_TABLE_NAME].eq('NA')
         ][cnst.IE_TABLE_NAME]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid IE Table Name: {value} must be \'NA\''
+            self.field_data.add(
+                column=cnst.IE_TABLE_NAME,
+                description=f'Invalid IE Table Name: {value} must be \'NA\'',
+                y=int(index)
             )
 
         invalid = df[
@@ -1611,8 +1623,10 @@ class PermutationQAQC:
                 & df[cnst.IE_TABLE_NAME].eq('NA')
         ][cnst.IE_TABLE_NAME]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid IE Table Name: {value} must be a table name'
+            self.field_data.add(
+                column=cnst.IE_TABLE_NAME,
+                description=f'Invalid IE Table Name: {value} must be a table name',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1627,14 +1641,15 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.DEER_MEAS_ID))
         invalid = df[
             df[cnst.MEAS_IMPACT_TYPE].eq('Deem-DEER')
                 & df[cnst.DEER_MEAS_ID].isna()
         ][cnst.DEER_MEAS_ID]
         for index in invalid.index:
-            self.field_data[int(index)][col_index].add(
-                'Value cannot be blank'
+            self.field_data.add(
+                column=cnst.DEER_MEAS_ID,
+                description='Value cannot be blank',
+                y=int(index)
             )
 
         invalid = df[
@@ -1642,8 +1657,10 @@ class PermutationQAQC:
                 & ~df[cnst.DEER_MEAS_ID].isna()
         ][cnst.DEER_MEAS_ID]
         for index in invalid.index:
-            self.field_data[int(index)][col_index].add(
-                'Value must be blank'
+            self.field_data.add(
+                column=cnst.DEER_MEAS_ID,
+                description='Value must be blank',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1681,8 +1698,10 @@ class PermutationQAQC:
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid Measure Impact ID: {value}'
+            self.field_data.add(
+                column=cnst.MEAS_IMPACT_TYPE,
+                description=f'Invalid Measure Impact ID: {value}',
+                y=int(index)
             )
 
         meas_impact_types = db.get_measure_impact_types()
@@ -1699,9 +1718,11 @@ class PermutationQAQC:
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid Measure Impact ID: {value} cannot start after'
-                ' the measure.'
+            self.field_data.add(
+                column=cnst.MEAS_IMPACT_TYPE,
+                description=f'Invalid Measure Impact ID: {value} cannot start'
+                    ' after the measure.',
+                y=int(index)
             )
 
         invalid = df[
@@ -1718,9 +1739,11 @@ class PermutationQAQC:
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
-            self.field_data[int(index)][col_index].add(
-                f'Invalid Measure Impact ID: {value} cannot end before'
-                ' the measure starts.'
+            self.field_data.add(
+                column=cnst.MEAS_IMPACT_TYPE,
+                description=f'Invalid Measure Impact ID: {value} cannot end'
+                    ' before the measure starts.',
+                y=int(index)
             )
 
     @qa_qc_method
@@ -1732,7 +1755,6 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.MEAS_DETAIL_ID))
         duplicates = [
             col
                 for _, col 
@@ -1742,8 +1764,10 @@ class PermutationQAQC:
         if len(duplicates) > 0:
             dupe_df = pd.concat(duplicates)[cnst.MEAS_DETAIL_ID]
             for index, value in dupe_df.items():
-                self.field_data[int(index)][col_index].add(
-                    f'Duplicate value: {value}'
+                self.field_data.add(
+                    column=cnst.MEAS_DETAIL_ID,
+                    description=f'Duplicate value: {value}',
+                    y=int(index)
                 )
 
     def validate_implementation_eligibility(self) -> None:
@@ -1782,10 +1806,11 @@ class PermutationQAQC:
             row = list(df.loc[index, permutations])
             if (row not in exclusions) != valid:
                 for permutation in permutations:
-                    col_index = df.columns.get_loc(permutation)
-                    self.field_data[int(index)][int(col_index)].add(
-                        f'Failed exclusion check',
-                        Severity.MINOR
+                    self.field_data.add(
+                        column=permutation,
+                        description='Failed exclusion check',
+                        severity=Severity.MINOR,
+                        y=int(index)
                     )
 
     def validate_exclusions(self) -> None:
