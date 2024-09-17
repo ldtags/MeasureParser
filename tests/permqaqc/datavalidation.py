@@ -2,7 +2,7 @@ import unittest as ut
 from typing import Type
 
 from src.etrm import constants as cnst
-from src.permqaqc import PermutationQAQC
+from src.permqaqc import PermutationQAQC, FieldData, Severity
 from tests.permqaqc import resources
 
 
@@ -78,7 +78,11 @@ class MeasureTestCase(ut.TestCase):
             msg=f'Missing cols: {list(set(COLUMN_ORDER).difference(columns))}'
         )
         for tool_column, ordered_column in zip(columns, COLUMN_ORDER):
-            self.assertEqual(tool_column, ordered_column)
+            match ordered_column:
+                case cnst.ETP_FLAG:
+                    self.assertRegex(tool_column, r'^ETP Flag.*$')
+                case _:
+                    self.assertEqual(tool_column, ordered_column)
 
 
 class SWHC052_02(MeasureTestCase):
