@@ -16,6 +16,13 @@ class DataEntry:
         self.severity = severity
         self.y = y
 
+    def __str__(self) -> str:
+        rep = f'{self.severity}'
+        if self.y is not None:
+            rep += f' ({self.y})'
+        rep += f': {self.description}'
+        return rep
+
 
 class FieldData:
     def __init__(self, columns: list[str]):
@@ -25,6 +32,17 @@ class FieldData:
 
     def __getitem__(self, column: str) -> list[DataEntry]:
         return self.data[column]
+
+    def __str__(self) -> str:
+        rep = ''
+        for key, entries in self.data.items():
+            rep += f'{key}:\n'
+            for entry in entries:
+                rep += f'\t{entry}\n'
+            if entries == []:
+                rep += 'No issues\n'
+            rep += '\n'
+        return rep
 
     def clear(self) -> None:
         self.data.clear()
