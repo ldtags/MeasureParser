@@ -1233,6 +1233,12 @@ def __insert_valid_data() -> None:
         cursor = conn.cursor()
         try:
             query = (
+                'DELETE FROM permutation_valid_data'
+                ' WHERE 1=1'
+            )
+            cursor.execute(query)
+
+            query = (
                 'INSERT INTO permutation_valid_data'
                 ' VALUES (?, ?)'
             )
@@ -1242,10 +1248,22 @@ def __insert_valid_data() -> None:
                 cursor.executemany(query, params)
 
             query = (
+                'DELETE FROM delivery_type'
+                ' WHERE 1=1'
+            )
+            cursor.execute(query)
+
+            query = (
                 'INSERT INTO delivery_type'
                 ' VALUES (?, ?, ?)'
             )
             cursor.executemany(query, deliv_params)
+
+            query = (
+                'DELETE FROM measure_impact_type'
+                ' WHERE 1=1'
+            )
+            cursor.execute(query)
 
             query = (
                 'INSERT INTO measure_impact_type'
