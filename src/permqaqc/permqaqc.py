@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import logging
 import numbers
@@ -24,7 +25,13 @@ def is_number(val) -> bool:
     Use as a callback function for filtering DataFrames.
     """
 
-    return isinstance(val, numbers.Number)
+    try:
+        float(val)
+        return True
+    except ValueError:
+        return False
+
+    # return isinstance(val, numbers.Number)
 
 
 def is_zero(val) -> bool:
@@ -36,7 +43,7 @@ def is_zero(val) -> bool:
     if not is_number(val):
         return False
 
-    if val != 0:
+    if float(val) != 0:
         return False
 
     return True
@@ -51,7 +58,7 @@ def is_positive(val) -> bool:
     if not is_number(val):
         return False
 
-    if val <= 0:
+    if float(val) <= 0:
         return False
 
     return True
@@ -66,7 +73,7 @@ def is_negative(val) -> bool:
     if not is_number(val):
         return False
 
-    if val > 0:
+    if float(val) >= 0:
         return False
 
     return True
@@ -81,7 +88,7 @@ def is_greater_than(val, gt: numbers.Number) -> bool:
     if not is_number(val):
         return False
 
-    if val <= gt:
+    if float(val) <= gt:
         return False
 
     return True
@@ -96,10 +103,60 @@ def is_less_than(val, lt: numbers.Number) -> bool:
     if not is_number(val):
         return False
 
-    if val >= lt:
+    if float(val) >= lt:
         return False
 
     return True
+
+
+def occurs_before(checked_date: str | None, base_date: str) -> bool:
+    """Determines if `checked_date` occurs before `base_date`.
+
+    Date Formats:
+        `checked_date`: YYYY/MM/DD
+        `base_date`:    YYYY-MM-DD
+
+    Date formats were determined by the formats stored in the
+    eTRM and local database.
+
+    Use as a callback function for filtering DataFrames.
+    """
+
+    if checked_date is None:
+        return False
+
+    return dt.datetime.strptime(
+        checked_date,
+        r'%Y/%m/%d'
+    ) < dt.datetime.strptime(
+        base_date,
+        r'%Y-%m-%d'
+    )
+
+
+def occurs_after(checked_date: str | None, base_date: str) -> bool:
+    """Determines if `checked_date` occurs after `base_date`.
+
+    Date Formats:
+        `checked_date`: YYYY/MM/DD
+        `base_date`:    YYYY-MM-DD
+
+    Date formats were determined by the formats stored in the
+    eTRM and local database.
+
+    Use as a callback function for filtering DataFrames.
+    """
+
+    if checked_date is False:
+        return None
+
+    return dt.datetime.strptime(
+        checked_date,
+        r'%Y/%m/%d'
+    ) > dt.datetime.strptime(
+        base_date,
+        r'%Y-%m-%d'
+    )
 
 
 def qa_qc_method(func: Callable[_P, _T]
@@ -491,11 +548,12 @@ class PermutationQAQC:
             df = self.permutations.data
 
         for col_name in [column, *columns]:
+            col = df[col_name]
             if func is not None:
                 validator = df[col_name].apply(func)
             else:
                 if value is None:
-                    validator = df[col_name].isna()
+                    validator = (df[col_name].isna() | df[col_name].eq(''))
                 elif isinstance(value, list):
                     for i, _value in enumerate(value):
                         if _value is None:
@@ -505,9 +563,9 @@ class PermutationQAQC:
                     validator = df[col_name].eq(value)
 
             if negate:
-                check_col = df[col_name].loc[validator]
-            else:
                 check_col = df[col_name].loc[~validator]
+            else:
+                check_col = df[col_name].loc[validator]
 
             for index in check_col.index:
                 try:
@@ -1111,7 +1169,7 @@ class PermutationQAQC:
         self.check_columns(
             cnst.DELIV_TYPE,
             func=lambda val: (
-                val not in set(map(lambda item: item[0], deliv_types))
+                val not in deliv_types
             ),
             description='Value is not a valid delivery type'
         )
@@ -1120,46 +1178,44 @@ class PermutationQAQC:
 
         late_deliv_types = df.loc[
             df[cnst.DELIV_TYPE].isin(deliv_types)
-                & (
-                    df[cnst.DELIV_TYPE].apply(
-                        lambda val: (
-                            dt.datetime.strptime(
-                                deliv_types[val][0],
-                                r'%Y/%m/%d'
-                            )
+                & df.apply(
+                    lambda row: (
+                        occurs_after(
+                            deliv_types[row[cnst.DELIV_TYPE]][0]
+                                if row[cnst.DELIV_TYPE] in deliv_types
+                                else None,
+                            row[cnst.START_DATE]
                         )
-                    ) > df[cnst.START_DATE].apply(
-                        lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
-                    )
+                    ),
+                    axis=1
                 )
         ][cnst.DELIV_TYPE]
         for index in late_deliv_types.index:
             self.field_data.add(
                 column=cnst.DELIV_TYPE,
-                description='Delivery type cannot start after the measure\'s start date',
+                description='Delivery type cannot start after the measure\'s'
+                    ' start date',
                 y=int(index)
             )
 
         early_deliv_types = df.loc[
-            df[cnst.DELIV_TYPE].isin(deliv_types)
-                & (
-                    df[cnst.DELIV_TYPE].apply(
-                        lambda val: (
-                            deliv_types[val][1] is None
-                                or dt.datetime.strptime(
-                                    str(deliv_types[val][1]),
-                                    r'%Y/%m/%d'
-                                )
-                        )
-                    ) < df[cnst.START_DATE].apply(
-                        lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
+            df.apply(
+                lambda row: (
+                    occurs_before(
+                        deliv_types[row[cnst.DELIV_TYPE]][1]
+                            if row[cnst.DELIV_TYPE] in deliv_types
+                            else None,
+                        row[cnst.START_DATE]
                     )
-                )
+                ),
+                axis=1
+            )
         ][cnst.DELIV_TYPE]
         for index in early_deliv_types.index:
             self.field_data.add(
                 column=cnst.DELIV_TYPE,
-                description='Delivery type cannot end before the measure\'s start date',
+                description='Delivery type cannot end before the measure\'s'
+                    ' start date',
                 y=int(index)
             )
 
@@ -1257,7 +1313,7 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.RESTRICTED_PERMUTATION,
-            func=lambda val: val != 0 or val != 1,
+            func=lambda val: val != '0' and val != '1',
             description='Value must be either a 0 or 1'
         )
 
@@ -1367,9 +1423,9 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.WATER_MEASURE_TYPE,
-            value=[None, 'Indoor', 'Outdoor'],
+            value=['', 'Indoor', 'Outdoor'],
             negate=True,
-            description='Value must be either \"Blank\", \"Indoor\" or'
+            description='Value must be either blank, \"Indoor\" or'
                 ' \"Outdoor\"'
         )
 
@@ -1388,7 +1444,7 @@ class PermutationQAQC:
         df = self.permutations.data
         for col_name in cnst.FIRST_BASELINE_WS_COLS:
             invalid = df[
-                ~df[cnst.WATER_MEASURE_TYPE].isna()
+                ~df[cnst.WATER_MEASURE_TYPE].eq('')
                     & ~df[col_name].str.isnumeric()
             ][col_name]
             for index in invalid.index:
@@ -1398,9 +1454,10 @@ class PermutationQAQC:
                     y=int(index)
                 )
 
+            col = df[col_name]
             invalid = df[
-                df[cnst.WATER_MEASURE_TYPE].isna()
-                    & ~df[col_name].eq(0)
+                df[cnst.WATER_MEASURE_TYPE].eq('')
+                    & ~df[col_name].astype(float).eq(0)
             ][col_name]
             for index in invalid.index:
                 self.field_data.add(
@@ -1427,7 +1484,7 @@ class PermutationQAQC:
         for col_name in cnst.SECOND_BASELINE_WS_COLS:
             invalid = df[
                 df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
-                    & ~df[cnst.WATER_MEASURE_TYPE].isna()
+                    & ~df[cnst.WATER_MEASURE_TYPE].eq('')
                     & ~df[col_name].str.isnumeric()
             ][col_name]
             for index in invalid.index:
@@ -1438,11 +1495,9 @@ class PermutationQAQC:
                 )
 
             invalid = df[
-                ~df[col_name].eq(0)
-                    & (
-                        ~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
-                            | df[cnst.WATER_MEASURE_TYPE].isna()
-                    )
+                ~df[col_name].astype(float).eq(0)
+                    & (~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
+                        | df[cnst.WATER_MEASURE_TYPE].eq(''))
             ][col_name]
             for index in invalid.index:
                 self.field_data.add(
@@ -1490,14 +1545,14 @@ class PermutationQAQC:
         """Validates data fields for the `Standard Tech Type` column.
 
         Field is flagged if:
-            - Measure Application Type is not NC/NR and field is blank
+            - Measure Application Type is NC/NR and field is blank
             (critical)
         """
 
         df = self.permutations.data
         self.check_columns(
             cnst.STD_TECH_ID,
-            df=df[~df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])],
+            df=df[df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])],
             description='Value cannot be blank'
         )
 
@@ -1555,7 +1610,7 @@ class PermutationQAQC:
         """Validates data fields for the `ETP Flag` column.
 
         Field is flagged if:
-            - field is not blank or field does not start with \'E\'
+            - field is not blank and field does not start with \'E\'
             (critical)
         """
 
@@ -1569,8 +1624,8 @@ class PermutationQAQC:
 
         etp_flag = etp_cols[0]
         invalid = df[
-            df[etp_flag].isna()
-                | ~df[etp_flag].str.startswith('E')
+            ~df[etp_flag].eq('')
+                & ~df[etp_flag].str.startswith('E')
         ][etp_flag]
         for index, value in invalid.items():
             self.field_data.add(
@@ -1643,23 +1698,25 @@ class PermutationQAQC:
         df = self.permutations.data
         invalid = df[
             df[cnst.MEAS_IMPACT_TYPE].eq('Deem-DEER')
-                & df[cnst.DEER_MEAS_ID].isna()
+                & df[cnst.DEER_MEAS_ID].eq('')
         ][cnst.DEER_MEAS_ID]
         for index in invalid.index:
             self.field_data.add(
                 column=cnst.DEER_MEAS_ID,
-                description='Value cannot be blank',
+                description='Measure Impact Type is \"Deem-DEER\", so this'
+                    ' value cannot be blank',
                 y=int(index)
             )
 
         invalid = df[
             ~df[cnst.MEAS_IMPACT_TYPE].eq('Deem-DEER')
-                & ~df[cnst.DEER_MEAS_ID].isna()
+                & ~df[cnst.DEER_MEAS_ID].eq('')
         ][cnst.DEER_MEAS_ID]
         for index in invalid.index:
             self.field_data.add(
                 column=cnst.DEER_MEAS_ID,
-                description='Value must be blank',
+                description='Measure Impact Type is not \"Deem-DEER\", so this'
+                    ' value must be blank',
                 y=int(index)
             )
 
@@ -1675,27 +1732,10 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col_index = int(df.columns.get_loc(cnst.MEAS_IMPACT_TYPE))
-        ntg_version_index = int(df.columns.get_loc(cnst.NTG_VERSION))
-        ntg_id_index = int(df.columns.get_loc(cnst.NTG_ID))
-        ntg_id_exclusions = db.get_exclusion_map(
-            cnst.NTG_ID,
-            cnst.MEAS_IMPACT_TYPE
-        )
-        ntg_version_exclusions = db.get_exclusion_map(
-            cnst.NTG_VERSION,
-            cnst.MEAS_IMPACT_TYPE
-        )
+
+        meas_impact_types = db.get_measure_impact_types()
         invalid = df[
-            df.apply(
-                lambda row: (
-                    row.iloc[col_index] in [
-                        *ntg_version_exclusions[row.iloc[ntg_version_index]],
-                        *ntg_id_exclusions[row.iloc[ntg_id_index]]
-                    ]
-                ),
-                axis=1
-            )
+            ~df[cnst.MEAS_IMPACT_TYPE].isin(meas_impact_types)
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
             self.field_data.add(
@@ -1704,45 +1744,45 @@ class PermutationQAQC:
                 y=int(index)
             )
 
-        meas_impact_types = db.get_measure_impact_types()
         invalid = df[
-            df[cnst.MEAS_IMPACT_TYPE].apply(
-                lambda val: (
-                    dt.datetime.strptime(
-                        meas_impact_types[val][0],
-                        r'%Y/%m/%d'
+            df.apply(
+                lambda row: (
+                    occurs_after(
+                        meas_impact_types[row[cnst.MEAS_IMPACT_TYPE]][0]
+                            if row[cnst.MEAS_IMPACT_TYPE] in meas_impact_types
+                            else None,
+                        row[cnst.START_DATE]
                     )
-                )
-            ) > df[cnst.START_DATE].apply(
-                lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
+                ),
+                axis=1
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
             self.field_data.add(
                 column=cnst.MEAS_IMPACT_TYPE,
-                description=f'Invalid Measure Impact ID: {value} cannot start'
-                    ' after the measure.',
+                description=f'Invalid Measure Impact ID: {value} starts'
+                    ' after the measure\'s start date.',
                 y=int(index)
             )
 
         invalid = df[
-            df[cnst.MEAS_IMPACT_TYPE].apply(
-                lambda val: (
-                    meas_impact_types[val][1] is None
-                        or dt.datetime.strptime(
-                            str(meas_impact_types[val][1]),
-                            r'%Y/%m/%d'
-                        )
-                )
-            ) < df[cnst.START_DATE].apply(
-                lambda val: dt.datetime.strptime(val, r'%Y-%m-%d')
+            df.apply(
+                lambda row: (
+                    occurs_before(
+                        meas_impact_types[row[cnst.MEAS_IMPACT_TYPE]][1]
+                            if row[cnst.MEAS_IMPACT_TYPE] in meas_impact_types
+                            else None,
+                        row[cnst.START_DATE]
+                    )
+                ),
+                axis=1
             )
         ][cnst.MEAS_IMPACT_TYPE]
         for index, value in invalid.items():
             self.field_data.add(
                 column=cnst.MEAS_IMPACT_TYPE,
-                description=f'Invalid Measure Impact ID: {value} cannot end'
-                    ' before the measure starts.',
+                description=f'Invalid Measure Impact ID: {value} ends'
+                    ' before the measure\'s start date.',
                 y=int(index)
             )
 
