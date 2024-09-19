@@ -10,16 +10,16 @@ class Severity(Enum):
 class DataEntry:
     def __init__(self,
                  description: str,
-                 severity: Severity.CRITICAL,
+                 severity: Severity=Severity.CRITICAL,
                  y: int | None=None):
         self.description = description
         self.severity = severity
         self.y = y
 
     def __str__(self) -> str:
-        rep = f'{self.severity}'
+        rep = f'{self.severity.name}'
         if self.y is not None:
-            rep += f' ({self.y})'
+            rep += f' ({self.y + 2})'
         rep += f': {self.description}'
         return rep
 
@@ -40,7 +40,7 @@ class FieldData:
             for entry in entries:
                 rep += f'\t{entry}\n'
             if entries == []:
-                rep += 'No issues\n'
+                rep += '\tNo issues\n'
             rep += '\n'
         return rep
 
