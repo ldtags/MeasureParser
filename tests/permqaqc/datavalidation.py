@@ -1,6 +1,9 @@
+import os
+import pandas as pd
 import unittest as ut
 from typing import Type
 
+from src import _ROOT
 from src.etrm import constants as cnst
 from src.permqaqc import PermutationQAQC, FieldData, Severity
 from tests.permqaqc import resources
@@ -54,6 +57,12 @@ COLUMN_ORDER = [
 ]
 
 
+def convert_to_csv(file_path: str) -> None:
+    df = pd.read_excel(file_path, sheet_name=None, keep_default_na=False)
+    csv_path = os.path.join(_ROOT, '..', 'tests', 'permqaqc', 'resources', 'SWHC052-02.csv')
+    df[list(df.keys())[0]].to_csv(csv_path, index=False)
+
+
 class MeasureTestCase(ut.TestCase):
     tool: PermutationQAQC | None = None
 
@@ -84,16 +93,21 @@ class MeasureTestCase(ut.TestCase):
                 case _:
                     self.assertEqual(tool_column, ordered_column)
 
-
+ 
+ 
 class SWHC052_02(MeasureTestCase):
     def setUp(self) -> None:
         self.tool = tool = PermutationQAQC()
+        # file_path = resources.get_path('SWHC052-02.xlsm')
+        # convert_to_csv(file_path)
         file_path = resources.get_path('SWHC052-02.csv')
         tool.set_permutations(file_path)
 
     def test_file(self) -> None:
         self.tool.rearrange_columns()
         self.tool.validate_data()
+        with open(os.path.join(_ROOT, '..', 'outputs', 'test_results.txt'), 'w+') as fp:
+            fp.write(str(self.tool.field_data))
 
 
 def get_test_methods(test_case: Type[ut.TestCase]) -> list[ut.TestCase]:
