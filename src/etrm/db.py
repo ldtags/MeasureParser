@@ -663,7 +663,7 @@ def get_eul_ids() -> set[str]:
     query = (
         'SELECT value'
         ' FROM permutation_valid_data'
-        ' WHERE verbose_name = \'Effective Useful Life ID\''
+        ' WHERE verbose_name = \'shared__EULID\''
     )
     with _DB as cursor:
         response = cursor.execute(query).fetchall()
@@ -767,7 +767,8 @@ def get_exclusions(verbose_name: str,
 def get_exclusion_map(key_name: str,
                       mapped_name: str,
                       valid: bool=True,
-                      allowed: bool=True
+                      allowed: bool=True,
+                      strict: bool=False
                      ) -> dict[str, set[str]]:
     """Returns a mapping of `key_name` exclusion values to allowed
     `mapped_name` exclusion values.
@@ -781,14 +782,17 @@ def get_exclusion_map(key_name: str,
        f' WHERE allowed = {allowed_int}'
            f' AND valid = {valid_int}'
     )
-    for verbose_name in [key_name, mapped_name]:
-        query += (
-            ' AND ('
-               f' labels LIKE \'{verbose_name};;%\''
-               f' OR labels LIKE \'%;;{verbose_name}\''
-               f' OR labels LIKE \'%;;{verbose_name};;%\''
-            ' )'
-        )
+    if not strict:
+        for verbose_name in [key_name, mapped_name]:
+            query += (
+                ' AND ('
+                   f' labels LIKE \'{verbose_name};;%\''
+                   f' OR labels LIKE \'%;;{verbose_name}\''
+                   f' OR labels LIKE \'%;;{verbose_name};;%\''
+                ' )'
+            )
+    else:
+        query += f' AND (labels = \'{key_name};;{mapped_name}\')'
 
     with _DB as conn:
         cursor = conn.cursor()
@@ -883,7 +887,7 @@ def get_version_sources() -> set[str]:
     query = (
         'SELECT value'
         ' FROM permutation_valid_data'
-       f' WHERE verbose_name = \'{cnst.VERSION_SOURCE}\''
+       f' WHERE verbose_name = \'Version Source\''
     )
     with _DB as conn:
         cursor = conn.cursor()
@@ -899,7 +903,7 @@ def get_technology_groups() -> set[str]:
     query = (
         'SELECT value'
         ' FROM permutation_valid_data'
-       f' WHERE verbose_name = \'{cnst.TECH_GROUP}\''
+       f' WHERE verbose_name = \'TechGroup\''
     )
     with _DB as conn:
         cursor = conn.cursor()
@@ -915,7 +919,7 @@ def get_technology_types() -> set[str]:
     query = (
         'SELECT value'
         ' FROM permutation_valid_data'
-       f' WHERE verbose_name = \'{cnst.TECH_TYPE}\''
+       f' WHERE verbose_name = \'TechType\''
     )
     with _DB as conn:
         cursor = conn.cursor()
