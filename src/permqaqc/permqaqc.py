@@ -1300,7 +1300,7 @@ class PermutationQAQC:
         df = self.permutations.data
         invalid = df[
             ~df[cnst.NTG_ID].isin(valid_ids)
-        ]
+        ][cnst.NTG_ID]
         for index, value in invalid.items():
             if value == '':
                 description = 'Field cannot be blank'
@@ -1667,10 +1667,17 @@ class PermutationQAQC:
         for col_name in cnst.TECH_GROUP_COLS:
             invalid = df[~df[col_name].isin(valid_tech_groups)][col_name]
             for index, value in invalid.items():
+                if value == '':
+                    description = 'Field cannot be blank'
+                else:
+                    description = (
+                        f'Invalid tech group: {value}, must be one of'
+                        f' {valid_tech_groups}'
+                    )
+
                 self.field_data.add(
                     column=col_name,
-                    description=f'Invalid tech group: {value}, must be one of'
-                        f' {valid_tech_groups}',
+                    description=description,
                     y=int(index)
                 )
 
@@ -1688,10 +1695,17 @@ class PermutationQAQC:
         for col_name in cnst.TECH_TYPE_COLS:
             invalid = df[~df[col_name].isin(valid_tech_types)][col_name]
             for index, value in invalid.items():
+                if value == '':
+                    description = 'Field cannot be blank'
+                else:
+                    description = (
+                        f'Invalid tech type: {value}, must be one of'
+                        f' {valid_tech_types}'
+                    )
+
                 self.field_data.add(
                     column=col_name,
-                    description=f'Invalid tech type: {value}, must be one of'
-                        f' {valid_tech_types}',
+                    description=description,
                     y=int(index)
                 )
 
