@@ -218,10 +218,10 @@ class ProgressController:
             self.view.controls_frame.cont_btn.set_state('normal')
 
     def handle_back(self) -> None:
-        self.root_view.show(HomePage.key)
+        self.root_view.home.show()
 
     def handle_continue(self) -> None:
-        # self.root_view.show(ResultsPage.key)
+        # self.root_view.results.show()
         self.root_view.close()
 
     def __bind_controls(self) -> None:
