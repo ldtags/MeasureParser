@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import logging
 import numbers
@@ -30,8 +29,6 @@ def is_number(val) -> bool:
         return True
     except ValueError:
         return False
-
-    # return isinstance(val, numbers.Number)
 
 
 def is_zero(val) -> bool:
@@ -147,8 +144,8 @@ def occurs_after(checked_date: str | None, base_date: str) -> bool:
     Use as a callback function for filtering DataFrames.
     """
 
-    if checked_date is False:
-        return None
+    if checked_date is None:
+        return False
 
     return dt.datetime.strptime(
         checked_date,
@@ -658,13 +655,25 @@ class PermutationQAQC:
             (critical)
         """
 
-        self.check_columns(
-            cnst.FIRST_BASELINE_CASE,
-            value=['Existing', 'Standard Practice', 'None'],
-            negate=True,
-            description='Value must be either \'Existing\','
-                '\'Standard Practice\' or \'None\''
-        )
+        df = self.permutations.data
+        valid_fbc = ['Existing', 'Standard Practice', 'None']
+        invalid = df[
+            ~df[cnst.FIRST_BASELINE_CASE].isin(valid_fbc)
+        ][cnst.FIRST_BASELINE_CASE]
+        for index, value in invalid.items():
+            if value == '':
+                description = 'Value cannot be blank'
+            else:
+                description = (
+                    f'Value ({value}) must be either \"Existing\",'
+                    ' \"Standard Practice\" or \"None\"'
+                )
+
+            self.field_data.add(
+                column=cnst.FIRST_BASELINE_CASE,
+                description=description,
+                y=int(index)
+            )
 
     @qa_qc_method
     def validate_second_baseline_case(self) -> None:
@@ -674,13 +683,25 @@ class PermutationQAQC:
             - field is not \'Standard Practice\' or \'None\' (critical)
         """
 
-        self.check_columns(
-            cnst.SECOND_BASELINE_CASE,
-            value=['Standard Practice', 'None'],
-            negate=True,
-            description='Value must be either \"Standard Practice\" or'
-                ' \"None\"'
-        )
+        df = self.permutations.data
+        valid_sbc = ['Standard Practice', 'None']
+        invalid = df[
+            ~df[cnst.SECOND_BASELINE_CASE].isin(valid_sbc)
+        ][cnst.SECOND_BASELINE_CASE]
+        for index, value in invalid.items():
+            if value == '':
+                description = 'Value cannot be blank'
+            else:
+                description = (
+                    f'Value ({value}) must be either \"Standard'
+                    ' Practice\" or \"None\"'
+                )
+
+            self.field_data.add(
+                column=cnst.SECOND_BASELINE_CASE,
+                description=description,
+                y=int(index)
+            )
 
     @qa_qc_method
     def validate_bldg_vint(self) -> None:
@@ -703,6 +724,7 @@ class PermutationQAQC:
         self.validate_existing_description()
         self.validate_sbc_description()
         self.validate_first_baseline_case()
+        self.validate_second_baseline_case()
         self.validate_bldg_vint()
 
     @qa_qc_method
@@ -766,43 +788,51 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        self.check_columns(
+        cost_cols = [
             cnst.FIRST_BASELINE_LC,
-            cnst.FIRST_BASELINE_MC,
-            df=df[df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])],
-            func=is_negative,
-            description='Value must be a non-negative number'
-        )
-
-        non_zero_vals = df[
-            df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])
-                & ~df[cnst.FIRST_BASELINE_LC].eq(0)
+            cnst.FIRST_BASELINE_MC
         ]
-        if non_zero_vals.empty:
-            self.field_data.add(
-                column=cnst.FIRST_BASELINE_LC,
-                description='All values are zero',
-                severity=Severity.MINOR
-            )
+        for col_name in cost_cols:
+            invalid = df[
+                ~df[cnst.MEASURE_APPLICATION_TYPE].isin(['NR', 'NC'])
+                    & ~df[col_name].eq('0')
+            ][col_name]
+            for index, value in invalid.items():
+                self.field_data.add(
+                    column=col_name,
+                    description=f'Non NC/NR value ({value}) must be 0',
+                    y=int(index)
+                )
 
-        non_zero_vals = df[
-            df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])
-                & ~df[cnst.FIRST_BASELINE_MC].eq(0)
-        ]
-        if non_zero_vals.empty:
-            self.field_data.add(
-                column=cnst.FIRST_BASELINE_MC,
-                description='All values are zero',
-                severity=Severity.MINOR
-            )
+            invalid = df[
+                df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])
+                    & ~df[col_name].apply(is_number)
+            ][col_name]
+            for index, value in invalid.items():
+                if value == '':
+                    description = 'Value cannot be empty'
+                else:
+                    description = f'Value ({value}) must be a number'
 
-        self.check_columns(
-            cnst.FIRST_BASELINE_LC,
-            cnst.FIRST_BASELINE_MC,
-            df=df[~df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])],
-            func=lambda val: not is_zero(val),
-            description='Value must be zero'
-        )
+                self.field_data.add(
+                    column=col_name,
+                    description=description,
+                    y=int(index)
+                )
+
+            numeric_df = df[
+                df[col_name].apply(is_number)
+            ]
+            invalid = numeric_df[
+                numeric_df[cnst.MEASURE_APPLICATION_TYPE].isin(['NR', 'NC'])
+                    & (numeric_df[col_name].astype(float) < 0)
+            ][col_name]
+            for index, value in invalid.items():
+                self.field_data.add(
+                    column=col_name,
+                    description=f'NC/NR value ({value}) cannot be negative',
+                    y=int(index)
+                )
 
     @qa_qc_method
     def validate_first_baseline_mtc(self) -> None:
@@ -814,16 +844,21 @@ class PermutationQAQC:
             - field is less than or equal to 0 (minor)
         """
 
+        df = self.permutations.data
+
         self.check_columns(
             cnst.FIRST_BASELINE_MTC,
-            func=lambda val: not is_number(val),
+            func=is_number,
+            negate=True,
             description='Value must be a number'
         )
 
         self.check_columns(
             cnst.FIRST_BASELINE_MTC,
             severity=Severity.MINOR,
-            func=lambda val: not is_positive(val),
+            func=is_positive,
+            negate=True,
+            df=df[df[cnst.FIRST_BASELINE_MTC].apply(is_number)],
             description='Value must be a positive number'
         )
 
@@ -839,8 +874,8 @@ class PermutationQAQC:
         self.check_columns(
             cnst.MEASURE_LABOR_COST,
             cnst.MEASURE_MATERIAL_COST,
-            func=is_negative,
-            description='Value must be a positive number'
+            func=lambda val: not is_number(val) or is_negative(val),
+            description='Value must be a non-negative number'
         )
 
     @qa_qc_method
@@ -860,7 +895,7 @@ class PermutationQAQC:
             cnst.SECOND_BASELINE_LC,
             cnst.SECOND_BASELINE_MC,
             df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_negative(val),
+            func=lambda val: not is_number(val) or is_negative(val),
             description='Value must be a non-negative number'
         )
 
@@ -890,7 +925,8 @@ class PermutationQAQC:
             cnst.SECOND_BASELINE_LC,
             cnst.SECOND_BASELINE_MC,
             df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_zero(val),
+            func=is_zero,
+            negate=True,
             description='Value must be zero'
         )
 
@@ -908,18 +944,34 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
+
+        self.check_columns(
+            cnst.SECOND_BASELINE_MTC,
+            func=is_number,
+            negate=True,
+            description='Value must be a number'
+        )
+
         self.check_columns(
             cnst.SECOND_BASELINE_MTC,
             severity=Severity.MINOR,
-            df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_positive(val),
+            df=df[
+                df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
+                    & df[cnst.SECOND_BASELINE_MTC].apply(is_number)
+            ],
+            func=is_positive,
+            negate=True,
             description='Value must be a positive number'
         )
 
         self.check_columns(
             cnst.SECOND_BASELINE_MTC,
-            df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_zero(val),
+            df=df[
+                ~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
+                    & df[cnst.SECOND_BASELINE_MTC].apply(is_number)
+            ],
+            func=is_zero,
+            negate=True,
             description='Value must be zero'
         )
 
@@ -938,12 +990,22 @@ class PermutationQAQC:
             - field is not a valid EUL ID (critical)
         """
 
+        df = self.permutations.data
         valid_eul_ids = db.get_eul_ids()
-        self.check_columns(
-            cnst.EUL_ID,
-            func=lambda val: val not in valid_eul_ids,
-            description='Invalid EUL ID'
-        )
+        invalid = df[
+            ~df[cnst.EUL_ID].isin(valid_eul_ids)
+        ][cnst.EUL_ID]
+        for index, value in invalid.items():
+            if value == '':
+                description = 'Field cannot be blank'
+            else:
+                description = f'Invalid EUL ID: {value}'
+
+            self.field_data.add(
+                column=cnst.EUL_ID,
+                description=description,
+                y=int(index)
+            )
 
     @qa_qc_method
     def validate_eul_years(self) -> None:
@@ -957,7 +1019,7 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.EUL_YEARS,
-            func=lambda val: not is_positive(val),
+            func=lambda val: not (is_number(val) and is_positive(val)),
             description='Value must be a positive number'
         )
 
@@ -1177,18 +1239,17 @@ class PermutationQAQC:
         df = self.permutations.data
 
         late_deliv_types = df.loc[
-            df[cnst.DELIV_TYPE].isin(deliv_types)
-                & df.apply(
-                    lambda row: (
-                        occurs_after(
-                            deliv_types[row[cnst.DELIV_TYPE]][0]
-                                if row[cnst.DELIV_TYPE] in deliv_types
-                                else None,
-                            row[cnst.START_DATE]
-                        )
-                    ),
-                    axis=1
-                )
+            df.apply(
+                lambda row: (
+                    occurs_after(
+                        deliv_types[row[cnst.DELIV_TYPE]][0]
+                            if row[cnst.DELIV_TYPE] in deliv_types
+                            else None,
+                        row[cnst.START_DATE]
+                    )
+                ),
+                axis=1
+            )
         ][cnst.DELIV_TYPE]
         for index in late_deliv_types.index:
             self.field_data.add(
@@ -1227,23 +1288,28 @@ class PermutationQAQC:
             - field is not a valid NTG ID (critical)
         """
 
+        exclusion_map = db.get_exclusion_map(
+            key_name=cnst.SECTOR,
+            mapped_name=cnst.NTG_ID
+        )
+
+        valid_ids = []
+        for id_set in exclusion_map.values():
+            valid_ids.extend(list(id_set))
+
         df = self.permutations.data
-        ntg_id_index = int(df.columns.get_loc(cnst.NTG_ID))
-        sector_index = int(df.columns.get_loc(cnst.SECTOR))
-        invalid_ntg_ids = df[
-            df.apply(
-                lambda row: (
-                    row.iloc[ntg_id_index] in db.get_exclusions(
-                        cnst.SECTOR, row.iloc[sector_index]
-                    )
-                ),
-                axis=1
-            )
+        invalid = df[
+            ~df[cnst.NTG_ID].isin(valid_ids)
         ]
-        for index in invalid_ntg_ids.index:
+        for index, value in invalid.items():
+            if value == '':
+                description = 'Field cannot be blank'
+            else:
+                description = f'Invalid NTG ID: {value}'
+
             self.field_data.add(
-                column=cnst.NTG_ID,
-                description='Invalid NTG ID',
+                column=cnst.GSIA_ID,
+                description=description,
                 y=int(index)
             )
 
@@ -1255,23 +1321,28 @@ class PermutationQAQC:
             - field is not a valid GSIA ID (critical)
         """
 
+        exclusion_map = db.get_exclusion_map(
+            key_name=cnst.SECTOR,
+            mapped_name=cnst.GSIA_ID
+        )
+
+        valid_ids = []
+        for id_set in exclusion_map.values():
+            valid_ids.extend(list(id_set))
+
         df = self.permutations.data
-        gsia_id_index = int(df.columns.get_loc(cnst.GSIA_ID))
-        sector_index = int(df.columns.get_loc(cnst.SECTOR))
-        invalid_gsia_ids = df[
-            df.apply(
-                lambda row: (
-                    row.iloc[gsia_id_index] in db.get_exclusions(
-                        cnst.SECTOR, row.iloc[sector_index]
-                    )
-                ),
-                axis=1
-            )
-        ]
-        for index in invalid_gsia_ids.index:
+        invalid = df[
+            ~df[cnst.GSIA_ID].isin(valid_ids)
+        ][cnst.GSIA_ID]
+        for index, value in invalid.items():
+            if value == '':
+                description = 'Field cannot be blank'
+            else:
+                description = f'Invalid GSIA ID: {value}'
+
             self.field_data.add(
                 column=cnst.GSIA_ID,
-                description='Invalid GSIA ID',
+                description=description,
                 y=int(index)
             )
 
@@ -1285,8 +1356,12 @@ class PermutationQAQC:
 
         self.check_columns(
             *cnst.NTG_VALUE_COLS,
-            func=lambda val: is_negative(val) or is_greater_than(val, 1),
-            description='Value must be >= 0 or <= 1'
+            func=lambda val: (
+                not is_number(val)
+                    or not is_positive(val)
+                    or is_greater_than(val, 1)
+            ),
+            description='Value must be > 0 and <= 1'
         )
 
     @qa_qc_method
@@ -1299,8 +1374,12 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.GSIA_VALUE,
-            func=lambda val: is_negative(val) or is_greater_than(val, 1),
-            description='Value must be >= 0 or <= 1'
+            func=lambda val: (
+                not is_number(val)
+                    or not is_positive(val)
+                    or is_greater_than(val, 1)
+            ),
+            description='Value must be > 0 and <= 1'
         )
 
     @qa_qc_method
@@ -1323,39 +1402,56 @@ class PermutationQAQC:
         column.
 
         Field is flagged if:
-            - field is not valid for the Program Year (critical)
+            - field is blank when measure is < PY2026
+            - field is not blank when measure is >= PY2026
         """
 
         df = self.permutations.data
-        us_flag_index = int(df.columns.get_loc(cnst.UPSTREAM_FLAG))
-        deliv_type_index = int(df.columns.get_loc(cnst.DELIV_TYPE))
-        invalid_us_flags = df[
+        invalid = df[
             df.apply(
                 lambda row: (
-                    row.iloc[us_flag_index] in list(
-                        map(
-                            lambda val: (
-                                True if val == '0'
-                                    else False if val == '1'
-                                    else pd.NA if val == ''
-                                    else val
-                            ),
-                            db.get_exclusions(
-                                cnst.DELIV_TYPE,
-                                row.iloc[deliv_type_index]
-                            )
-                        )
+                    dt.datetime.strptime(
+                        row[cnst.START_DATE],
+                        r'%Y-%m-%d'
+                    ) >= dt.datetime(
+                        year=2026,
+                        month=1,
+                        day=1
                     )
                 ),
                 axis=1
+            ) & (
+                ~df[cnst.UPSTREAM_FLAG].eq('')
             )
         ][cnst.UPSTREAM_FLAG]
-        for index, value in invalid_us_flags.items():
-            deliv_type = df.loc[index, cnst.DELIV_TYPE]
+        for index in invalid.index:
             self.field_data.add(
                 column=cnst.UPSTREAM_FLAG,
-                description=f'Invalid Upstream Flag: {value} us not valid for'
-                    f' delivery type {deliv_type}',
+                description='Value must be blank',
+                y=int(index)
+            )
+
+        invalid = df[
+            df.apply(
+                lambda row: (
+                    dt.datetime.strptime(
+                        row[cnst.START_DATE],
+                        r'%Y-%m-%d'
+                    ) < dt.datetime(
+                        year=2026,
+                        month=1,
+                        day=1
+                    )
+                ),
+                axis=1
+            ) & (
+                df[cnst.UPSTREAM_FLAG].eq('')
+            )
+        ][cnst.UPSTREAM_FLAG]
+        for index in invalid.index:
+            self.field_data.add(
+                column=cnst.UPSTREAM_FLAG,
+                description='Value cannot be blank',
                 y=int(index)
             )
 
@@ -1375,13 +1471,14 @@ class PermutationQAQC:
 
         df = self.permutations.data
         valid_version_sources = db.get_version_sources()
-        invalid_version_sources = df[
-            ~df[cnst.VERSION_SOURCE].isin(valid_version_sources)
+        invalid = df[
+            ~df[cnst.VERSION_SOURCE].eq('')
+                & ~df[cnst.VERSION_SOURCE].isin(valid_version_sources)
         ][cnst.VERSION_SOURCE]
-        for index in invalid_version_sources.index:
+        for index, value in invalid.items():
             self.field_data.add(
                 column=cnst.VERSION_SOURCE,
-                description=f'Invalid value, must be one of {valid_version_sources}',
+                description=f'Invalid Version Source: {value}',
                 y=int(index)
             )
 
@@ -1445,7 +1542,7 @@ class PermutationQAQC:
         for col_name in cnst.FIRST_BASELINE_WS_COLS:
             invalid = df[
                 ~df[cnst.WATER_MEASURE_TYPE].eq('')
-                    & ~df[col_name].str.isnumeric()
+                    & ~df[col_name].apply(is_number)
             ][col_name]
             for index in invalid.index:
                 self.field_data.add(
@@ -1454,10 +1551,10 @@ class PermutationQAQC:
                     y=int(index)
                 )
 
-            col = df[col_name]
-            invalid = df[
-                df[cnst.WATER_MEASURE_TYPE].eq('')
-                    & ~df[col_name].astype(float).eq(0)
+            numeric_df = df[df[col_name].apply(is_number)]
+            invalid = numeric_df[
+                numeric_df[cnst.WATER_MEASURE_TYPE].eq('')
+                    & ~numeric_df[col_name].astype(float).eq(0)
             ][col_name]
             for index in invalid.index:
                 self.field_data.add(
@@ -1485,7 +1582,7 @@ class PermutationQAQC:
             invalid = df[
                 df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                     & ~df[cnst.WATER_MEASURE_TYPE].eq('')
-                    & ~df[col_name].str.isnumeric()
+                    & ~df[col_name].apply(is_number)
             ][col_name]
             for index in invalid.index:
                 self.field_data.add(
@@ -1495,7 +1592,7 @@ class PermutationQAQC:
                 )
 
             invalid = df[
-                ~df[col_name].astype(float).eq(0)
+                ~df[col_name].eq('0')
                     & (~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                         | df[cnst.WATER_MEASURE_TYPE].eq(''))
             ][col_name]
@@ -1646,10 +1743,17 @@ class PermutationQAQC:
         df = self.permutations.data
         invalid = df[~df[cnst.IE_FACTOR].isin(['Yes', 'No'])][cnst.IE_FACTOR]
         for index, value in invalid.items():
+            if value == '':
+                description = 'Field cannot be blank'
+            else:
+                description = (
+                    f'Invalid IE Factor value: {value}, must be'
+                    ' either \'Yes\' or \'No\''
+                )
+
             self.field_data.add(
                 column=cnst.IE_FACTOR,
-                description=f'Invalid IE Factor value: {value}, must be'
-                    ' either \'Yes\' or \'No\'',
+                description=description,
                 y=int(index)
             )
 
@@ -1663,6 +1767,7 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
+        col = df[cnst.IE_TABLE_NAME]
         invalid = df[
             df[cnst.IE_FACTOR].eq('No') & ~df[cnst.IE_TABLE_NAME].eq('NA')
         ][cnst.IE_TABLE_NAME]
