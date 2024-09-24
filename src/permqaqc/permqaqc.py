@@ -545,7 +545,6 @@ class PermutationQAQC:
             df = self.permutations.data
 
         for col_name in [column, *columns]:
-            col = df[col_name]
             if func is not None:
                 validator = df[col_name].apply(func)
             else:
@@ -1781,7 +1780,6 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        col = df[cnst.IE_TABLE_NAME]
         invalid = df[
             df[cnst.IE_FACTOR].eq('No') & ~df[cnst.IE_TABLE_NAME].eq('NA')
         ][cnst.IE_TABLE_NAME]

@@ -1,4 +1,7 @@
+import re
 from enum import Enum
+
+import src.etrm.constants as cnst
 
 
 class Severity(Enum):
@@ -61,10 +64,34 @@ class FieldData:
             )
         )
 
+    def get_error_map(self, column: str) -> dict[Severity, list[int]]:
+        try:
+            if column == cnst.ETP_FLAG:
+                key = cnst.ETP_FLAG
+                for col_key in self.data.keys():
+                    if re.fullmatch(r'^ETP Flag.*$', col_key):
+                        key = col_key
+            else:
+                key = column
+            entries = self.data[key]
+        except KeyError:
+            raise RuntimeError(f'No column named {column} exists')
+
+        error_map = {
+            Severity.MINOR: [],
+            Severity.OPTIONAL: [],
+            Severity.CRITICAL: []
+        }
+
+        for entry in entries:
+            error_map[entry.severity].append(entry.y)
+
+        return error_map
+
     def get(self,
             column: str | None=None,
             severity: Severity | None=None,
-            y: int | None=None
+            y: int | list[int] | None=None
            ) -> list[DataEntry]:
         if column is not None:
             entries = self.data[column]
@@ -75,7 +102,15 @@ class FieldData:
             filter(
                 lambda entry: (
                     (severity is None or entry.severity == severity)
-                        and (y is None or entry.y == y)
+                        and (
+                            (
+                                entry.y == y
+                            ) if isinstance(y, int)
+                            else (
+                                entry.y in y
+                            ) if isinstance(y, list)
+                            else True
+                        )
                 ),
                 entries
             )
