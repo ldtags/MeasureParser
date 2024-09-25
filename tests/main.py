@@ -2,11 +2,12 @@ import sys
 import os
 import unittest as ut
 
-from tests import permqaqc
+from tests import permqaqc, parser
 
 
 MODULES = {
-    'permqaqc': permqaqc.suites
+    'permqaqc': permqaqc.suites,
+    'parser': parser.suites
 }
 
 

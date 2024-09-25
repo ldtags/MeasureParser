@@ -1,6 +1,7 @@
 import unittest as ut
 
-from context import models
+from src.etrm import models
+from tests.utils import get_test_methods
 
 
 class TestMeasure(ut.TestCase):
@@ -173,5 +174,18 @@ class TestMeasure(ut.TestCase):
         self.assertEqual(measure.get_criteria(), ['REQ', 'DEF_GSIA', 'INTER', 'RES_NDEF', 'NAT_NCNR', 'DEEM', 'ET'])
 
 
+def suite() -> ut.TestSuite:
+    suite = ut.TestSuite()
+    test_cases: list[ut.TestCase] = [
+        TestMeasure
+    ]
+
+    for test_case in test_cases:
+        methods = get_test_methods(test_case)
+        suite.addTests(methods)
+
+    return suite
+
 if __name__ == '__main__':
-    ut.main()
+    runner = ut.TextTestRunner()
+    runner.run(suite())

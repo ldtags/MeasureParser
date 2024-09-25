@@ -3,11 +3,12 @@ import re
 import json
 import pandas as pd
 import unittest as ut
-from typing import Type, Literal
+from typing import Literal
 
 from src import _ROOT
 from src.etrm import constants as cnst
 from src.permqaqc import PermutationQAQC, Severity
+from tests.utils import get_test_methods
 from tests.permqaqc import resources
 
 
@@ -217,23 +218,12 @@ class ComboTestCase(MeasureTestCase):
     name = 'combo_mat'
 
 
-def get_test_methods(test_case: Type[ut.TestCase]) -> list[ut.TestCase]:
-    return [
-        test_case(func)
-            for func
-            in dir(test_case)
-            if (
-                callable(getattr(test_case, func))
-                    and func.startswith('test_')
-            )
-    ]
-
-
 def suite() -> ut.TestSuite:
     suite = ut.TestSuite()
     test_cases: list[MeasureTestCase] = [
         ComboTestCase
     ]
+
     for test_case in test_cases:
         methods = get_test_methods(test_case)
         suite.addTests(methods)

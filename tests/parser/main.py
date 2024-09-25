@@ -1,11 +1,11 @@
 import unittest as ut
 
-from tests.permqaqc import process_validation
+from tests.parser import model_construction
 
 
 def suites() -> list[ut.TestSuite]:
     return [
-        process_validation.suite()
+        model_construction.suite()
     ]
 
 
