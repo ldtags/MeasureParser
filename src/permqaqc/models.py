@@ -8,7 +8,9 @@ import src.etrm.constants as cnst
 
 class Severity(Enum):
     OPTIONAL = 'optional'
+    SEMI_MINOR = 'semi_minor'
     MINOR = 'minor'
+    SEMI_CRITICAL = 'semi_critical'
     CRITICAL = 'critical'
 
 

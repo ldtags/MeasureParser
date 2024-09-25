@@ -164,6 +164,17 @@ def apply_exclusion_formatting(column: str, value: str) -> str:
             return value
 
 
+def difference(numbers: list[float]) -> float:
+    if numbers == []:
+        return 0
+
+    diff = numbers[0]
+    for number in numbers[1:]:
+        diff -= number
+
+    return diff
+
+
 def qa_qc_method(func: Callable[_P, _T]
                 ) -> Callable[Concatenate['PermutationQAQC', _P], _T]:
     """Ensures that the QA/QC tool permutations have been set before the
@@ -864,10 +875,16 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.FIRST_BASELINE_MTC,
-            severity=Severity.MINOR,
+            func=is_negative,
+            df=df[df[cnst.FIRST_BASELINE_MTC].apply(is_number)],
+            description='Value must be a positive number'
+        )
+
+        self.check_columns(
+            cnst.FIRST_BASELINE_MTC,
             func=is_positive,
             negate=True,
-            df=df[df[cnst.FIRST_BASELINE_MTC].apply(is_number)],
+            severity=Severity.SEMI_CRITICAL,
             description='Value must be a positive number'
         )
 
@@ -963,7 +980,7 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.SECOND_BASELINE_MTC,
-            severity=Severity.MINOR,
+            severity=Severity.SEMI_CRITICAL,
             df=df[
                 df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
                     & df[cnst.SECOND_BASELINE_MTC].apply(is_number)
@@ -2183,7 +2200,266 @@ class PermutationQAQC:
             valid=False
         )
 
+    def check_sum(self,
+                  df: pd.DataFrame,
+                  *columns: str,
+                  flag_value: float=0,
+                  description: str | None=None,
+                  severity: Severity=Severity.OPTIONAL,
+                  negate: bool=False
+                 ) -> None:
+        """Flags all columns in `columns` if the sum of `columns`
+        is not equal to the flag value.
+
+        If `negate` is True, columns will be flagged if they sum to
+        the flag value.
+        """
+    
+        for column in columns:
+            if column not in df.columns:
+                raise RuntimeError(f'Invalid column: {column}')
+
+        df = df.loc[:, list(columns)].apply(
+            lambda val: pd.to_numeric(val, errors='coerce')
+        ).dropna()
+
+        invalid = df.loc[
+            df.sum(axis=1, numeric_only=True).eq(flag_value) == negate
+        ]
+
+        other_cols: dict[str, set[str]] = {}
+        for column in columns:
+            other_cols[column] = set(columns)
+            other_cols[column].remove(column)
+
+        for index in invalid.index:
+            for column in columns:
+                self.field_data.add(
+                    column=column,
+                    description=description or (
+                        'Failed sum check with '
+                        ' and '.join(other_cols[column])
+                    ),
+                    severity=severity,
+                    y=int(index)
+                )
+
+    @qa_qc_method
+    def validate_first_baseline_cost_calculations(self) -> None:
+        """Validates that the First Baseline Cost is within 0.0105 of
+        the difference between the Measure Total Cost and First
+        Baseline Total Cost.
+        """
+
+        df = self.permutations.data
+
+        self.check_sum(
+            df.loc[df[cnst.MEASURE_APPLICATION_TYPE].isin(['NC', 'NR'])],
+            cnst.FIRST_BASELINE_LC,
+            cnst.FIRST_BASELINE_MC,
+            negate=True,
+            severity=Severity.SEMI_CRITICAL
+        )
+
+        # semi-critical flag if total cost <= 0
+        invalid = df.loc[
+            is_number(df[cnst.FIRST_BASELINE_MTC])
+        ].loc[
+            df[cnst.FIRST_BASELINE_MTC].astype(float) <= 0
+        ][cnst.FIRST_BASELINE_MTC]
+        for index, value in invalid.items():
+            self.field_data.add(
+                column=cnst.FIRST_BASELINE_MTC,
+                description=f'Value ({value}) must be greater than 0',
+                y=int(index),
+                severity=Severity.SEMI_CRITICAL
+            )
+
+        # optional flag if fmtc - ((mlc + mmc) - (flc + fmc)) > 0.0105
+        invalid = df.loc[
+            is_number(df[cnst.FIRST_BASELINE_MTC])
+                & is_number(df[cnst.MEASURE_LABOR_COST])
+                & is_number(df[cnst.MEASURE_MATERIAL_COST])
+                & is_number(df[cnst.FIRST_BASELINE_LC])
+                & is_number(df[cnst.FIRST_BASELINE_MC])
+        ].loc[
+            abs(
+                df[cnst.FIRST_BASELINE_MTC].astype(float) - (
+                    (
+                        df[cnst.MEASURE_LABOR_COST].astype(float)
+                            + df[cnst.MEASURE_MATERIAL_COST].astype(float)
+                    ) - (
+                        df[cnst.FIRST_BASELINE_LC].astype(float)
+                            + df[cnst.FIRST_BASELINE_MC].astype(float)
+                    )
+                )
+            ) > 0.0105
+        ][cnst.FIRST_BASELINE_MTC]
+        for index in invalid.index:
+            self.field_data.add(
+                column=cnst.FIRST_BASELINE_MTC,
+                description='Failed calculation check',
+                y=int(index),
+                severity=Severity.OPTIONAL
+            )
+
+    @qa_qc_method
+    def validate_second_baseline_cost_calculations(self) -> None:
+        df = self.permutations.data
+        df = df.loc[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')]
+
+        self.check_sum(
+            df,
+            cnst.SECOND_BASELINE_LC,
+            cnst.SECOND_BASELINE_MC,
+            negate=True,
+            severity=Severity.SEMI_CRITICAL
+        )
+
+        # optional flag if smtc - ((mlc + mmc) - (slc + smc)) > 0.0105
+        invalid = df.loc[
+            is_number(df[cnst.SECOND_BASELINE_MTC])
+                & is_number(df[cnst.MEASURE_LABOR_COST])
+                & is_number(df[cnst.MEASURE_MATERIAL_COST])
+                & is_number(df[cnst.SECOND_BASELINE_LC])
+                & is_number(df[cnst.SECOND_BASELINE_MC])
+        ].loc[
+            abs(
+                df[cnst.SECOND_BASELINE_MTC].astype(float) - (
+                    (
+                        df[cnst.MEASURE_LABOR_COST].astype(float)
+                            + df[cnst.MEASURE_MATERIAL_COST].astype(float)
+                    ) - (
+                        df[cnst.SECOND_BASELINE_LC].astype(float)
+                            + df[cnst.SECOND_BASELINE_MC].astype(float)
+                    )
+                )
+            ) > 0.0105
+        ][cnst.SECOND_BASELINE_MTC]
+        for index in invalid.index:
+            self.field_data.add(
+                column=cnst.SECOND_BASELINE_MTC,
+                description='Failed calculation check',
+                y=int(index),
+                severity=Severity.OPTIONAL
+            )
+
+    def check_difference(self,
+                         df: pd.DataFrame,
+                         check_column: str,
+                         *columns: str,
+                         description: str='Failed calculation check',
+                         severity: Severity=Severity.OPTIONAL
+                        ) -> None:
+        """Flags `check_column` if it is not equal to the iterative difference
+        of `columns`.
+        """
+
+        for column in [check_column, *columns]:
+            if column not in df.columns:
+                raise RuntimeError(f'Invalid column: {column}')
+
+        invalid = df.loc[
+            :, list(columns)    
+        ].loc[
+            df.apply(
+                lambda row: (
+                    all([is_number(row[column]) for column in columns])
+                ),
+                axis=1
+            )
+        ].loc[
+            df[check_column].astype(float) != difference(
+                [df[column].astype(float) for column in columns]
+            )
+        ][check_column]
+        for index in invalid.index:
+            self.field_data.add(
+                column=check_column,
+                description=description,
+                y=int(index),
+                severity=severity
+            )
+
+    @qa_qc_method
+    def validate_first_baseline_ues_calculations(self) -> None:
+        df = self.permutations.data
+
+        self.check_difference(
+            df,
+            cnst.FIRST_BASELINE_PEDR,
+            cnst.FIRST_BASELINE_UEC_KW,
+            cnst.MEASURE_UEC_KW
+        )
+
+        self.check_difference(
+            df,
+            cnst.FIRST_BASELINE_ES,
+            cnst.FIRST_BASELINE_UEC_KWH,
+            cnst.MEASURE_UEC_KWH
+        )
+
+        self.check_difference(
+            df,
+            cnst.FIRST_BASELINE_GS,
+            cnst.FIRST_BASELINE_UEC_THERM,
+            cnst.MEASURE_UEC_THERM
+        )
+
+    @qa_qc_method
+    def validate_second_baseline_ues_calculations(self) -> None:
+        df = self.permutations.data
+        df = df.loc[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')]
+
+        self.check_difference(
+            df,
+            cnst.SECOND_BASELINE_PEDR,
+            cnst.SECOND_BASELINE_UEC_KW,
+            cnst.MEASURE_UEC_KW
+        )
+
+        self.check_difference(
+            df,
+            cnst.SECOND_BASELINE_ES,
+            cnst.SECOND_BASELINE_UEC_KWH,
+            cnst.MEASURE_UEC_KWH
+        )
+
+        self.check_difference(
+            df,
+            cnst.SECOND_BASELINE_GS,
+            cnst.SECOND_BASELINE_UEC_THERM,
+            cnst.MEASURE_UEC_THERM
+        )
+
+    @qa_qc_method
+    def validate_rul_eul_year_difference(self) -> None:
+        df = self.permutations.data
+
+        invalid = df.loc[
+            is_number(df[cnst.RUL_YEARS])
+                & is_number(df[cnst.EUL_YEARS])
+        ].loc[
+            df[cnst.RUL_YEARS].astype(float)
+                >= df[cnst.EUL_YEARS].astype(float) / 2.75
+        ][cnst.RUL_YEARS]
+        for index in invalid.index:
+            self.field_data.add(
+                column=cnst.RUL_YEARS,
+                description='Failed calculation check',
+                severity=Severity.OPTIONAL,
+                y=int(index)
+            )
+
+    def validate_calculations(self) -> None:
+        self.validate_first_baseline_cost_calculations()
+        self.validate_second_baseline_cost_calculations()
+        self.validate_first_baseline_ues_calculations()
+        self.validate_second_baseline_ues_calculations()
+        self.validate_rul_eul_year_difference()
+
     def start(self) -> None:
         self.rearrange_columns()
         self.validate_data()
         self.validate_exclusions()
+        self.validate_calculations()

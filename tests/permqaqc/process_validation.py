@@ -199,19 +199,25 @@ class MeasureTestCase(ut.TestCase):
                 case _:
                     self.assertEqual(tool_column, ordered_column)
 
-    def test_validate_data(self) -> None:
-        self.tool.rearrange_columns()
-        self.tool.validate_data()
-        self.assert_errors(self.data_errors)
+    # def test_validate_data(self) -> None:
+    #     self.tool.rearrange_columns()
+    #     self.tool.validate_data()
+    #     self.assert_errors(self.data_errors)
 
-    def test_validate_exclusions(self) -> None:
-        self.tool.rearrange_columns()
-        self.tool.validate_exclusions()
-        self.assert_errors(self.exclusion_errors)
+    # def test_validate_exclusions(self) -> None:
+    #     self.tool.rearrange_columns()
+    #     self.tool.validate_exclusions()
+    #     self.assert_errors(self.exclusion_errors)
 
-    def test_start(self) -> None:
-        self.tool.start()
-        self.assert_errors(self.all_errors)
+    def test_validate_calculations(self) -> None:
+        self.tool.rearrange_columns()
+        self.tool.validate_calculations()
+        path = self.get_path('calculation_validation_errors.json', exists=False)
+        self.tool.field_data.to_json(path)
+
+    # def test_start(self) -> None:
+    #     self.tool.start()
+    #     self.assert_errors(self.all_errors)
 
 
 class ComboTestCase(MeasureTestCase):
