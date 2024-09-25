@@ -1,3 +1,4 @@
+import itertools
 import sqlite3 as sql
 import pylightxl as xl
 from typing import (
@@ -7,7 +8,7 @@ from typing import (
     Type
 )
 
-from src.etrm import resources, constants as cnst
+from src.etrm import resources
 from src.etrm.models import Measure
 from src.etrm.exceptions import ETRMError, DatabaseError
 
@@ -709,57 +710,76 @@ def get_measure_impact_types() -> dict[str, tuple[str, str | None]]:
     return mit_types
 
 
-def get_exclusions(verbose_name: str,
-                   value: str | None=None,
+def get_exclusions(*columns: str,
                    valid: bool=True,
-                   allowed: bool=True
-                  ) -> dict[str, list[str]]:
-    """Returns a mapping of verbose permutation names to valid values
-    when combined with a `verbose_name` permutation with a `value` value.
+                   allowed:bool=True,
+                   exclusive: bool=True
+                  ) -> list[list[str]]:
+    """Returns a list of ordered exclusions.
 
-    If `valid` is `False`, the mapping will include only invalid combinations.
-
-    If `allowed` is `False`, the mapping will include only deprecated
-    combinations.
+    Exclusions will be ordered in the same order that their
+    associated columns are provided.
     """
 
     valid_int = 0 if valid else 1
     allowed_int = 0 if allowed else 1
-
     query = (
         'SELECT labels, exclusion_values'
         ' FROM exclusions'
        f' WHERE allowed = {allowed_int}'
            f' AND valid = {valid_int}'
-            ' AND ('
-               f' labels LIKE \'{verbose_name};;%\''
-               f' OR labels LIKE \'%;;{verbose_name}\''
-               f' OR labels LIKE \'%;;{verbose_name};;%\''
-            ' )'
-            ' AND ('
-               f' exclusion_values LIKE \'{value};;%\''
-               f' OR exclusion_values LIKE \'%;;{value}\''
-               f' OR exclusion_values LIKE \'%;;{value};;%\''
-            ' )'
     )
-    with _DB as cursor:
-        response = cursor.execute(query).fetchall()
 
-    exclusions: dict[str, list[str]] = {}
+    if not exclusive:
+        for column in columns:
+            query += (
+                ' AND ('
+                   f' labels LIKE \'{column};;%\''
+                   f' OR labels LIKE \'%;;{column}\''
+                   f' OR labels LIKE \'%;;{column};;%\''
+                ' )'
+            )
+    else:
+        query += ' AND ('
+        permutations = list(itertools.permutations(list(columns)))
+        for i, permutation in enumerate(permutations):
+            if i != 0:
+                query += ' OR '
+            query += 'labels = \''
+            query += ';;'.join(permutation)
+            query += '\''
+        query += ')'
+
+    with _DB as conn:
+        cursor = conn.cursor()
+        try:
+            response = cursor.execute(query).fetchall()
+        finally:
+            cursor.close()
+
+    column_list = list(columns)
+    column_order: dict[str, int] = {}
+    exclusions: list[list[str]] = []
     for label_join, value_join in response:
         labels = str(label_join).split(';;')
-        labels.remove(verbose_name)
-
         values = str(value_join).split(';;')
-        if value not in values:
-            pass
-        values.remove(value)
+        exclusion = [''] * len(columns)
+        for label, value in zip(labels, values):
+            if value == '1':
+                value = 'False'
+            elif value == '0':
+                value = 'True'
 
-        for _label, _value in zip(labels, values):
             try:
-                exclusions[_label].append(_value)
+                order = column_order[label]
             except KeyError:
-                exclusions[_label] = [_value]
+                try:
+                    order = column_list.index(label)
+                except ValueError as err:
+                    raise RuntimeError(f'Invalid column: {label}') from err
+                column_order[label] = order
+            exclusion[order] = value
+        exclusions.append(exclusion)
 
     return exclusions
 
@@ -1348,6 +1368,14 @@ def __insert_exclusions() -> None:
             else:
                 allowed = 0
 
+            match label:
+                case 'Program Administrator Type;;Program Administrator':
+                    if any([_value == '' for _value in value.split(';;')]):
+                        continue
+                case _:
+                    if all([_value == '' for _value in value.split(';;')]):
+                        break
+
             exclusions.append((label, value, allowed))
 
     # measure app type - building vintage
@@ -1416,9 +1444,21 @@ def __insert_exclusions() -> None:
     # measure application type - second baseline case
     add_exclusion('DW', 'DX')
 
+    # program administrator type - building location
+    add_exclusion('AY', 'AZ')
+
+    # program administrator type - program administrator
+    add_exclusion('AY', 'BB')
+
     with _DB.connect() as conn:
         cursor = conn.cursor()
         try:
+            query = (
+                'DELETE FROM exclusions'
+                ' WHERE 1=1'
+            )
+            cursor.execute(query)
+
             query = (
                 'INSERT INTO exclusions'
                 ' VALUES (?, ?, ?, 0)'
