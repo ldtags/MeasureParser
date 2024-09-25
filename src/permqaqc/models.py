@@ -1,4 +1,6 @@
 import re
+import os
+import json
 from enum import Enum
 
 import src.etrm.constants as cnst
@@ -46,6 +48,27 @@ class FieldData:
                 rep += '\tNo issues\n'
             rep += '\n'
         return rep
+
+    def to_json(self, file_path: str, overwrite: bool=True) -> str:
+        if file_path.rsplit('.')[-1] != 'json':
+            raise RuntimeError('File path must specify a JSON file')
+            
+        if os.path.exists(file_path) and not overwrite:
+            raise RuntimeError(f'Cannot overwrite {file_path}')
+
+        json_dict: dict[str, dict[str, list[int]]] = {}
+        for column, entries in self.data.items():
+            column_dict: dict[str, list[int]] = {}
+            for entry in entries:
+                y = entry.y + 2 if entry.y is not None else 0
+                try:
+                    column_dict[entry.severity.name].append(y)
+                except KeyError:
+                    column_dict[entry.severity.name] = [y]
+            json_dict[column] = column_dict
+
+        with open(file_path, 'w+') as fp:
+            json.dump(json_dict, fp)
 
     def clear(self) -> None:
         self.data.clear()
