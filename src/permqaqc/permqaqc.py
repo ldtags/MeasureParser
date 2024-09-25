@@ -156,6 +156,14 @@ def occurs_after(checked_date: str | None, base_date: str) -> bool:
     )
 
 
+def apply_exclusion_formatting(column: str, value: str) -> str:
+    match column:
+        case cnst.VERSION:
+            return value[:value.index('2')]
+        case _:
+            return value
+
+
 def qa_qc_method(func: Callable[_P, _T]
                 ) -> Callable[Concatenate['PermutationQAQC', _P], _T]:
     """Ensures that the QA/QC tool permutations have been set before the
@@ -249,6 +257,7 @@ class PermutationQAQC:
         def parse_args() -> PermutationsTable:
             if api_key is None:
                 return PermutationsTable(input)
+
             connection = ETRMConnection(api_key)
             sanitized_id = sanitizers.sanitize_measure_id(input)
             permutations = connection.get_permutations(sanitized_id)
@@ -272,6 +281,7 @@ class PermutationQAQC:
         def parse_args() -> Measure:
             if isinstance(input, Measure):
                 return input
+
             assert api_key is not None
             connection = ETRMConnection(api_key)
             sanitized_id = sanitizers.sanitize_measure_id(input)
@@ -1952,87 +1962,225 @@ class PermutationQAQC:
 
     @qa_qc_method
     def check_exclusions(self,
-                         *permutations: str,
+                         *columns: str,
+                         flag_column: str | None=None,
                          valid: bool=True
                         ) -> None:
+        """Checks all columns in `columns` for illegal combinations.
+
+        If `flag_column` is included, only that column will be flagged
+        for any illegal combinations. Otherwise, all columns in `columns`
+        will be flagged.
+
+        If `valid` is True, combinations that don't appear in the exclusion
+        table will be flagged. Otherwise, only combinations that do appear
+        in the exclusion table will be flagged.
+        """
+
         df = self.permutations.data.copy()
         df.fillna('None')
-        exclusions = db.get_all_exclusions(*permutations, valid=valid)
-        permutations = list(permutations)
-        for index in df.index:
-            row = list(df.loc[index, permutations])
-            if (row not in exclusions) != valid:
-                for permutation in permutations:
+        exclusions = db.get_exclusions(*columns, valid=valid)
+        exclusions = set(
+            map(
+                lambda row: ';;'.join(row),
+                exclusions
+            )
+        )
+
+        # If any columns are missing, skip the validation
+        for column in columns:
+            try:
+                df[column]
+            except KeyError:
+                return
+
+        validator = lambda row: (
+            ';;'.join(
+                list(
+                    map(
+                        lambda column: apply_exclusion_formatting(
+                            column,
+                            row[column]
+                        ),
+                        columns
+                    )
+                )
+            ) in exclusions
+        )
+
+        invalid = df[df.apply(validator, axis=1) == (not valid)]
+        other_cols: dict[str, set[str]] = {}
+        for column in columns:
+            other_cols[column] = set(columns)
+            other_cols[column].remove(column)
+
+        if flag_column is not None:
+            try:
+                reported_cols = ' and '.join(other_cols[flag_column])
+            except KeyError:
+                reported_cols = ' and '.join(columns)
+
+        for index in invalid.index:
+            if flag_column is None:
+                for column in columns:
                     self.field_data.add(
-                        column=permutation,
-                        description='Failed exclusion check',
-                        severity=Severity.MINOR,
+                        column=column,
+                        description=(
+                            'Failed exclusion check with '
+                            ' and '.join(other_cols[column])    
+                        ),
                         y=int(index)
                     )
+            else:
+                self.field_data.add(
+                    column=flag_column,
+                    description=f'Failed exclusion check with {reported_cols}',
+                    y=int(index)
+                )
 
     def validate_exclusions(self) -> None:
         """Validates that all field data pass exclusion checks."""
 
         self.check_exclusions(
             cnst.MEASURE_APPLICATION_TYPE,
-            cnst.BUILDING_VINTAGE
+            cnst.BUILDING_VINTAGE,
+            flag_column=cnst.BUILDING_VINTAGE
         )
-        self.check_exclusions(cnst.SECTOR, cnst.BUILDING_TYPE)
-        self.check_exclusions(cnst.SECTOR, cnst.NTG_ID)
-        self.check_exclusions(cnst.SECTOR, cnst.ELEC_IMPACT_PROFILE_ID)
-        self.check_exclusions(cnst.SECTOR, cnst.GSIA_ID)
-        self.check_exclusions(cnst.SECTOR, cnst.BUILDING_HVAC)
-        self.check_exclusions(cnst.MEAS_IMPACT_TYPE, cnst.VERSION)
+
+        self.check_exclusions(
+            cnst.SECTOR,
+            cnst.BUILDING_TYPE,
+            flag_column=cnst.BUILDING_TYPE
+        )
+
+        self.check_exclusions(
+            cnst.SECTOR,
+            cnst.NTG_ID,
+            flag_column=cnst.NTG_ID
+        )
+
+        self.check_exclusions(
+            cnst.SECTOR,
+            cnst.ELEC_IMPACT_PROFILE_ID,
+            flag_column=cnst.ELEC_IMPACT_PROFILE_ID
+        )
+
+        self.check_exclusions(
+            cnst.SECTOR,
+            cnst.GSIA_ID,
+            flag_column=cnst.GSIA_ID
+        )
+
+        self.check_exclusions(
+            cnst.SECTOR,
+            cnst.BUILDING_HVAC,
+            flag_column=cnst.BUILDING_HVAC
+        )
+
+        self.check_exclusions(
+            cnst.MEAS_IMPACT_TYPE,
+            cnst.VERSION,
+            flag_column=cnst.VERSION
+        )
+
         self.check_exclusions(
             cnst.PROGRAM_ADMINISTRATOR_TYPE,
-            cnst.BUILDING_LOCATION
+            cnst.BUILDING_LOCATION,
+            flag_column=cnst.BUILDING_LOCATION
         )
+
         self.check_exclusions(
             cnst.PROGRAM_ADMINISTRATOR_TYPE,
-            cnst.PROGRAM_ADMINISTRATOR
+            cnst.PROGRAM_ADMINISTRATOR,
+            flag_column=cnst.PROGRAM_ADMINISTRATOR
         )
-        self.check_exclusions(cnst.DELIV_TYPE, cnst.UPSTREAM_FLAG)
+
+        self.check_exclusions(
+            cnst.DELIV_TYPE,
+            cnst.UPSTREAM_FLAG,
+            flag_column=cnst.UPSTREAM_FLAG
+        )
+
+        self.check_exclusions(
+            cnst.NTG_ID,
+            cnst.NTG_VERSION,
+            cnst.MEAS_IMPACT_TYPE,
+            flag_column=cnst.MEAS_IMPACT_TYPE
+        )
+
+        self.check_exclusions(
+            cnst.NTG_ID,
+            cnst.NTG_VERSION,
+            cnst.MEASURE_APPLICATION_TYPE,
+            flag_column=cnst.MEASURE_APPLICATION_TYPE
+        )
+
+        self.check_exclusions(
+            cnst.NTG_ID,
+            cnst.NTG_VERSION,
+            cnst.DELIV_TYPE,
+            flag_column=cnst.DELIV_TYPE
+        )
+
+        self.check_exclusions(
+            cnst.EUL_ID,
+            cnst.EUL_VERSION,
+            cnst.USE_CATEGORY,
+            flag_column=cnst.USE_CATEGORY
+        )
+
+        self.check_exclusions(
+            cnst.EUL_ID,
+            cnst.EUL_VERSION,
+            cnst.USE_SUB_CATEGORY,
+            flag_column=cnst.USE_SUB_CATEGORY
+        )
+
+        self.check_exclusions(
+            cnst.EUL_ID,
+            cnst.EUL_VERSION,
+            cnst.TECH_GROUP,
+            flag_column=cnst.TECH_GROUP
+        )
+
+        self.check_exclusions(
+            cnst.EUL_ID,
+            cnst.EUL_VERSION,
+            cnst.TECH_TYPE,
+            flag_column=cnst.TECH_TYPE
+        )
+
+        self.check_exclusions(
+            cnst.MEASURE_APPLICATION_TYPE,
+            cnst.FIRST_BASELINE_CASE,
+            flag_column=cnst.FIRST_BASELINE_CASE
+        )
+
+        self.check_exclusions(
+            cnst.MEASURE_APPLICATION_TYPE,
+            cnst.SECOND_BASELINE_CASE,
+            flag_column=cnst.SECOND_BASELINE_CASE
+        )
+
         self.check_exclusions(
             cnst.MEASURE_APPLICATION_TYPE,
             cnst.DELIV_TYPE,
+            flag_column=cnst.DELIV_TYPE,
             valid=False
         )
-        self.check_exclusions(cnst.BUILDING_HVAC, cnst.DELIV_TYPE, valid=False)
-        self.check_exclusions(cnst.BUILDING_TYPE, cnst.DELIV_TYPE, valid=False)
+
         self.check_exclusions(
-            cnst.NTG_ID,
-            cnst.NTG_VERSION,
-            cnst.MEAS_IMPACT_TYPE
+            cnst.BUILDING_HVAC,
+            cnst.DELIV_TYPE,
+            flag_column=cnst.BUILDING_HVAC,
+            valid=False
         )
+
         self.check_exclusions(
-            cnst.NTG_ID,
-            cnst.NTG_VERSION,
-            cnst.MEASURE_APPLICATION_TYPE
-        )
-        self.check_exclusions(cnst.NTG_ID, cnst.NTG_VERSION, cnst.DELIV_TYPE)
-        self.check_exclusions(cnst.EUL_ID, cnst.EUL_VERSION, cnst.USE_CATEGORY)
-        self.check_exclusions(
-            cnst.EUL_ID,
-            cnst.EUL_VERSION,
-            cnst.USE_SUB_CATEGORY
-        )
-        self.check_exclusions(
-            cnst.EUL_ID,
-            cnst.EUL_VERSION,
-            cnst.TECH_GROUP
-        )
-        self.check_exclusions(
-            cnst.EUL_ID,
-            cnst.EUL_VERSION,
-            cnst.TECH_TYPE
-        )
-        self.check_exclusions(
-            cnst.MEASURE_APPLICATION_TYPE,
-            cnst.FIRST_BASELINE_CASE
-        )
-        self.check_exclusions(
-            cnst.MEASURE_APPLICATION_TYPE,
-            cnst.SECOND_BASELINE_CASE
+            cnst.BUILDING_TYPE,
+            cnst.DELIV_TYPE,
+            flag_column=cnst.BUILDING_TYPE,
+            valid=False
         )
 
     def start(self) -> None:
