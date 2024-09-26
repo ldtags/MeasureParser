@@ -102,14 +102,12 @@ class FieldData:
         except KeyError:
             raise RuntimeError(f'No column named {column} exists')
 
-        error_map = {
-            Severity.MINOR: [],
-            Severity.OPTIONAL: [],
-            Severity.CRITICAL: []
-        }
-
+        error_map: dict[Severity, list[int]] = {}
         for entry in entries:
-            error_map[entry.severity].append(entry.y)
+            try:
+                error_map[entry.severity].append(entry.y)
+            except KeyError:
+                error_map[entry.severity] = [entry.y]
 
         return error_map
 

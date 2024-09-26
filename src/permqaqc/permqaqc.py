@@ -1,3 +1,5 @@
+import math
+import numpy as np
 import pandas as pd
 import logging
 import numbers
@@ -127,7 +129,7 @@ def occurs_before(checked_date: str | None, base_date: str) -> bool:
         r'%Y/%m/%d'
     ) < dt.datetime.strptime(
         base_date,
-        r'%Y-%m-%d'
+        r'%m/%d/%Y'
     )
 
 
@@ -152,7 +154,7 @@ def occurs_after(checked_date: str | None, base_date: str) -> bool:
         r'%Y/%m/%d'
     ) > dt.datetime.strptime(
         base_date,
-        r'%Y-%m-%d'
+        r'%m/%d/%Y'
     )
 
 
@@ -301,6 +303,53 @@ class PermutationQAQC:
 
         measure = parse_args()
         self.measure = measure
+
+    def get_numeric_data(self,
+                         *columns: str,
+                         dropna: bool=True,
+                         fill: float | None=None,
+                         df: pd.DataFrame | None=None
+                        ) -> pd.DataFrame:
+        """Returns the data from all columns as numeric values.
+
+        All original data indexes will be kept in the returned DataFrame.
+
+        If `dropna` is True, all non-numeric results will be dropped
+        from the returned DataFrame. Otherwise, non-numeric results
+        will be returned as NA.
+
+        If `fill` is included, all empty cells (empty string or NA) will
+        be filled with zeroes. This does not include cells with
+        non-numeric values that were converted to NA.
+
+        If `df` is included, it will be used instead of the current
+        permutations data.
+        """
+
+        if self.permutations.data is None and df is None:
+            raise RuntimeError('Cannot get numeric data without data')
+
+        if df is None:
+            df = self.permutations.data
+
+        df = df.loc[:, [*columns]]
+        if fill is not None:
+            df = df.copy()
+            df.fillna(str(fill))
+            for column in columns:
+                df[column] = df[column].replace(
+                    to_replace=[''],
+                    value='0'
+                )
+
+        numeric_df = df.apply(
+            lambda val: pd.to_numeric(val, errors='coerce')
+        )
+
+        if dropna:
+            numeric_df = numeric_df.dropna()
+
+        return numeric_df
 
     @qa_qc_method
     def move_column(self,
@@ -1438,7 +1487,7 @@ class PermutationQAQC:
                 lambda row: (
                     dt.datetime.strptime(
                         row[cnst.START_DATE],
-                        r'%Y-%m-%d'
+                        r'%m/%d/%Y'
                     ) >= dt.datetime(
                         year=2026,
                         month=1,
@@ -1462,7 +1511,7 @@ class PermutationQAQC:
                 lambda row: (
                     dt.datetime.strptime(
                         row[cnst.START_DATE],
-                        r'%Y-%m-%d'
+                        r'%m/%d/%Y'
                     ) < dt.datetime(
                         year=2026,
                         month=1,
@@ -1996,11 +2045,10 @@ class PermutationQAQC:
 
         df = self.permutations.data.copy()
         df.fillna('None')
-        exclusions = db.get_exclusions(*columns, valid=valid)
         exclusions = set(
             map(
                 lambda row: ';;'.join(row),
-                exclusions
+                db.get_exclusions(*columns, valid=valid)
             )
         )
 
@@ -2012,20 +2060,22 @@ class PermutationQAQC:
                 return
 
         validator = lambda row: (
-            ';;'.join(
-                list(
-                    map(
-                        lambda column: apply_exclusion_formatting(
-                            column,
-                            row[column]
-                        ),
-                        columns
+            (not valid) == (
+                ';;'.join(
+                    list(
+                        map(
+                            lambda column: apply_exclusion_formatting(
+                                column,
+                                row[column]
+                            ),
+                            columns
+                        )
                     )
-                )
-            ) in exclusions
+                ) in exclusions
+            )
         )
 
-        invalid = df[df.apply(validator, axis=1) == (not valid)]
+        invalid = df[df.apply(validator, axis=1)]
         other_cols: dict[str, set[str]] = {}
         for column in columns:
             other_cols[column] = set(columns)
@@ -2206,7 +2256,8 @@ class PermutationQAQC:
                   flag_value: float=0,
                   description: str | None=None,
                   severity: Severity=Severity.OPTIONAL,
-                  negate: bool=False
+                  negate: bool=False,
+                  fill: float | None=None
                  ) -> None:
         """Flags all columns in `columns` if the sum of `columns`
         is not equal to the flag value.
@@ -2219,12 +2270,9 @@ class PermutationQAQC:
             if column not in df.columns:
                 raise RuntimeError(f'Invalid column: {column}')
 
-        df = df.loc[:, list(columns)].apply(
-            lambda val: pd.to_numeric(val, errors='coerce')
-        ).dropna()
-
-        invalid = df.loc[
-            df.sum(axis=1, numeric_only=True).eq(flag_value) == negate
+        numeric_df = self.get_numeric_data(*columns, df=df, fill=fill)
+        invalid = numeric_df.loc[
+            numeric_df.sum(axis=1, numeric_only=True).eq(flag_value) == negate
         ]
 
         other_cols: dict[str, set[str]] = {}
@@ -2261,11 +2309,11 @@ class PermutationQAQC:
             severity=Severity.SEMI_CRITICAL
         )
 
+        numeric_df = self.get_numeric_data(cnst.FIRST_BASELINE_MTC)
+
         # semi-critical flag if total cost <= 0
-        invalid = df.loc[
-            is_number(df[cnst.FIRST_BASELINE_MTC])
-        ].loc[
-            df[cnst.FIRST_BASELINE_MTC].astype(float) <= 0
+        invalid = numeric_df.loc[
+            numeric_df[cnst.FIRST_BASELINE_MTC] <= 0
         ][cnst.FIRST_BASELINE_MTC]
         for index, value in invalid.items():
             self.field_data.add(
@@ -2275,22 +2323,25 @@ class PermutationQAQC:
                 severity=Severity.SEMI_CRITICAL
             )
 
+        numeric_df = self.get_numeric_data(
+            cnst.FIRST_BASELINE_MTC,
+            cnst.MEASURE_LABOR_COST,
+            cnst.MEASURE_MATERIAL_COST,
+            cnst.FIRST_BASELINE_LC,
+            cnst.FIRST_BASELINE_MC,
+            fill=0
+        )
+
         # optional flag if fmtc - ((mlc + mmc) - (flc + fmc)) > 0.0105
-        invalid = df.loc[
-            is_number(df[cnst.FIRST_BASELINE_MTC])
-                & is_number(df[cnst.MEASURE_LABOR_COST])
-                & is_number(df[cnst.MEASURE_MATERIAL_COST])
-                & is_number(df[cnst.FIRST_BASELINE_LC])
-                & is_number(df[cnst.FIRST_BASELINE_MC])
-        ].loc[
+        invalid = numeric_df.loc[
             abs(
-                df[cnst.FIRST_BASELINE_MTC].astype(float) - (
+                numeric_df[cnst.FIRST_BASELINE_MTC] - (
                     (
-                        df[cnst.MEASURE_LABOR_COST].astype(float)
-                            + df[cnst.MEASURE_MATERIAL_COST].astype(float)
+                        numeric_df[cnst.MEASURE_LABOR_COST]
+                            + numeric_df[cnst.MEASURE_MATERIAL_COST]
                     ) - (
-                        df[cnst.FIRST_BASELINE_LC].astype(float)
-                            + df[cnst.FIRST_BASELINE_MC].astype(float)
+                        numeric_df[cnst.FIRST_BASELINE_LC]
+                            + numeric_df[cnst.FIRST_BASELINE_MC]
                     )
                 )
             ) > 0.0105
@@ -2316,22 +2367,40 @@ class PermutationQAQC:
             severity=Severity.SEMI_CRITICAL
         )
 
+        numeric_df = self.get_numeric_data(cnst.SECOND_BASELINE_MTC, df=df)
+
+        # semi-critical flag if total cost <= 0
+        invalid = numeric_df.loc[
+            numeric_df[cnst.SECOND_BASELINE_MTC] <= 0
+        ][cnst.SECOND_BASELINE_MTC]
+        for index, value in invalid.items():
+            self.field_data.add(
+                column=cnst.SECOND_BASELINE_MTC,
+                description=f'Value ({value}) must be greater than 0',
+                y=int(index),
+                severity=Severity.SEMI_CRITICAL
+            )
+
+        numeric_df = self.get_numeric_data(
+            cnst.SECOND_BASELINE_MTC,
+            cnst.MEASURE_LABOR_COST,
+            cnst.MEASURE_MATERIAL_COST,
+            cnst.SECOND_BASELINE_LC,
+            cnst.SECOND_BASELINE_MC,
+            fill=0,
+            df=df
+        )
+
         # optional flag if smtc - ((mlc + mmc) - (slc + smc)) > 0.0105
-        invalid = df.loc[
-            is_number(df[cnst.SECOND_BASELINE_MTC])
-                & is_number(df[cnst.MEASURE_LABOR_COST])
-                & is_number(df[cnst.MEASURE_MATERIAL_COST])
-                & is_number(df[cnst.SECOND_BASELINE_LC])
-                & is_number(df[cnst.SECOND_BASELINE_MC])
-        ].loc[
+        invalid = numeric_df.loc[
             abs(
-                df[cnst.SECOND_BASELINE_MTC].astype(float) - (
+                numeric_df[cnst.SECOND_BASELINE_MTC] - (
                     (
-                        df[cnst.MEASURE_LABOR_COST].astype(float)
-                            + df[cnst.MEASURE_MATERIAL_COST].astype(float)
+                        numeric_df[cnst.MEASURE_LABOR_COST]
+                            + numeric_df[cnst.MEASURE_MATERIAL_COST]
                     ) - (
-                        df[cnst.SECOND_BASELINE_LC].astype(float)
-                            + df[cnst.SECOND_BASELINE_MC].astype(float)
+                        numeric_df[cnst.SECOND_BASELINE_LC]
+                            + numeric_df[cnst.SECOND_BASELINE_MC]
                     )
                 )
             ) > 0.0105
@@ -2344,63 +2413,63 @@ class PermutationQAQC:
                 severity=Severity.OPTIONAL
             )
 
-    def check_difference(self,
-                         df: pd.DataFrame,
-                         check_column: str,
-                         *columns: str,
-                         description: str='Failed calculation check',
-                         severity: Severity=Severity.OPTIONAL
-                        ) -> None:
-        """Flags `check_column` if it is not equal to the iterative difference
-        of `columns`.
-        """
+    def check_ues_difference(self,
+                             savings_column: str,
+                             baseline_column: str,
+                             measure_column: str,
+                             severity: Severity=Severity.OPTIONAL,
+                             df: pd.DataFrame | None=None
+                            ) -> None:
+        if df is None:
+            df = self.permutations.data
 
-        for column in [check_column, *columns]:
+        for column in [savings_column, baseline_column, measure_column]:
             if column not in df.columns:
                 raise RuntimeError(f'Invalid column: {column}')
 
+        df = self.get_numeric_data(
+            savings_column,
+            baseline_column,
+            measure_column,
+            fill=0,
+            df=df
+        )
+
+        # ignore columns that will result in division by zero
+        df = df.loc[df[savings_column] != 0]
+
+        # calculate UES differences
         invalid = df.loc[
-            :, list(columns)    
-        ].loc[
-            df.apply(
-                lambda row: (
-                    all([is_number(row[column]) for column in columns])
-                ),
-                axis=1
-            )
-        ].loc[
-            df[check_column].astype(float) != difference(
-                [df[column].astype(float) for column in columns]
-            )
-        ][check_column]
+            np.abs(
+                df[savings_column] - (df[baseline_column] - df[measure_column])
+            ) > (10 ** (np.floor(np.log10(df[savings_column].abs())) - 2))
+        ][savings_column]
         for index in invalid.index:
             self.field_data.add(
-                column=check_column,
-                description=description,
-                y=int(index),
-                severity=severity
+                column=savings_column,
+                description=(
+                    'Failed calculation check with'
+                    f' {baseline_column} and {measure_column}'
+                ),
+                severity=severity,
+                y=int(index)
             )
 
     @qa_qc_method
     def validate_first_baseline_ues_calculations(self) -> None:
-        df = self.permutations.data
-
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.FIRST_BASELINE_PEDR,
             cnst.FIRST_BASELINE_UEC_KW,
             cnst.MEASURE_UEC_KW
         )
 
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.FIRST_BASELINE_ES,
             cnst.FIRST_BASELINE_UEC_KWH,
             cnst.MEASURE_UEC_KWH
         )
 
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.FIRST_BASELINE_GS,
             cnst.FIRST_BASELINE_UEC_THERM,
             cnst.MEASURE_UEC_THERM
@@ -2411,37 +2480,40 @@ class PermutationQAQC:
         df = self.permutations.data
         df = df.loc[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')]
 
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.SECOND_BASELINE_PEDR,
             cnst.SECOND_BASELINE_UEC_KW,
-            cnst.MEASURE_UEC_KW
+            cnst.MEASURE_UEC_KW,
+            df=df
         )
 
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.SECOND_BASELINE_ES,
             cnst.SECOND_BASELINE_UEC_KWH,
-            cnst.MEASURE_UEC_KWH
+            cnst.MEASURE_UEC_KWH,
+            df=df
         )
 
-        self.check_difference(
-            df,
+        self.check_ues_difference(
             cnst.SECOND_BASELINE_GS,
             cnst.SECOND_BASELINE_UEC_THERM,
-            cnst.MEASURE_UEC_THERM
+            cnst.MEASURE_UEC_THERM,
+            df=df
         )
 
     @qa_qc_method
     def validate_rul_eul_year_difference(self) -> None:
         df = self.permutations.data
+        df = df.loc[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')]
+        df = self.get_numeric_data(
+            cnst.RUL_YEARS,
+            cnst.EUL_YEARS,
+            fill=0,
+            df=df
+        )
 
         invalid = df.loc[
-            is_number(df[cnst.RUL_YEARS])
-                & is_number(df[cnst.EUL_YEARS])
-        ].loc[
-            df[cnst.RUL_YEARS].astype(float)
-                >= df[cnst.EUL_YEARS].astype(float) / 2.75
+            df[cnst.RUL_YEARS] >= (df[cnst.EUL_YEARS] / 2.75)
         ][cnst.RUL_YEARS]
         for index in invalid.index:
             self.field_data.add(

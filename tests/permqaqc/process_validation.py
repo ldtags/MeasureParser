@@ -3,7 +3,8 @@ import re
 import json
 import pandas as pd
 import unittest as ut
-from typing import Literal
+from copy import deepcopy
+from typing import Literal, Iterable
 
 from src import _ROOT
 from src.etrm import constants as cnst
@@ -90,40 +91,57 @@ def convert_to_csv(file_path: str) -> None:
     df[list(df.keys())[0]].to_csv(csv_path, index=False)
 
 
+def merge_dicts(dict1: dict, dict2: dict) -> dict:
+    merged_dict = deepcopy(dict1)
+    for key, val in dict2.items():
+        if key in merged_dict:
+            if type(val) != type(merged_dict[key]):
+                raise ValueError('Cannot merge dicts of different types')
+
+            if isinstance(val, dict):
+                merged_dict[key] = merge_dicts(merged_dict[key], val)
+            elif isinstance(val, Iterable):
+                merged_dict[key] = type(val)([*merged_dict[key], *val])
+            else:
+                merged_dict = [merged_dict[key], val]
+        else:
+            merged_dict[key] = val
+
+    return merged_dict
+
+
 class MeasureTestCase(ut.TestCase):
     tool: PermutationQAQC | None = None
     name: str | None = None
 
     @property
     def data_errors(self) -> dict[str, dict[str, list[int]]]:
-        json_path = self.get_path('data_validation_errors.json')
-        with open(json_path, 'r') as fp:
-            valid_errors = json.load(fp)
-
-        return valid_errors
+        return self.get_errors('data_validation_errors.json')
 
     @property
     def exclusion_errors(self) -> dict[str, dict[str, list[int]]]:
-        json_path = self.get_path('exclusion_validation_errors.json')
-        with open(json_path, 'r') as fp:
-            valid_errors = json.load(fp)
+        return self.get_errors('exclusion_validation_errors.json')
 
-        return valid_errors
+    @property
+    def calculation_errors(self) -> dict[str, dict[str, list[int]]]:
+        return self.get_errors('calculation_validation_errors.json')
 
     @property
     def all_errors(self) -> dict[str, dict[str, list[int]]]:
-        valid_errors = self.data_errors
-        for column, errors in self.exclusion_errors.items():
-            if column in valid_errors:
-                for severity, indexes in errors.items():
-                    if severity in valid_errors[column]:
-                        valid_errors[column][severity].extend(indexes)
-                    else:
-                        valid_errors[column][severity] = indexes
-            else:
-                valid_errors[column] = errors
+        errors = merge_dicts(self.data_errors, self.exclusion_errors)
+        errors = merge_dicts(errors, self.calculation_errors)
+        return errors
 
-        return valid_errors
+    def setUp(self) -> None:
+        if self.name is None:
+            self.data_fail('name')
+
+        self.tool = tool = PermutationQAQC()
+        file_path = resources.get_path(self.name, 'permutations.csv')
+        tool.set_permutations(file_path)
+
+    def tearDown(self) -> None:
+        self.tool = None
 
     def data_fail(self, cause: Literal['name', 'tool']) -> None:
         description = ''
@@ -140,27 +158,25 @@ class MeasureTestCase(ut.TestCase):
 
         self.fail(description)
 
-    def setUp(self) -> None:
-        if self.name is None:
-            self.data_fail('name')
-
-        self.tool = tool = PermutationQAQC()
-        file_path = resources.get_path(self.name, 'permutations.csv')
-        tool.set_permutations(file_path)
-
-    def tearDown(self) -> None:
-        self.tool = None
-
     def get_path(self, file_name: str, exists: bool=True) -> str:
         if self.name is None:
             self.data_fail('name')
 
         return resources.get_path(self.name, file_name, exists=exists)
 
+    def get_errors(self, file_name: str) -> dict[str, dict[str, list[int]]]:
+        json_path = self.get_path(file_name)
+        with open(json_path, 'r') as fp:
+            valid_errors = json.load(fp)
+    
+        return valid_errors
+
     def assert_errors(self,
                       error_map: dict[str, dict[str, list[int]]]
                      ) -> None:
         for column, errors in error_map.items():
+            if column == cnst.FIRST_BASELINE_MTC:
+                pass
             existing_errors = self.tool.field_data.get_error_map(column=column)
             for severity, indexes in errors.items():
                 actual_errors = set(
@@ -169,8 +185,18 @@ class MeasureTestCase(ut.TestCase):
                         existing_errors[Severity[severity]]
                     )
                 )
+
                 if actual_errors != set(indexes):
-                    self.fail(f'Missing errors in {column}: {set(indexes).difference(actual_errors)}')
+                    err_msg = f'Incorrect errors in {column}'
+                    missing_errors = set(indexes).difference(actual_errors)                    
+                    if missing_errors != set():
+                        err_msg += f'\n  Missing errors: {list(missing_errors)}'
+
+                    extra_errors = actual_errors.difference(set(indexes))
+                    if extra_errors != set():
+                        err_msg += f'\n  Extra errors: {list(extra_errors)}'
+
+                    self.fail(err_msg)
 
     def test_rearrange_columns(self) -> None:
         if self.tool is None:
@@ -199,25 +225,25 @@ class MeasureTestCase(ut.TestCase):
                 case _:
                     self.assertEqual(tool_column, ordered_column)
 
-    # def test_validate_data(self) -> None:
-    #     self.tool.rearrange_columns()
-    #     self.tool.validate_data()
-    #     self.assert_errors(self.data_errors)
+    def test_validate_data(self) -> None:
+        self.tool.rearrange_columns()
+        self.tool.validate_data()
+        errors = self.data_errors
+        self.assert_errors(errors)
 
-    # def test_validate_exclusions(self) -> None:
-    #     self.tool.rearrange_columns()
-    #     self.tool.validate_exclusions()
-    #     self.assert_errors(self.exclusion_errors)
+    def test_validate_exclusions(self) -> None:
+        self.tool.rearrange_columns()
+        self.tool.validate_exclusions()
+        self.assert_errors(self.exclusion_errors)
 
     def test_validate_calculations(self) -> None:
         self.tool.rearrange_columns()
         self.tool.validate_calculations()
-        path = self.get_path('calculation_validation_errors.json', exists=False)
-        self.tool.field_data.to_json(path)
+        self.assert_errors(self.calculation_errors)
 
-    # def test_start(self) -> None:
-    #     self.tool.start()
-    #     self.assert_errors(self.all_errors)
+    def test_start(self) -> None:
+        self.tool.start()
+        self.assert_errors(self.all_errors)
 
 
 class ComboTestCase(MeasureTestCase):

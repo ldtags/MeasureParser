@@ -766,9 +766,9 @@ def get_exclusions(*columns: str,
         exclusion = [''] * len(columns)
         for label, value in zip(labels, values):
             if value == '1':
-                value = 'False'
+                value = 'FALSE'
             elif value == '0':
-                value = 'True'
+                value = 'TRUE'
 
             try:
                 order = column_order[label]
