@@ -190,11 +190,11 @@ class MeasureTestCase(ut.TestCase):
                     err_msg = f'Incorrect errors in {column}'
                     missing_errors = set(indexes).difference(actual_errors)                    
                     if missing_errors != set():
-                        err_msg += f'\n  Missing errors: {list(missing_errors)}'
+                        err_msg += f'\n  Missing {severity} errors: {list(missing_errors)}'
 
                     extra_errors = actual_errors.difference(set(indexes))
                     if extra_errors != set():
-                        err_msg += f'\n  Extra errors: {list(extra_errors)}'
+                        err_msg += f'\n  Extra {severity} errors: {list(extra_errors)}'
 
                     self.fail(err_msg)
 
