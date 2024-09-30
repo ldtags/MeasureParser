@@ -1,0 +1,197 @@
+from src.etrm._constants.constants import *
+
+
+STATEWIDE_MEASURE_ID = 'MeasureID'
+MEASURE_VERSION_ID = 'MeasureVersionID'
+MEASURE_NAME = 'MeasureName'
+OFFERING_ID = 'OfferingID'
+FIRST_BASE_CASE_DESCRIPTION = 'BaseCase1st'
+SECOND_BASE_CASE_DESCRIPTION = 'BaseCase2nd'
+MEASURE_CASE_DESCRIPTION = 'MeasDescription'
+EXISTING_DESCRIPTION = 'PreDesc'
+STANDARD_DESCRIPTION = 'Standard Description'
+FIRST_BASELINE_CASE = 'Case1stBaseline'
+SECOND_BASELINE_CASE = 'Case2ndBaseline'
+MEASURE_APPLICATION_TYPE = 'MeasAppType'
+BUILDING_TYPE = 'BldgType'
+BUILDING_VINTAGE = 'BldgVint'
+BUILDING_LOCATION = 'BldgLoc'
+NORM_UNIT = 'NormUnit'
+SECTOR = 'Sector'
+PROGRAM_ADMINISTRATOR_TYPE = 'PAType'
+PROGRAM_ADMINISTRATOR = 'PA'
+FIRST_BASELINE_PEDR = 'UnitkW1stBaseline'
+FIRST_BASELINE_ES = 'UnitkWh1stBaseline'
+FIRST_BASELINE_GS = 'UnitTherm1stBaseline'
+SECOND_BASELINE_PEDR = 'UnitkW2ndBaseline'
+SECOND_BASELINE_ES = 'UnitkWh2ndBaseline'
+SECOND_BASELINE_GS = 'UnitTherm2ndBaseline'
+FIRST_BASELINE_LC = 'UnitLabCost1stBaseline'
+FIRST_BASELINE_MC = 'UnitMatCost1stBaseline'
+FIRST_BASELINE_MTC = 'UnitMeaCost1stBaseline'
+MEASURE_LABOR_COST = 'UnitMeasLabCost'
+MEASURE_MATERIAL_COST = 'UnitMeasMatCost'
+SECOND_BASELINE_LC = 'UnitLabCost2ndBaseline'
+SECOND_BASELINE_MC = 'UnitMatCost2ndBaseline'
+SECOND_BASELINE_MTC = 'UnitMeaCost2ndBaseline'
+LOC_COST_ADJ_ID = 'LocCostAdj'
+EUL_ID = 'EUL_ID'
+EUL_YEARS = 'EUL_Yrs'
+RUL_ID = 'RUL_ID'
+RUL_YEARS = 'RUL_Yrs'
+FIRST_BASELINE_LIFE_CYCLE = 'Life1stBaseline'
+SECOND_BASELINE_LIFE_CYCLE = 'Life2ndBaseline'
+FIRST_BASELINE_UEC_KW = 'UECkWBase1'
+FIRST_BASELINE_UEC_KWH = 'UECkWhBase1'
+FIRST_BASELINE_UEC_THERM = 'UECThermBase1'
+SECOND_BASELINE_UEC_KW = 'UECkWBase2'
+SECOND_BASELINE_UEC_KWH = 'UECkWhBase2'
+SECOND_BASELINE_UEC_THERM = 'UECThermBase2'
+MEASURE_UEC_KW = 'UECkWMeas'
+MEASURE_UEC_KWH = 'UECkWhMeas'
+MEASURE_UEC_THERM = 'UECThermMeas'
+DELIV_TYPE = 'DeliveryType'
+NTG_ID = 'NTG_ID'
+NTG_KWH = 'NTGkWh'
+NTG_KW = 'NTGkW'
+NTG_THERMS = 'NTGTherm'
+NTGR_COST = 'NTGRCost'
+GSIA_ID = 'GSIA_ID'
+GSIA_VALUE = 'GSIA'
+RESTRICTED_PERMUTATION = 'RestrictedPerm'
+ELEC_IMPACT_PROFILE_ID = 'E3MeaElecEndUseShape'
+GAS_IMPACT_PROFILE_ID = 'E3GasSavProfile'
+UNIT_GAS_INFRA_BENS = 'UnitGasInfraBens'
+UNIT_REFRIG_COSTS = 'UnitRefrigCosts'
+UNIT_REFRIG_BENS = 'UnitRefrigBens'
+UNIT_MISC_COSTS = 'UnitMiscCosts'
+MISC_COSTS_DESC = 'MiscCostsDesc'
+UNIT_MISC_BENS = 'UnitMiscBens'
+MISC_BENS_DESC = 'MiscBensDesc'
+MARKET_EFFECTS_BENS = 'MarketEffectsBenefits'
+MARKET_EFFECTS_COSTS = 'MarketEffectsCosts'
+MEASURE_INFLATION = 'MeasInflation'
+COMBUST_TYPE = 'CombustionType'
+MEAS_IMPACT_CALC_TYPE = 'MeasImpactCalcType'
+UPSTREAM_FLAG = 'Upstream_Flag'
+VERSION = 'Version'
+VERSION_SOURCE = 'VersionSource'
+ELECTRIC_BENEFITS = 'ElecBen'
+GAS_BENEFITS = 'GasBen'
+TRC_COST_NAC = 'TRCCostNoAdmin'
+PAC_COST_NAC = 'PACCostNoAdmin'
+TRC_RATIO_NAC = 'TRCRatioNoAdmin'
+PAC_RATIO_NAC = 'PACRatioNoAdmin'
+TOTAL_SYSTEM_BENEFIT = 'TotalSystemBenefit'
+WATER_ENERGY_BENEFITS = 'WaterEnergyBen'
+OTHER_BENEFITS = 'OtherBen'
+OTHER_COSTS = 'OtherCost'
+WATER_MEASURE_TYPE = 'WaterUse'
+FIRST_BASELINE_WS = 'UnitGalWater1stBaseline'
+SECOND_BASELINE_WS = 'UnitGalWater2ndBaseline'
+FIRST_BASELINE_IOU_EWES = 'UnitkWhIOUWater1stBaseline'
+SECOND_BASELINE_IOU_EWES = 'UnitkWhIOUWater2ndBaseline'
+FIRST_BASELINE_TOTAL_EWES = 'UnitkWhTotalWater1stBaseline'
+SECOND_BASELINE_TOTAL_EWES = 'UnitkWhTotalWater2ndBaseline'
+MEAS_TECH_ID = 'MeasTechID'
+PRE_TECH_ID = 'PreTechID'
+STD_TECH_ID = 'StdTechID'
+TECH_GROUP = 'TechGroup'
+PRE_TECH_GROUP = 'PreTechGroup'
+STD_TECH_GROUP = 'StdTechGroup'
+TECH_TYPE = 'TechType'
+PRE_TECH_TYPE = 'PreTechType'
+STD_TECH_TYPE = 'StdTechType'
+USE_CATEGORY = 'UseCategory'
+USE_SUB_CATEGORY = 'UseSubCategory'
+BUILDING_HVAC = 'BldgHVAC'
+ETP_FLAG = 'ETP_Flag'
+ETP_FIRST_YEAR = 'ETP_YearFirstIntroducedToPrograms'
+IE_FACTOR = 'IE_Applicable'
+IE_TABLE_NAME = 'IETableName'
+MEAS_QUALIFIER = 'MeasQualifier'
+DEER_MEAS_ID = 'DEER_MeasureID'
+MEAS_COST_ID = 'MeasCostID'
+MEAS_IMPACT_TYPE = 'MeasImpactType'
+OFFERING_DESCRIPTION = 'OfferingDesc'
+SOURCE_DESCRIPTION = 'SourceDesc'
+PA_LEAD = 'PALead'
+START_DATE = 'StartDate'
+END_DATE = 'EndDate'
+MEAS_DETAIL_ID = 'MeasDetailID'
+EMERGING_TECHNOLOGIES_PFY = 'Emerging Technologies Program Funding Year'
+NTG_VERSION = 'NTG-Version'
+EUL_VERSION = 'EUL-Version'
+HOST_EUL_VERSION = 'Host EUL Version'
+
+
+# Permutation column name groupings
+FIRST_BASELINE_WS_COLS = [
+    FIRST_BASELINE_WS,
+    FIRST_BASELINE_IOU_EWES,
+    FIRST_BASELINE_TOTAL_EWES
+]
+"""First Baseline Water Savings column names"""
+
+SECOND_BASELINE_WS_COLS = [
+    SECOND_BASELINE_WS,
+    SECOND_BASELINE_IOU_EWES,
+    SECOND_BASELINE_TOTAL_EWES
+]
+"""Second Baseline Water Savings column names"""
+
+WS_COLS = [
+    *FIRST_BASELINE_WS_COLS, *SECOND_BASELINE_WS_COLS
+]
+"""Water Savings column names"""
+
+CET_COLS = [
+    ELECTRIC_BENEFITS, GAS_BENEFITS, TRC_COST_NAC, PAC_COST_NAC,
+    TRC_RATIO_NAC, PAC_RATIO_NAC, TOTAL_SYSTEM_BENEFIT, WATER_ENERGY_BENEFITS,
+    OTHER_BENEFITS, OTHER_COSTS
+]
+"""CET column names"""
+
+FIRST_BASELINE_UES_COLS = [
+    FIRST_BASELINE_PEDR, FIRST_BASELINE_ES, FIRST_BASELINE_GS
+]
+"""First Baseline UES column names"""
+
+SECOND_BASELINE_UES_COLS = [
+    SECOND_BASELINE_PEDR, SECOND_BASELINE_ES, SECOND_BASELINE_GS
+]
+"""Second Baseline UES column names"""
+
+FIRST_BASELINE_UEC_COLS = [
+    FIRST_BASELINE_UEC_KW, FIRST_BASELINE_UEC_KWH, FIRST_BASELINE_UEC_THERM
+]
+"""First Baseline UEC column names"""
+
+SECOND_BASELINE_UEC_COLS = [
+    SECOND_BASELINE_UEC_KW, SECOND_BASELINE_UEC_KWH, SECOND_BASELINE_UEC_THERM
+]
+"""Second Baseline UEC column names"""
+
+MEASURE_UEC_COLS = [
+    MEASURE_UEC_KW, MEASURE_UEC_KWH, MEASURE_UEC_THERM
+]
+"""Measure UEC column names"""
+
+NTG_VALUE_COLS = [
+    NTG_KWH, NTG_KW, NTG_THERMS
+]
+"""NTG Value column names"""
+
+TECH_TYPE_COLS = [
+    TECH_TYPE,
+    PRE_TECH_TYPE,
+    STD_TECH_TYPE
+]
+"""Technology Type column names"""
+
+TECH_GROUP_COLS = [
+    TECH_GROUP,
+    PRE_TECH_GROUP,
+    STD_TECH_GROUP
+]
+"""Technology Group column names"""

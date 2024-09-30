@@ -3,7 +3,7 @@ import time
 import logging
 import requests
 import http.client as httpc
-from typing import TypeVar, Callable, overload
+from typing import TypeVar, Callable, overload, Any
 
 from src.etrm import utils, sanitizers, lookups, db
 from src.etrm.models import (
@@ -450,17 +450,28 @@ class ETRMConnection:
         permutations_table: PermutationsTable | None = None
         while url is not None:
             response = self.get(url, stream=False)
-            table = PermutationsTable(response.json())
-            if table.links.next is not None:
+            response_json: dict[str, Any] = response.json()
+            try:
+                links: dict[str, str] = response_json['links']
+            except KeyError:
+                next_url = None
+            else:
+                next_url = links.get('next', None)
+
+            if next_url is not None:
                 prev_url = utils.parse_url(url)
                 prev_offset = prev_url.query.get('offset', '')
-                parsed_url = utils.parse_url(table.links.next)
+                parsed_url = utils.parse_url(next_url)
                 url_offset = parsed_url.query.get('offset', '')
                 if prev_offset == url_offset:
                     break
+
+            table = PermutationsTable(response.json())
             if permutations_table is None:
                 permutations_table = table
             else:
                 permutations_table.join(table)
-            url = table.links.next
+
+            url = next_url
+
         return permutations_table

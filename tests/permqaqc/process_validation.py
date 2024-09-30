@@ -7,7 +7,7 @@ from copy import deepcopy
 from typing import Literal, Iterable
 
 from src import _ROOT
-from src.etrm import constants as cnst
+from src.etrm._constants import verbose as cnst
 from src.permqaqc import PermutationQAQC, Severity
 from tests.utils import get_test_methods
 from tests.permqaqc import resources
@@ -139,6 +139,9 @@ class MeasureTestCase(ut.TestCase):
         self.tool = tool = PermutationQAQC()
         file_path = resources.get_path(self.name, 'permutations.csv')
         tool.set_permutations(file_path)
+
+        global cnst
+        cnst = self.tool.permutations.columns
 
     def tearDown(self) -> None:
         self.tool = None

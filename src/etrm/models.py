@@ -8,7 +8,7 @@ import unicodedata as ud
 from typing import Literal, Any, overload
 from pandas import DataFrame, Series
 
-from src.etrm import utils
+from src.etrm import utils, _constants as cnst
 from src.utils import getc, JSONObject
 from src.exceptions import RequiredContentError
 from src.etrm.exceptions import (
@@ -64,12 +64,13 @@ class PermutationsTable:
                 f' input of type {type(_input)}'
             )
 
+        self.count = len(self._results)
         self.data = DataFrame(
-            data=self.results,
+            data=self._results,
             columns=self.headers
         )
 
-        columns = [list(col) for col in zip(*self.results)]
+        columns = [list(col) for col in zip(*self._results)]
         data: dict[str, list[str | float | None]] = {}
         for x, header in enumerate(self.headers):
             data[header] = columns[x]
@@ -92,14 +93,6 @@ class PermutationsTable:
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
-    class _Links:
-        def __init__(self, links: dict[str, str | None] | None=None):
-            if links is None:
-                links = {}
-
-            self.next = links.get('next', None)
-            self.previous = links.get('previous', None)
-
     def __csv_init(self, csv_path: str) -> None:
         if not os.path.exists(csv_path):
             raise ETRMConnectionError(
@@ -119,31 +112,32 @@ class PermutationsTable:
             )
 
         self.headers: list[str] = []
-        self.results: list[list[str]] = []
+        self._results: list[list[str]] = []
         with open(csv_path) as fp:
             csv_reader = csv.reader(fp)
             self.headers.extend(next(csv_reader))
             for line in csv_reader:
-                self.results.append(line)
-        self.count = len(self.results)
-        self.links = self._Links()
+                self._results.append(line)
+
         self.baselines = self.verbose_baselines
+        self.columns = cnst.verbose
         self.source = 'csv'
 
     def __json_init(self, _json: dict[str, Any]) -> None:
         self.json = _json
         try:
             self.count = getc(_json, 'count', int)
-            self.links = getc(_json, 'links', self._Links)
             self.headers = getc(_json, 'headers', list[str])
-            self.results = getc(
+            self._results = getc(
                 _json,
                 'results',
                 list[list[str | float | None]]
             )
         except IndexError:
             raise ETRMResponseError()
+
         self.baselines = self.reporting_baselines
+        self.columns = cnst.reporting
         self.source = 'etrm'
 
     def join(self, table: PermutationsTable) -> None:
@@ -153,7 +147,7 @@ class PermutationsTable:
         if self.headers != table.headers:
             raise ETRMResponseError()
 
-        self.results.extend(table.results)
+        self._results.extend(table._results)
 
     def get_baseline_avg(self,
                          baseline: str,

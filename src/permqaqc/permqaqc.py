@@ -6,8 +6,9 @@ import datetime as dt
 from typing import TypeVar, Callable, ParamSpec, Concatenate, overload, Any
 
 from src.exceptions import ParserError
-from src.etrm import db, sanitizers, constants as cnst
+from src.etrm import db, sanitizers
 from src.etrm.models import PermutationsTable, Measure
+from src.etrm._constants import verbose as cnst
 from src.etrm.connection import ETRMConnection
 from src.permqaqc.models import FieldData, Severity
 
@@ -214,6 +215,10 @@ class PermutationQAQC:
         self.__permutations = permutations
         self.__normalize_headers()
         self.__field_data = FieldData(self.__permutations.headers)
+
+        # disgusting, but i dont want to change all of the references
+        global cnst
+        cnst = self.__permutations.columns
 
         try:
             statewide_col = self.__permutations.data[cnst.STATEWIDE_MEASURE_ID]
@@ -869,6 +874,7 @@ class PermutationQAQC:
             cnst.FIRST_BASELINE_LC,
             cnst.FIRST_BASELINE_MC
         ]
+
         for col_name in cost_cols:
             invalid = df[
                 ~df[cnst.MEASURE_APPLICATION_TYPE].isin(['NR', 'NC'])
@@ -897,12 +903,13 @@ class PermutationQAQC:
                     y=int(index)
                 )
 
-            numeric_df = df[
-                df[col_name].apply(is_number)
-            ]
+            numeric_df = self.get_numeric_data(
+                col_name,
+                df=df[df[cnst.MEASURE_APPLICATION_TYPE].isin(['NR', 'NC'])]
+            )
+
             invalid = numeric_df[
-                numeric_df[cnst.MEASURE_APPLICATION_TYPE].isin(['NR', 'NC'])
-                    & (numeric_df[col_name].astype(float) < 0)
+                numeric_df[col_name] < 0
             ][col_name]
             for index, value in invalid.items():
                 self.field_data.add(
@@ -1097,7 +1104,8 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.EUL_YEARS,
-            func=lambda val: not (is_number(val) and is_positive(val)),
+            func=is_positive,
+            negate=True,
             description='Value must be a positive number'
         )
 
@@ -1158,13 +1166,19 @@ class PermutationQAQC:
         self.check_columns(
             cnst.RUL_YEARS,
             df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_positive(val),
+            func=is_positive,
+            negate=True,
             description='Value must be a positive number'
         )
 
-        invalid = df[
-            df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
-                & (df[cnst.RUL_YEARS] >= df[cnst.EUL_YEARS])
+        numeric_df = self.get_numeric_data(
+            cnst.RUL_YEARS,
+            cnst.EUL_YEARS,
+            df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')]
+        )
+
+        invalid = numeric_df[
+            numeric_df[cnst.RUL_YEARS] >= numeric_df[cnst.EUL_YEARS]
         ][cnst.RUL_YEARS]
         for index, value in invalid.items():
             eul_year = df.loc[index, cnst.EUL_YEARS]
@@ -1177,7 +1191,8 @@ class PermutationQAQC:
         self.check_columns(
             cnst.RUL_YEARS,
             df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_zero(val),
+            func=is_zero,
+            negate=True,
             description='Value must be zero'
         )
 
@@ -1192,7 +1207,8 @@ class PermutationQAQC:
 
         self.check_columns(
             cnst.FIRST_BASELINE_LIFE_CYCLE,
-            func=lambda val: not is_positive(val),
+            func=is_positive,
+            negate=True,
             description='Value must be a positive number'
         )
 
@@ -1212,14 +1228,16 @@ class PermutationQAQC:
         self.check_columns(
             cnst.SECOND_BASELINE_LIFE_CYCLE,
             df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_positive(val),
+            func=is_positive,
+            negate=True,
             description='Value must be a positive number'
         )
 
         self.check_columns(
             cnst.SECOND_BASELINE_LIFE_CYCLE,
             df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_zero(val),
+            func=is_zero,
+            negate=True,
             description='Value must be zero'
         )
 
@@ -1242,7 +1260,8 @@ class PermutationQAQC:
 
         self.check_columns(
             *cnst.FIRST_BASELINE_UEC_COLS,
-            func=lambda val: not is_number(val),
+            func=is_number,
+            negate=True,
             description='Value must be a number'
         )
 
@@ -1257,7 +1276,8 @@ class PermutationQAQC:
 
         self.check_columns(
             *cnst.MEASURE_UEC_COLS,
-            func=lambda val: not is_number(val),
+            func=is_number,
+            negate=True,
             description='Value must be a number'
         )
 
@@ -1277,14 +1297,16 @@ class PermutationQAQC:
         self.check_columns(
             *cnst.SECOND_BASELINE_UEC_COLS,
             df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_number(val),
+            func=is_number,
+            negate=True,
             description='Value must be a number'
         )
 
         self.check_columns(
             *cnst.SECOND_BASELINE_UEC_COLS,
             df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
-            func=lambda val: not is_zero(val),
+            func=is_zero,
+            negate=True,
             description='Value must be zero'
         )
 

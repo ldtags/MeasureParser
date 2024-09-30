@@ -3,7 +3,7 @@ import os
 import json
 from enum import Enum
 
-import src.etrm.constants as cnst
+import src.etrm._constants as cnst
 
 
 class Severity(Enum):
@@ -91,13 +91,12 @@ class FieldData:
 
     def get_error_map(self, column: str) -> dict[Severity, list[int]]:
         try:
-            if column == cnst.ETP_FLAG:
-                key = cnst.ETP_FLAG
+            key = column
+            if re.fullmatch(r'^ETP[_ ]Flag.*$', column):
                 for col_key in self.data.keys():
                     if re.fullmatch(r'^ETP Flag.*$', col_key):
                         key = col_key
-            else:
-                key = column
+
             entries = self.data[key]
         except KeyError:
             raise RuntimeError(f'No column named {column} exists')
