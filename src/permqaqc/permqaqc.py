@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import pandas as pd
 import logging
@@ -574,6 +573,7 @@ class PermutationQAQC:
                       value: str | int | float | list | None=None,
                       func: Callable[[Any], bool] | None=None,
                       negate: bool=False,
+                      numeric: bool=False,
                       description: str='Invalid field',
                       severity: Severity=Severity.CRITICAL
                      ) -> None:
@@ -602,6 +602,11 @@ class PermutationQAQC:
             is a match. If `True`, field values that do not match will be
             flagged. If `False`, field values that match will be flagged.
 
+            - `numeric` specifies if the values being checked should be limited
+            to only numeric values. If True, only numeric values will be
+            flagged. If False, all values will be checked. Numeric values
+            in this context include all decimal numbers.
+
             - `description` specifies the text description of the issue that
             will be included within the flag.
 
@@ -613,6 +618,9 @@ class PermutationQAQC:
 
         if df is None:
             df = self.permutations.data
+
+        if numeric:
+            df = self.get_numeric_data(column, *columns, df=df)
 
         for col_name in [column, *columns]:
             if func is not None:
@@ -913,8 +921,6 @@ class PermutationQAQC:
             - field is less than or equal to 0 (minor)
         """
 
-        df = self.permutations.data
-
         self.check_columns(
             cnst.FIRST_BASELINE_MTC,
             func=is_number,
@@ -925,7 +931,7 @@ class PermutationQAQC:
         self.check_columns(
             cnst.FIRST_BASELINE_MTC,
             func=is_negative,
-            df=df[df[cnst.FIRST_BASELINE_MTC].apply(is_number)],
+            numeric=True,
             description='Value must be a positive number'
         )
 
@@ -933,6 +939,7 @@ class PermutationQAQC:
             cnst.FIRST_BASELINE_MTC,
             func=is_positive,
             negate=True,
+            numeric=True,
             severity=Severity.SEMI_CRITICAL,
             description='Value must be a positive number'
         )
@@ -1030,23 +1037,19 @@ class PermutationQAQC:
         self.check_columns(
             cnst.SECOND_BASELINE_MTC,
             severity=Severity.SEMI_CRITICAL,
-            df=df[
-                df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
-                    & df[cnst.SECOND_BASELINE_MTC].apply(is_number)
-            ],
+            df=df[df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
             func=is_positive,
             negate=True,
+            numeric=True,
             description='Value must be a positive number'
         )
 
         self.check_columns(
             cnst.SECOND_BASELINE_MTC,
-            df=df[
-                ~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')
-                    & df[cnst.SECOND_BASELINE_MTC].apply(is_number)
-            ],
+            df=df[~df[cnst.MEASURE_APPLICATION_TYPE].eq('AR')],
             func=is_zero,
             negate=True,
+            numeric=True,
             description='Value must be zero'
         )
 
