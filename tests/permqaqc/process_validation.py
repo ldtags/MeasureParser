@@ -228,8 +228,7 @@ class MeasureTestCase(ut.TestCase):
     def test_validate_data(self) -> None:
         self.tool.rearrange_columns()
         self.tool.validate_data()
-        errors = self.data_errors
-        self.assert_errors(errors)
+        self.assert_errors(self.data_errors)
 
     def test_validate_exclusions(self) -> None:
         self.tool.rearrange_columns()
