@@ -178,8 +178,6 @@ class MeasureTestCase(ut.TestCase):
                       error_map: dict[str, dict[str, list[int]]]
                      ) -> None:
         for column, errors in error_map.items():
-            if column == cnst.FIRST_BASELINE_MTC:
-                pass
             existing_errors = self.tool.field_data.get_error_map(column=column)
             for severity, indexes in errors.items():
                 actual_errors = set(
