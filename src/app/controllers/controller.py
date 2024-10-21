@@ -11,16 +11,11 @@ class Controller:
     def __init__(self):
         self.model = Model()
         self.view = View()
-        self.home = HomeController(self.model,
-                                   self.view,
-                                   self.start_process)
+        self.home = HomeController(self.model, self.view, self.start_process)
         self.progress = ProgressController(self.model, self.view)
         self.results = ResultsController(self.model, self.view)
 
-    def start(self,
-              api_key: str | None=None,
-              measure_id: str | None=None
-             ) -> None:
+    def start(self, api_key: str | None = None, measure_id: str | None = None) -> None:
         if api_key is not None:
             self.model.api_key = api_key
             self.view.set_api_key(self.model.api_key)

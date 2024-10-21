@@ -6,7 +6,7 @@ from src.app import fonts
 from src.app.widgets.frames import Frame
 from src.app.widgets.buttons import Button
 from src.app.widgets.entries import FileEntry
-from src.app.widgets.general import OptionLabel
+from src.app.components.options import OptionLabel
 from src.app.exceptions import ValidationError
 
 

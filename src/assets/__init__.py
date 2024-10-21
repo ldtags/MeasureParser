@@ -7,9 +7,9 @@ from src import _ROOT
 def get_path(file_name: str) -> str:
     """Returns an absolute path to an asset file."""
 
-    file_path = os.path.join(_ROOT, 'assets', file_name)
+    file_path = os.path.join(_ROOT, "assets", file_name)
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f'No asset named {file_name} exists')
+        raise FileNotFoundError(f"No asset named {file_name} exists")
     return file_path
 
 
@@ -26,16 +26,18 @@ def get_image(file_name: str) -> Image.Image:
     return image
 
 
+# storing images in a dict solves the issue of needing to make
+# any new image an attribute of a class
 _TK_IMAGES: dict[str, ImageTk.PhotoImage] = {}
 
 
-def get_tkimage(file_name: str,
-                size: tuple[int, int] | None=None
-               ) -> ImageTk.PhotoImage:
+def get_tkimage(
+    file_name: str, size: tuple[int, int] | None = None
+) -> ImageTk.PhotoImage:
     """Returns an image asset that can be used in a tkinter widget."""
 
     file_path = get_path(file_name)
-    key = f'{file_path}{str(size)}'
+    key = f"{file_path}{str(size)}"
     try:
         tk_image = _TK_IMAGES[key]
     except KeyError:

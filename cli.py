@@ -34,58 +34,58 @@ def valid_measure_id(measure_id: str) -> str:
 def parse_args() -> ap.Namespace:
     parser = ap.ArgumentParser()
 
-    parser.add_argument(
-        '-r', '--run-type',
-        choices=['app', 'test'],
-        default='app'
-    )
+    subparsers = parser.add_subparsers(help="subcommand help")
 
-    main_group = parser.add_argument_group()
-    main_group.add_argument(
-        '-m', '--measure',
+    app_parser = subparsers.add_parser("app", help="arguments for running the app")
+    app_parser.add_argument(
+        "-m",
+        "--measure",
         type=valid_measure_id,
         default=None,
         required=False,
-        help='A full measure version ID (i.e., SWAP001-06)'
+        help="A full measure version ID (i.e., SWAP001-06)",
     )
 
-    main_group = parser.add_mutually_exclusive_group()
-
-    main_group.add_argument(
-        '-k', '--key',
+    key_group = app_parser.add_mutually_exclusive_group()
+    key_group.add_argument(
+        "-k",
+        "--key",
         type=valid_api_key,
         default=None,
         required=False,
-        help='An eTRM API key (i.e., Token ae163fba910e9c021)'
+        help="An eTRM API key (i.e., Token ae163fba910e9c021)",
     )
 
-    main_group.add_argument(
-        '-d', '--dev',
-        action='store_true'
-    )
+    key_group.add_argument("-d", "--dev", action="store_true")
 
-    tests_group = parser.add_argument_group()
-    tests_group.add_argument(
-        '-u', '--unit',
-        nargs='*',
+    app_parser.set_defaults(run_type="app")
+
+    test_parser = subparsers.add_parser("test", help="arguments for testing the app")
+    test_parser.add_argument(
+        "-u",
+        "--unit",
+        nargs="*",
         type=str,
-        help='specify the modules to unit test'
+        choices=["parser", "permqaqc"],
+        help="specify the modules to unit test",
     )
+
+    test_parser.set_defaults(run_type="test")
 
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = parse_args()
-    run_type = getattr(args, 'run_type', None)
+    run_type = getattr(args, "run_type", None)
     match run_type:
-        case 'app':
-            dev_mode = getattr(args, 'dev')
-            api_key = getattr(args, 'key')
-            measure_id = getattr(args, 'measure')
+        case "app":
+            dev_mode = getattr(args, "dev")
+            api_key = getattr(args, "key")
+            measure_id = getattr(args, "measure")
             src.main(dev_mode, measure_id, api_key)
-        case 'test':
-            unit_modules = getattr(args, 'unit', [])
+        case "test":
+            unit_modules = getattr(args, "unit", [])
             tests.main(*unit_modules)
         case other:
-            raise ValueError(f'Unknown run type: {other}')
+            raise ValueError(f"Unknown run type: {other}")
