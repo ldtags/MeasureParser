@@ -134,7 +134,7 @@ class OptionCheckBox(Frame):
         )
         self.check_box.pack(side=tk.TOP, anchor=tk.NW)
 
-        # self.bind('<Configure>', self.__wrap)
+        self.bind('<Configure>', self.__wrap)
 
     @property
     def state(self) -> Literal["normal", "disabled", "active"]:
@@ -145,7 +145,6 @@ class OptionCheckBox(Frame):
         self.check_box.config(state=state)
 
     def __wrap(self, *args) -> None:
-        self.update()
         self.style.configure("TCheckbutton", wraplength=self.winfo_width() - 20)
 
     def disable(self) -> None:
