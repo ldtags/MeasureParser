@@ -48,7 +48,6 @@ class HomeView(Page):
 
         self.notebook = notebook = ttk.Notebook(self)
         self.notebook.pack(side=tk.TOP, anchor=tk.NW, fill=tk.BOTH, expand=tk.TRUE)
-        notebook.bind("<<NotebookTabChanged>>", self._on_tab_selection)
 
         self.parser_container = parser_container = ParserContainer(notebook)
         self.parser_container.pack(
@@ -84,24 +83,6 @@ class HomeView(Page):
                 return self.perm_qc_container.source_frame
             case other:
                 raise tk.TclError(f"Unknown home view state: {other}")
-
-    def _on_tab_selection(self, event: tk.Event | None = None) -> None:
-        tab_id = self.notebook.select()
-        if not isinstance(tab_id, str):
-            return
-
-        container_path = tab_id.split("!")
-        if container_path == []:
-            return
-
-        container = container_path[-1]
-        match container:
-            case "parsercontainer":
-                self._state = "parser"
-            case "permqccontainer":
-                self._state = "permqc"
-            case other:
-                raise tk.TclError(f"Unknown page: {other}")
 
     def show(self) -> None:
         super().show()

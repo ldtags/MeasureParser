@@ -65,8 +65,6 @@ class HomeController(_BaseHomeController):
         self._update_view()
         self._update_model()
 
-        # TODO: bind functions to tab change events to keep the model updated with the view state
-
     def _update_view(self) -> None:
         """Sets default options in the view.
 
@@ -83,6 +81,29 @@ class HomeController(_BaseHomeController):
         self.model.view_state = self.view.state
         self.model.source_states["parser"] = "local"
         self.model.source_states["permqc"] = "local"
+
+    def _on_tab_selection(self, event: tk.Event | None = None) -> None:
+        tab_id = self.view.notebook.select()
+        if not isinstance(tab_id, str):
+            return
+
+        container_path = tab_id.split("!")
+        if container_path == []:
+            return
+
+        container = container_path[-1]
+        match container:
+            case "parsercontainer":
+                self.view._state = "parser"
+                self.model.view_state = "parser"
+            case "permqccontainer":
+                self.view._state = "permqc"
+                self.model.view_state = "permqc"
+            case other:
+                raise tk.TclError(f"Unknown page: {other}")
+
+    def _bind_events(self) -> None:
+        self.view.notebook.bind("<<NotebookTabChanged>>", self._on_tab_selection)
 
 
 class SourceController(_BaseHomeController):
