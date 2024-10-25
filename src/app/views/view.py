@@ -1,11 +1,9 @@
 import os
 from ctypes import windll
+from typing import Type
 
 from src.app.views.root import Root
-from src.app.views.home import HomePage
-from src.app.views.progress import ProgressPage
-from src.app.views.results import ResultsPage
-from src.app.widgets import Page
+from src.app.views._views import HomeView, ProgressView, ResultsView, GenericView
 from src.app.exceptions import GUIError
 
 
@@ -22,21 +20,23 @@ class View:
 
     def __init__(self):
         self.root = Root()
-        self.home = HomePage(self.root.container, self.root)
-        self.progress = ProgressPage(self.root.container, self.root)
-        self.results = ResultsPage(self.root.container, self.root)
-
-        self.pages: dict[str, Page] = {
-            HomePage.key: self.home,
-            ProgressPage.key: self.progress,
-            ResultsPage.key: self.results,
+        self.home = HomeView(self.root.container, self.root)
+        self.progress = ProgressView(self.root.container, self.root)
+        self.results = ResultsView(self.root.container, self.root)
+        self.views: dict[Type[GenericView], GenericView] = {
+            HomeView: self.home,
+            ProgressView: self.progress,
+            ResultsView: self.results,
         }
 
-    def show(self, page_name: str) -> None:
+    def __getitem__(self, view) -> GenericView:
+        return self.views[view]
+
+    def show(self, view: Type[GenericView]) -> None:
         try:
-            self.pages[page_name].show()
+            self.views[view].show()
         except KeyError:
-            raise GUIError(f"No page named {page_name} exists")
+            raise GUIError(f"No view bound to the class {view} exists")
 
     def set_api_key(self, api_key: str) -> None:
         etrm_frame = self.home.source_frame.source_frame.etrm_frame

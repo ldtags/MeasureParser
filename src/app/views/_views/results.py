@@ -5,7 +5,7 @@ from src.app.widgets import Frame, Page, ScrollableFrame, Button
 from src.app.components import OptionLabel
 
 
-class ResultsPage(Page):
+class ResultsView(Page):
     key = "results"
 
     def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):

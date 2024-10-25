@@ -2,16 +2,17 @@ from __future__ import annotations
 import os
 import json
 import time
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Literal
 
 from src.app.enums import MeasureSource
-from src.app.views import View, HomePage
+from src.app.views import View
 from src.app.models import Model
 from src.etrm.models import Measure
 from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
 from src.parser.logger import MeasureDataLogger
 from src.parser.parserdata import ParserData
+from src.permqaqc import PermutationQAQC
 
 
 _T = TypeVar('_T')
@@ -19,7 +20,7 @@ _DEC_TYPE = Callable[..., _T]
 _DEC_WRAPPER_TYPE = Callable[[_DEC_TYPE], _DEC_TYPE]
 
 
-def make_parser_decorator() -> Callable[[str | None], _DEC_TYPE]:
+def make_progress_decorator() -> Callable[[str | None], _DEC_TYPE]:
     registry: dict[str, _DEC_TYPE] = {}
     def arg_wrapper(log: str | None=None) -> _DEC_WRAPPER_TYPE:
         def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
@@ -36,7 +37,8 @@ def make_parser_decorator() -> Callable[[str | None], _DEC_TYPE]:
     return arg_wrapper
 
 
-parser_function = make_parser_decorator()
+parser_function = make_progress_decorator()
+permqc_function = make_progress_decorator()
 
 
 class ProgressController:
@@ -45,7 +47,44 @@ class ProgressController:
         self.root_view = view
         self.view = view.progress
         self.model = model
+        self.parser = ParserController(self.model, self.root_view)
+        self.permqc = PermQcController(self.model, self.root_view)
         self.__bind_controls()
+
+    def handle_back(self) -> None:
+        self.root_view.home.show()
+
+    def handle_continue(self) -> None:
+        # self.root_view.results.show()
+        self.root_view.close()
+
+    def run_process(self, process: Literal['parser', 'permqc']) -> None:
+        _proc = None
+        match process:
+            case "parser":
+                _proc = self.parser.parse
+            case "permqc":
+                _proc = self.permqc.qa_qc_permutations
+            case other:
+                raise RuntimeError(f"Unknown process: {other}")
+
+        self.view.controls_frame.cont_btn.set_state('disabled')
+        self.view.controls_frame.back_btn.set_state('disabled')
+        _proc()
+        self.view.controls_frame.back_btn.set_state('normal')
+        self.view.controls_frame.cont_btn.set_state('normal')
+
+    def __bind_controls(self) -> None:
+        self.view.controls_frame.back_btn.set_command(self.handle_back)
+        self.view.controls_frame.cont_btn.set_command(self.handle_continue)
+
+
+class ParserController:
+    def __init__(self, model: Model, view: View):
+        self.root = view.root
+        self.root_view = view
+        self.view = view.progress
+        self.model = model
 
     @parser_function('Logging measure details')
     def log_measure_details(self, _logger: MeasureDataLogger) -> None:
@@ -159,8 +198,6 @@ class ProgressController:
         return measure
 
     def parse(self) -> None:
-        self.view.controls_frame.cont_btn.set_state('disabled')
-        self.view.controls_frame.back_btn.set_state('disabled')
         progress_max = len(parser_function.all) * 100
         if not self.model.home.validate_permutations:
             progress_max -= 200
@@ -211,19 +248,16 @@ class ProgressController:
                 f'Parsing finished in {end - start:.4f} seconds'
             )
             self.model.parser_data = parser.data
-            # self.view.controls_frame.cont_btn.set_state('normal')
         finally:
             self.view.controls_frame.progress_bar.config(maximum=0)
-            self.view.controls_frame.back_btn.set_state('normal')
-            self.view.controls_frame.cont_btn.set_state('normal')
 
-    def handle_back(self) -> None:
-        self.root_view.home.show()
 
-    def handle_continue(self) -> None:
-        # self.root_view.results.show()
-        self.root_view.close()
+class PermQcController:
+    def __init__(self, model: Model, view: View):
+        self.root = view.root
+        self.root_view = view
+        self.view = view.progress
+        self.model = model
 
-    def __bind_controls(self) -> None:
-        self.view.controls_frame.back_btn.set_command(self.handle_back)
-        self.view.controls_frame.cont_btn.set_command(self.handle_continue)
+    def qa_qc_permutations(self) -> None:
+        ...

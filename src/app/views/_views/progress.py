@@ -5,7 +5,7 @@ from src.app.widgets import Page, Frame, ScrollableFrame, Button
 from src.app.components import OptionLabel
 
 
-class ProgressPage(Page):
+class ProgressView(Page):
     key = "progress"
 
     def __init__(self, parent: tk.Misc, root: tk.Tk, **kwargs):

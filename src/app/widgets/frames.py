@@ -90,11 +90,18 @@ class ScrollableFrame(Frame):
                                  side=tk.RIGHT,
                                  expand=tk.FALSE)
 
+        _bg = canvas_bg
+        if _bg is None:
+            try:
+                _bg = parent['bg']
+            except tk.TclError:
+                _bg = None
+
         self.canvas = canvas = tk.Canvas(self,
                                          bd=0,
                                          highlightthickness=0,
                                          yscrollcommand=self.vscrollbar.set,
-                                         bg=canvas_bg or parent['bg'])
+                                         bg=_bg)
         canvas.pack(side=tk.LEFT,
                     fill=tk.BOTH,
                     expand=tk.TRUE)
