@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import tkinter as tk
 from typing import Callable
 
@@ -45,9 +46,9 @@ def sanitize_file_name(file_name: str, ext: str | None = None) -> str:
     if ext is not None:
         _name, _ext = os.path.splitext(file_name)
         if _ext == "":
-            file_name = f"{_name}.{ext}"
+            file_name = f"{_name}{ext}"
         elif _ext != ext:
-            file_name = f"{file_name}.{ext}"
+            file_name = f"{file_name}{ext}"
 
     return file_name
 
@@ -64,6 +65,7 @@ class HomeController(_BaseHomeController):
 
         self._update_view()
         self._update_model()
+        self._bind_events()
 
     def _update_view(self) -> None:
         """Sets default options in the view.
@@ -261,7 +263,7 @@ class ControlsController(_BaseHomeController):
 
         file_path = sanitize_file_path(file_path)
         _, file_ext = os.path.splitext(file_path)
-        if file_ext != "json":
+        if file_ext != ".json":
             raise ValidationError("File must be a JSON file")
 
         return file_path
@@ -306,7 +308,7 @@ class ControlsController(_BaseHomeController):
 
         file_path = sanitize_file_path(file_path)
         _, file_ext = os.path.splitext(file_path)
-        if file_ext != "csv":
+        if file_ext != ".csv":
             raise ValidationError("File must be a CSV file")
 
         return file_path
@@ -316,13 +318,13 @@ class ControlsController(_BaseHomeController):
         match source_frame.state:
             case "local":
                 try:
-                    measure_file_path = self.get_permutations_file_path()
+                    perm_file_path = self.get_permutations_file_path()
                     source_frame.clear_err()
                 except ValidationError as err:
                     source_frame.print_err(str(err))
                     raise
 
-                self.model.measure_file_path = measure_file_path
+                self.model.permutations_file_path = perm_file_path
             case "api":
                 try:
                     measure_id = self.get_measure_id(source_frame)
@@ -363,7 +365,8 @@ class ControlsController(_BaseHomeController):
 
         try:
             self.update_model()
-        except ValidationError:
+        except ValidationError as err:
+            print(str(err), file=sys.stderr)
             return
 
         self.start_func()

@@ -7,7 +7,7 @@ from typing import Callable, TypeVar, Literal
 from src.app.enums import MeasureSource
 from src.app.views import View
 from src.app.models import Model
-from src.etrm.models import Measure
+from src.etrm.models import Measure, PermutationsTable
 from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
 from src.parser.logger import MeasureDataLogger
@@ -15,24 +15,29 @@ from src.parser.parserdata import ParserData
 from src.permqaqc import PermutationQAQC
 
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 _DEC_TYPE = Callable[..., _T]
 _DEC_WRAPPER_TYPE = Callable[[_DEC_TYPE], _DEC_TYPE]
 
 
 def make_progress_decorator() -> Callable[[str | None], _DEC_TYPE]:
     registry: dict[str, _DEC_TYPE] = {}
-    def arg_wrapper(log: str | None=None) -> _DEC_WRAPPER_TYPE:
+
+    def arg_wrapper(log: str | None = None) -> _DEC_WRAPPER_TYPE:
         def decorator(func: _DEC_TYPE) -> _DEC_TYPE:
             registry[func.__name__] = func
+
             def wrapper(self: ProgressController, *args, **kwargs) -> _T:
                 self.view.log_frame.add(log)
                 value = func(self, *args, **kwargs)
                 progress = self.view.controls_frame.progress_var.get()
                 self.view.controls_frame.progress_var.set(progress + 100)
                 return value
+
             return wrapper
+
         return decorator
+
     arg_wrapper.all = registry
     return arg_wrapper
 
@@ -58,7 +63,7 @@ class ProgressController:
         # self.root_view.results.show()
         self.root_view.close()
 
-    def run_process(self, process: Literal['parser', 'permqc']) -> None:
+    def run_process(self, process: Literal["parser", "permqc"]) -> None:
         _proc = None
         match process:
             case "parser":
@@ -68,11 +73,11 @@ class ProgressController:
             case other:
                 raise RuntimeError(f"Unknown process: {other}")
 
-        self.view.controls_frame.cont_btn.set_state('disabled')
-        self.view.controls_frame.back_btn.set_state('disabled')
+        self.view.controls_frame.cont_btn.set_state("disabled")
+        self.view.controls_frame.back_btn.set_state("disabled")
         _proc()
-        self.view.controls_frame.back_btn.set_state('normal')
-        self.view.controls_frame.cont_btn.set_state('normal')
+        self.view.controls_frame.back_btn.set_state("normal")
+        self.view.controls_frame.cont_btn.set_state("normal")
 
     def __bind_controls(self) -> None:
         self.view.controls_frame.back_btn.set_command(self.handle_back)
@@ -86,54 +91,48 @@ class ParserController:
         self.view = view.progress
         self.model = model
 
-    @parser_function('Logging measure details')
+    @parser_function("Logging measure details")
     def log_measure_details(self, _logger: MeasureDataLogger) -> None:
         _logger.log_measure_details()
 
-    @parser_function('Logging parameter data')
+    @parser_function("Logging parameter data")
     def log_parameter_data(self, _logger: MeasureDataLogger) -> None:
         _logger.log_parameter_data()
 
-    @parser_function('Logging exclusion table data')
+    @parser_function("Logging exclusion table data")
     def log_exclusion_table_data(self, _logger: MeasureDataLogger) -> None:
         _logger.log_exclusion_table_data()
 
-    @parser_function('Logging value table data')
+    @parser_function("Logging value table data")
     def log_value_table_data(self, _logger: MeasureDataLogger) -> None:
         _logger.log_value_table_data()
 
-    @parser_function('Logging value tables')
+    @parser_function("Logging value tables")
     def log_value_tables(self, _logger: MeasureDataLogger) -> None:
         _logger.log_value_tables()
 
-    @parser_function('Logging calculations')
+    @parser_function("Logging calculations")
     def log_calculations(self, _logger: MeasureDataLogger) -> None:
         _logger.log_calculations()
 
-    @parser_function('Logging permutations')
+    @parser_function("Logging permutations")
     def log_permutations(self, _logger: MeasureDataLogger) -> None:
         _logger.log_permutations()
 
-    @parser_function('Logging characterization data')
+    @parser_function("Logging characterization data")
     def log_characterization_data(self, _logger: MeasureDataLogger) -> None:
         _logger.log_characterization_data()
 
-    @parser_function('Logging output')
-    def log_output(self,
-                   file_path: str,
-                   data: ParserData,
-                   measure: Measure
-                  ) -> None:
+    @parser_function("Logging output")
+    def log_output(self, file_path: str, data: ParserData, measure: Measure) -> None:
         out_dir, file_name = os.path.split(file_path)
         if not os.path.exists(out_dir):
-            raise RuntimeError(
-                f'Invalid File Path: directory {out_dir} does not exist'
-            )
+            raise RuntimeError(f"Invalid File Path: directory {out_dir} does not exist")
 
         if os.path.exists(file_path) and not self.model.home.override_file:
             raise RuntimeError(
-                f'Invalid File Path: a file named {file_name} already'
-                f' exists at {out_dir}'
+                f"Invalid File Path: a file named {file_name} already"
+                f" exists at {out_dir}"
             )
 
         with MeasureDataLogger(measure, file_path, data) as _logger:
@@ -147,30 +146,30 @@ class ParserController:
                 self.log_permutations(_logger)
             self.log_characterization_data(_logger)
 
-    @parser_function('Validating parameters')
+    @parser_function("Validating parameters")
     def parse_parameters(self, parser: MeasureParser) -> None:
         parser.validate_parameters()
 
-    @parser_function('Validating value tables')
+    @parser_function("Validating value tables")
     def parse_value_tables(self, parser: MeasureParser) -> None:
         parser.validate_tables()
 
-    @parser_function('Validating exclusion tables')
+    @parser_function("Validating exclusion tables")
     def parse_exclusion_tables(self, parser: MeasureParser) -> None:
         parser.validate_exclusion_tables()
 
-    @parser_function('Validating permutations')
+    @parser_function("Validating permutations")
     def parse_permutations(self, parser: MeasureParser) -> None:
         parser.validate_permutations()
 
-    @parser_function('Validating characterizations')
+    @parser_function("Validating characterizations")
     def parse_characterizations(self, parser: MeasureParser) -> None:
         for characterization in parser.measure.characterizations:
-            self.view.log_frame.add(f'Parsing {characterization.name}')
+            self.view.log_frame.add(f"Parsing {characterization.name}")
             parser.parse_characterization(characterization)
 
     def get_etrm_measure(self) -> Measure:
-        @parser_function(f'Retrieving measure {self.model.measure_id}')
+        @parser_function(f"Retrieving measure {self.model.measure_id}")
         def get_measure(*args) -> Measure:
             connection = ETRMConnection(self.model.api_key)
             measure = connection.get_measure(self.model.measure_id)
@@ -180,18 +179,18 @@ class ParserController:
         measure = get_measure(self)
         end = time.time()
         self.view.log_frame.add(
-            f'Retrieved measure {measure.version_id} in {end - start:.4f}'
-            ' secomds'
+            f"Retrieved measure {measure.version_id} in {end - start:.4f}" " secomds"
         )
         return measure
 
     def get_json_measure(self) -> Measure:
         _, file_name = os.path.split(self.model.measure_file_path)
-        @parser_function(f'Retrieving measure from {file_name}')
+
+        @parser_function(f"Retrieving measure from {file_name}")
         def get_measure(*args) -> Measure:
-            with open(self.model.measure_file_path, 'r') as fp:
+            with open(self.model.measure_file_path, "r") as fp:
                 measure_json = json.load(fp)
-            measure = Measure(measure_json, source='json')
+            measure = Measure(measure_json, source="json")
             return measure
 
         measure = get_measure(self)
@@ -210,15 +209,12 @@ class ParserController:
                 measure = self.get_json_measure()
             else:
                 self.view.log_frame.add(
-                    text='Input validation failed, no measure source detected',
-                    fg='#ff0000'
+                    text="Input validation failed, no measure source detected",
+                    fg="#ff0000",
                 )
                 return
         except Exception as err:
-            self.view.log_frame.add(
-                text=str(err),
-                fg='#ff0000'
-            )
+            self.view.log_frame.add(text=str(err), fg="#ff0000")
             return
 
         start = time.time()
@@ -230,23 +226,14 @@ class ParserController:
             if self.model.home.validate_permutations:
                 self.parse_permutations(parser)
             self.parse_characterizations(parser)
-            self.log_output(
-                self.model.output_file_path,
-                parser.data,
-                parser.measure
-            )
+            self.log_output(self.model.output_file_path, parser.data, parser.measure)
         except Exception as err:
             if os.path.exists(self.model.output_file_path):
                 os.remove(self.model.output_file_path)
-            self.view.log_frame.add(
-                text=str(err),
-                fg='#ff0000'
-            )
+            self.view.log_frame.add(text=str(err), fg="#ff0000")
         else:
             end = time.time()
-            self.view.log_frame.add(
-                f'Parsing finished in {end - start:.4f} seconds'
-            )
+            self.view.log_frame.add(f"Parsing finished in {end - start:.4f} seconds")
             self.model.parser_data = parser.data
         finally:
             self.view.controls_frame.progress_bar.config(maximum=0)
@@ -259,5 +246,115 @@ class PermQcController:
         self.view = view.progress
         self.model = model
 
+    @permqc_function("Rearranging columns")
+    def rearrange_columns(self, qc_tool: PermutationQAQC) -> None:
+        qc_tool.rearrange_columns()
+
+    @permqc_function("Validating data")
+    def validate_data(self, qc_tool: PermutationQAQC) -> None:
+        start = time.time()
+        qc_tool.validate_data()
+        end = time.time()
+        self.view.log_frame.add(
+            f"Data validation took {end - start:.4f} seconds"
+        )
+
+    @permqc_function("Applying exclusions")
+    def validate_exclusions(self, qc_tool: PermutationQAQC) -> None:
+        start = time.time()
+        qc_tool.validate_exclusions()
+        end = time.time()
+        self.view.log_frame.add(
+            f"Exclusion application took {end - start:.4f} seconds"
+        )
+
+    @permqc_function("Validating calculations")
+    def validate_calculations(self, qc_tool: PermutationQAQC) -> None:
+        start = time.time()
+        qc_tool.validate_calculations()
+        end = time.time()
+        self.view.log_frame.add(
+            f"Calculation validation took {end - start:.4f} seconds"
+        )
+
+    def get_etrm_permutations(self) -> PermutationsTable:
+        measure_id = self.model.measure_id
+        if measure_id is None:
+            raise RuntimeError("Missing measure id, please restart the application")
+
+        api_key = self.model.api_key
+        if api_key is None:
+            raise RuntimeError("Missing API key, please restart the application")
+
+        @permqc_function(f"Retrieving permutations for measure {measure_id}")
+        def get_permutations(*args) -> PermutationsTable:
+            connection = ETRMConnection(api_key)
+            return connection.get_permutations(measure_id)
+
+        start = time.time()
+        permutations = get_permutations(self)
+        end = time.time()
+        self.view.log_frame.add(
+            f"Retrieved permutations for measure {measure_id} in"
+            f" {end - start:.4f} seconds"
+        )
+
+        return permutations
+
+    def get_csv_permutations(self) -> PermutationsTable:
+        csv_path = self.model.home.permutations_file_path
+        if csv_path is None:
+            raise RuntimeError("Missing file, please restart the application")
+
+        @permqc_function(f"Loading permutations from {csv_path}")
+        def get_permutations(*args) -> PermutationsTable:
+            return PermutationsTable(csv_path)
+
+        start = time.time()
+        permutations = get_permutations(self)
+        end = time.time()
+        self.view.log_frame.add(
+            f"Loaded permutations in {end - start:.4f} seconds"
+        )
+
+        return permutations
+
     def qa_qc_permutations(self) -> None:
-        ...
+        progress_max = len(permqc_function.all) * 100
+        self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
+
+        view_state = self.model.home.view_state
+        source_state = self.model.home.source_states[view_state]
+        try:
+            match source_state:
+                case "api":
+                    permutations = self.get_etrm_permutations()
+                case "local":
+                    permutations = self.get_csv_permutations()
+                case _:
+                    self.view.log_frame.add(
+                        text="Input validation failed, no measure source detected",
+                        fg="#ff0000",
+                    )
+                    return
+        except Exception as err:
+            self.view.log_frame.add(text=str(err), fg="#ff0000")
+            return
+
+        start = time.time()
+        try:
+            qc_tool = PermutationQAQC()
+            qc_tool.permutations = permutations
+            self.rearrange_columns(qc_tool)
+            self.validate_data(qc_tool)
+            self.validate_exclusions(qc_tool)
+            self.validate_calculations(qc_tool)
+        except Exception as err:
+            if os.path.exists(self.model.output_file_path):
+                os.remove(self.model.output_file_path)
+            self.view.log_frame.add(text=str(err), fg="#ff0000")
+        else:
+            end = time.time()
+            self.view.log_frame.add(f"QA/QC finished in {end - start:.4f} seconds")
+        finally:
+            self.view.controls_frame.progress_bar.config(maximum=0)
