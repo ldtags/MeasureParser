@@ -38,16 +38,8 @@ class View:
         except KeyError:
             raise GUIError(f"No view bound to the class {view} exists")
 
-    def set_api_key(self, api_key: str) -> None:
-        etrm_frame = self.home.source_frame.source_frame.etrm_frame
-        etrm_frame.api_key_entry.set_text(api_key)
-
-    def set_measure(self, measure_id: str) -> None:
-        etrm_frame = self.home.source_frame.source_frame.etrm_frame
-        etrm_frame.measure_entry.set_text(measure_id)
-
     def start(self) -> None:
         self.root.mainloop()
 
     def close(self) -> None:
-        self.root.destroy()
+        self.root.close()

@@ -11,6 +11,7 @@ class AppConfig(JSONObject):
         config_path = src.get_path("config", "config.json")
         with open(config_path, "r") as config_fp:
             _json = json.load(config_fp)
+
         JSONObject.__init__(self, _json)
 
         output_path = self.get("output_path", str)
@@ -22,12 +23,13 @@ class AppConfig(JSONObject):
         self.override_file = self.get("override_file", bool, False)
         self.api_key = self.get("api_key", str | None, None)
 
-    def to_json_string(self) -> str:
-        return json.dumps(self, default=lambda o: o.__dict__)
+    def dumps(self) -> str:
+        attr_dict = self.__dict__
+        del attr_dict["json"]
+        return json.dumps(attr_dict)
 
     def dump(self) -> None:
-        json_obj = json.loads(self.to_json_string())
-        del json_obj["json"]
+        json_obj = json.loads(self.dumps())
         config_path = src.get_path("config", "config.json")
         with open(config_path, "w+") as config_fp:
             json.dump(json_obj, config_fp)

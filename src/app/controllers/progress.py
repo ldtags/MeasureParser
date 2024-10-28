@@ -278,11 +278,11 @@ class PermQcController:
         )
 
     def get_etrm_permutations(self) -> PermutationsTable:
-        measure_id = self.model.measure_id
+        measure_id = self.model.home.measure_id
         if measure_id is None:
             raise RuntimeError("Missing measure id, please restart the application")
 
-        api_key = self.model.api_key
+        api_key = self.model.home.api_key
         if api_key is None:
             raise RuntimeError("Missing API key, please restart the application")
 
@@ -350,8 +350,8 @@ class PermQcController:
             self.validate_exclusions(qc_tool)
             self.validate_calculations(qc_tool)
         except Exception as err:
-            if os.path.exists(self.model.output_file_path):
-                os.remove(self.model.output_file_path)
+            if os.path.exists(self.model.home.output_file_path):
+                os.remove(self.model.home.output_file_path)
             self.view.log_frame.add(text=str(err), fg="#ff0000")
         else:
             end = time.time()

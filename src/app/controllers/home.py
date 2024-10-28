@@ -2,7 +2,7 @@ import re
 import os
 import sys
 import tkinter as tk
-from typing import Callable
+from typing import Callable, Literal
 
 from src.app.types import MeasureSourceState
 from src.app.views import View, HomeView, home
@@ -62,6 +62,10 @@ class HomeController(_BaseHomeController):
         self.source_controller = SourceController(model, view)
         self.output_controller = OutputController(model, view)
         self.controls_controller = ControlsController(model, view, start_func)
+        self.source_frames = [
+            self.view.parser_container.source_frame,
+            self.view.perm_qc_container.source_frame
+        ]
 
         self._update_view()
         self._update_model()
@@ -75,7 +79,12 @@ class HomeController(_BaseHomeController):
         Use when the home page is shown.
         """
 
-        ...
+        if self.model.remember_me:
+            api_key = app_config.api_key
+            for source_frame in self.source_frames:
+                source_frame.etrm_frame.api_key_entry.set_text(api_key)
+                source_frame.etrm_frame.api_key_entry.set_text(api_key)
+                source_frame.etrm_frame.rm_var.set(1)
 
     def _update_model(self) -> None:
         """Sets default options in the model."""
@@ -113,14 +122,30 @@ class SourceController(_BaseHomeController):
         super().__init__(model, view)
         self.api_key_reg = self.root.register(self.validate_api_key)
         self.measure_reg = self.root.register(self.validate_measure_id)
-        self._apply_bindings(self.view.parser_container.source_frame)
-        self._apply_bindings(self.view.perm_qc_container.source_frame)
+        self.source_frames = [
+            self.view.parser_container.source_frame,
+            self.view.perm_qc_container.source_frame
+        ]
+
+        self._apply_bindings()
 
     def _set_source_state(
         self, source_frame: home.MeasureSourceFrame, source_state: MeasureSourceState
     ) -> None:
+        """Sets the source state of the current view to local or api."""
+
         source_frame.set_state(source_state)
         self.model.source_states[source_frame.view_state] = source_state
+
+    def _set_remember_me(self, value: Literal[0, 1], api_key: str) -> None:
+        match value:
+            case 0:
+                self.model.remember_me = False
+            case 1:
+                self.model.remember_me = True
+                self.model.api_key = api_key
+            case other:
+                raise tk.TclError(f"Invalid checkbox value: {other}")
 
     def _bind_events(self, source_frame: home.MeasureSourceFrame) -> None:
         source_frame.json_rb.configure(
@@ -129,6 +154,13 @@ class SourceController(_BaseHomeController):
 
         source_frame.etrm_rb.configure(
             command=lambda _=None: self._set_source_state(source_frame, "api")
+        )
+
+        source_frame.etrm_frame.rm_checkbox.configure(
+            command=lambda _=None: self._set_remember_me(
+                source_frame.etrm_frame.rm_var.get(),
+                source_frame.etrm_frame.api_key_entry.get()
+            )
         )
 
     def validate_measure_id(self, text: str) -> bool:
@@ -160,9 +192,10 @@ class SourceController(_BaseHomeController):
             validate="key", command=(self.api_key_reg, r"%P")
         )
 
-    def _apply_bindings(self, source_frame: home.MeasureSourceFrame) -> None:
-        self._bind_entry_validations(source_frame)
-        self._bind_events(source_frame)
+    def _apply_bindings(self) -> None:
+        for source_frame in self.source_frames:
+            self._bind_entry_validations(source_frame)
+            self._bind_events(source_frame)
 
 
 class OutputController(_BaseHomeController):

@@ -3,6 +3,7 @@ from src.app.views import View
 from src.app.controllers.home import HomeController
 from src.app.controllers.progress import ProgressController
 from src.app.controllers.results import ResultsController
+from src.config import app_config
 
 
 class Controller:

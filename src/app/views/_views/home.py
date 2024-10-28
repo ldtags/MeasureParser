@@ -405,7 +405,7 @@ class ETRMSourceFrame(Frame):
             style="RM.TCheckbutton",
         )
         self.rm_checkbox.pack(
-            side=tk.TOP, anchor=tk.NW, after=self.api_key_entry, pady=(1, 0)
+            side=tk.TOP, anchor=tk.NW, pady=(1, 0)
         )
 
         self.api_key_err_var = tk.StringVar(self, "")

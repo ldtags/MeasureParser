@@ -115,6 +115,7 @@ class Entry(Widget, tk.XView):
         self.placeholder_color = placeholder_color
         self.text_color = text_color
         self.text = text
+        self._entry_var = tk.StringVar(self, "")
         self.entry = _Entry(
             self.pad_frame,
             text_color,
@@ -122,6 +123,7 @@ class Entry(Widget, tk.XView):
             font,
             bg=bg,
             disabledbackground=disabledbackground,
+            textvariable=self._entry_var,
             **kwargs,
         )
 
@@ -301,9 +303,11 @@ class Entry(Widget, tk.XView):
     def set_text(self, text: str) -> None:
         if self.placeholder is not None and self.is_placeholder:
             self.entry["fg"] = self.text_color
+
         self.is_placeholder = False
-        self.delete(0, tk.END)
-        self.insert(0, text)
+        # self.delete(0, tk.END)
+        # self.insert(0, text)
+        self._entry_var.set(text)
 
     def set_validator(self, validate: str, command: tuple[str, str]) -> None:
         self.entry.config(validate=validate, validatecommand=command)
