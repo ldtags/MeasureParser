@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
 import logging
@@ -125,7 +126,7 @@ def occurs_before(checked_date: str | None, base_date: str) -> bool:
         return False
 
     return dt.datetime.strptime(checked_date, r"%Y/%m/%d") < dt.datetime.strptime(
-        base_date, r"%m/%d/%Y"
+        base_date, cnst.TIME_FMT
     )
 
 
@@ -146,7 +147,7 @@ def occurs_after(checked_date: str | None, base_date: str) -> bool:
         return False
 
     return dt.datetime.strptime(checked_date, r"%Y/%m/%d") > dt.datetime.strptime(
-        base_date, r"%m/%d/%Y"
+        base_date, cnst.TIME_FMT
     )
 
 
@@ -155,7 +156,7 @@ def apply_exclusion_formatting(column: str, value: str) -> str:
         case cnst.VERSION:
             return value[: value.index("2")]
         case _:
-            return value
+            return str(value)
 
 
 def difference(numbers: list[float]) -> float:
@@ -406,7 +407,7 @@ class PermutationQAQC:
         logger.info("Moving ETP Flag column")
 
         df = self.permutations.data
-        et_flag = df.filter(regex=(r"ETP Flag.*"))
+        et_flag = df.filter(regex=(cnst.ETP_FLAG_RE))
         if et_flag.empty:
             logger.info("No ETP Flag column found")
             et_flag_col = pd.Series(name=cnst.ETP_FLAG)
@@ -1360,9 +1361,12 @@ class PermutationQAQC:
             - field is not a valid GSIA ID (critical)
         """
 
-        exclusion_map = db.get_exclusion_map(
-            key_name=cnst.SECTOR, mapped_name=cnst.GSIA_ID
-        )
+        try:
+            exclusion_map = db.get_exclusion_map(
+                key_name=cnst.SECTOR, mapped_name=cnst.GSIA_ID
+            )
+        except ValueError:
+            return
 
         valid_ids = []
         for id_set in exclusion_map.values():
@@ -1440,7 +1444,7 @@ class PermutationQAQC:
         invalid = df[
             df.apply(
                 lambda row: (
-                    dt.datetime.strptime(row[cnst.START_DATE], r"%m/%d/%Y")
+                    dt.datetime.strptime(row[cnst.START_DATE], cnst.TIME_FMT)
                     >= dt.datetime(year=2026, month=1, day=1)
                 ),
                 axis=1,
@@ -1457,7 +1461,7 @@ class PermutationQAQC:
         invalid = df[
             df.apply(
                 lambda row: (
-                    dt.datetime.strptime(row[cnst.START_DATE], r"%m/%d/%Y")
+                    dt.datetime.strptime(row[cnst.START_DATE], cnst.TIME_FMT)
                     < dt.datetime(year=2026, month=1, day=1)
                 ),
                 axis=1,
@@ -1721,15 +1725,17 @@ class PermutationQAQC:
         """
 
         df = self.permutations.data
-        etp_cols = df.filter(regex=("ETP Flag.*")).columns.to_list()
-        if etp_cols == []:
+        etp_flag: str | None = None
+        for column in df.columns.to_list():
+            if re.match(cnst.ETP_FLAG_RE, column) is not None:
+                etp_flag = column
+                break
+
+        if etp_flag is None:
             raise ParserError("Missing ETP Flag column")
 
-        if len(etp_cols) > 1:
-            raise ParserError(f"Ambiguous ETP Flag column: {etp_cols}")
-
-        etp_flag = etp_cols[0]
-        invalid = df[~df[etp_flag].eq("") & ~df[etp_flag].str.startswith("E")][etp_flag]
+        sdf = df[~df[etp_flag].isna()]
+        invalid = sdf[~sdf[etp_flag].eq("") & ~sdf[etp_flag].str.startswith("E")][etp_flag]
         for index, value in invalid.items():
             self.field_data.add(
                 column=etp_flag,
