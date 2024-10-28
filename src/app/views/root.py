@@ -1,6 +1,7 @@
 import tkinter as tk
 
 from src import utils
+from src.config import app_config
 
 
 class Root(tk.Tk):
@@ -18,3 +19,10 @@ class Root(tk.Tk):
         self.container.grid(row=0, column=0, sticky=tk.NSEW)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
+
+        self.protocol("WM_DELETE_WINDOW", self.close)
+
+    def close(self) -> None:
+        app_config.dump()
+        self.destroy()
+        exit()
