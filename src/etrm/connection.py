@@ -422,7 +422,7 @@ class ETRMConnection:
                     )
                 statewide_id = split_id[0]
                 version = split_id[1]
-            if arg_len == 2:
+            elif arg_len == 2:
                 statewide_id = args[0]
                 if not isinstance(statewide_id, str):
                     raise ETRMRequestError(
