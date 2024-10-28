@@ -14,15 +14,7 @@ class Controller:
         self.progress = ProgressController(self.model, self.view)
         self.results = ResultsController(self.model, self.view)
 
-    def start(self, api_key: str | None = None, measure_id: str | None = None) -> None:
-        if api_key is not None:
-            self.model.api_key = api_key
-            self.view.set_api_key(self.model.api_key)
-
-        if measure_id is not None:
-            self.model.measure_id = measure_id
-            self.view.set_measure(self.model.measure_id)
-
+    def start(self) -> None:
         self.view.home.show()
         self.view.start()
 
