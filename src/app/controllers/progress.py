@@ -265,7 +265,7 @@ class PermQcController:
         qc_tool.validate_exclusions()
         end = time.time()
         self.view.log_frame.add(
-            f"Exclusion application took {end - start:.4f} seconds"
+            f"Exclusion validation took {end - start:.4f} seconds"
         )
 
     @permqc_function("Validating calculations")
