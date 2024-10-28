@@ -37,3 +37,4 @@ tests/*/resources/*
 config.ini
 *permutation_tool.xlsm
 inserter.py
+config.json
