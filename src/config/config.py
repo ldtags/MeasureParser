@@ -20,6 +20,7 @@ class AppConfig(JSONObject):
             os.mkdir(self.output_path)
 
         self.override_file = self.get('override_file', bool, False)
+        self.api_key = self.get('api_key', str | None, None)
 
     def to_json_string(self) -> str:
         return json.dumps(
@@ -29,6 +30,7 @@ class AppConfig(JSONObject):
 
     def dump(self) -> None:
         json_obj = json.loads(self.to_json_string())
+        del json_obj["json"]
         config_path = src.get_path('config', 'config.json')
         with open(config_path, 'w+') as config_fp:
             json.dump(json_obj, config_fp)
