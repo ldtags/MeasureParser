@@ -70,11 +70,11 @@ class PermutationsTable:
             columns=self.headers
         )
 
-        columns = [list(col) for col in zip(*self._results)]
-        data: dict[str, list[str | float | None]] = {}
-        for x, header in enumerate(self.headers):
-            data[header] = columns[x]
-        self.data = DataFrame(data)
+        # columns = [list(col) for col in zip(*self._results)]
+        # data: dict[str, list[str | float | None]] = {}
+        # for x, header in enumerate(self.headers):
+        #     data[header] = columns[x]
+        # self.data = DataFrame(data)
 
     def __getitem__(self, header: str) -> Series:
         try:
