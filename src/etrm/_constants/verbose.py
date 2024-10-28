@@ -201,3 +201,9 @@ TECH_GROUP_COLS = [
     STD_TECH_GROUP
 ]
 """Technology Group column names"""
+
+
+ETP_FLAG_RE = r'ETP Flag.*'
+
+
+TIME_FMT = r'%m/%d/%Y'

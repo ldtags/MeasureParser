@@ -9,7 +9,7 @@ FIRST_BASE_CASE_DESCRIPTION = 'BaseCase1st'
 SECOND_BASE_CASE_DESCRIPTION = 'BaseCase2nd'
 MEASURE_CASE_DESCRIPTION = 'MeasDescription'
 EXISTING_DESCRIPTION = 'PreDesc'
-STANDARD_DESCRIPTION = 'Standard Description'
+STANDARD_DESCRIPTION = 'StdDesc'
 FIRST_BASELINE_CASE = 'Case1stBaseline'
 SECOND_BASELINE_CASE = 'Case2ndBaseline'
 MEASURE_APPLICATION_TYPE = 'MeasAppType'
@@ -52,9 +52,9 @@ MEASURE_UEC_KWH = 'UECkWhMeas'
 MEASURE_UEC_THERM = 'UECThermMeas'
 DELIV_TYPE = 'DeliveryType'
 NTG_ID = 'NTG_ID'
-NTG_KWH = 'NTGkWh'
-NTG_KW = 'NTGkW'
-NTG_THERMS = 'NTGTherm'
+NTG_KWH = 'NTGRkWh'
+NTG_KW = 'NTGRkW'
+NTG_THERMS = 'NTGRTherm'
 NTGR_COST = 'NTGRCost'
 GSIA_ID = 'GSIA_ID'
 GSIA_VALUE = 'GSIA'
@@ -195,3 +195,9 @@ TECH_GROUP_COLS = [
     STD_TECH_GROUP
 ]
 """Technology Group column names"""
+
+
+ETP_FLAG_RE = r'ETP_Flag.*'
+
+
+TIME_FMT = r'%Y-%m-%d'
