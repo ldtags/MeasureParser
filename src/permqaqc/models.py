@@ -3,16 +3,52 @@ import os
 import json
 from enum import Enum
 from typing import Iterable
+from functools import total_ordering
 
-import src.etrm._constants as cnst
 
-
+@total_ordering
 class Severity(Enum):
     OPTIONAL = 'optional'
     SEMI_MINOR = 'semi_minor'
     MINOR = 'minor'
     SEMI_CRITICAL = 'semi_critical'
     CRITICAL = 'critical'
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+
+        return self.value == other.value
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+
+        if self.__eq__(other):
+            return False
+
+        # this will work as long as the enums are listed in the proper order
+        values = [e.value for e in Severity]
+        match self.value:
+            case "optional":
+                return True
+            case "semi_minor":
+                return other.value not in values[0:1]
+            case "minor":
+                return other.value not in values[0:2]
+            case "semi_critical":
+                return other.value not in values[0:3]
+            case "critical":
+                return False
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+
+        if self.__eq__(other):
+            return False
+
+        return not (self.value < other.value)
 
 
 class DataEntry:
