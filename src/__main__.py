@@ -14,7 +14,7 @@ def main(dev_mode: bool=True,
         api_key = etrm.get_api_key()
 
     app = Controller()
-    app.start()
+    app.start(api_key=api_key, measure_id=measure_id)
 
 
 if __name__ == '__main__':

@@ -57,7 +57,7 @@ class HomeController(_BaseHomeController):
     def __init__(
         self, model: Model, view: View, start_func: Callable[[tk.Event | None], None]
     ) -> None:
-        BaseController.__init__(self, model, view)
+        super().__init__(model, view)
         self.start_func = start_func
         self.source_controller = SourceController(model, view)
         self.output_controller = OutputController(model, view)
@@ -79,12 +79,17 @@ class HomeController(_BaseHomeController):
         Use when the home page is shown.
         """
 
-        if self.model.remember_me:
-            api_key = app_config.api_key
-            for source_frame in self.source_frames:
-                source_frame.etrm_frame.api_key_entry.set_text(api_key)
-                source_frame.etrm_frame.api_key_entry.set_text(api_key)
-                source_frame.etrm_frame.rm_var.set(1)
+        for source_frame in self.source_frames:
+            etrm_frame = source_frame.etrm_frame
+            if self.model.remember_me:
+                etrm_frame.api_key_entry.set_text(app_config.api_key)
+                etrm_frame.rm_var.set(1)
+
+            if self.model.api_key is not None:
+                etrm_frame.api_key_entry.set_text(self.model.api_key)
+
+            if self.model.measure_id is not None:
+                etrm_frame.measure_entry.set_text(self.model.measure_id)
 
     def _update_model(self) -> None:
         """Sets default options in the model."""
@@ -118,7 +123,7 @@ class HomeController(_BaseHomeController):
 
 
 class SourceController(_BaseHomeController):
-    def __init__(self, model: Model, view: View):
+    def __init__(self, model: Model, view: View) -> None:
         super().__init__(model, view)
         self.api_key_reg = self.root.register(self.validate_api_key)
         self.measure_reg = self.root.register(self.validate_measure_id)
@@ -199,7 +204,7 @@ class SourceController(_BaseHomeController):
 
 
 class OutputController(_BaseHomeController):
-    def __init__(self, model: Model, view: View):
+    def __init__(self, model: Model, view: View) -> None:
         super().__init__(model, view)
 
 
@@ -220,20 +225,20 @@ class OptionsController(_BaseHomeController):
 
 
 class ControlsController(_BaseHomeController):
-    def __init__(self, model: Model, view: View, start_func: Callable[[], None]):
+    def __init__(self, model: Model, view: View, start_func: Callable[[], None]) -> None:
         super().__init__(model, view)
         self.start_func = start_func
         self._bind_events()
 
     def get_output_dir(self, output_frame: home.OutputFrame) -> str:
-        dir_path = output_frame.dir_entry.get()
+        dir_path = output_frame.outdir_entry.get()
         if dir_path == "":
             raise ValidationError("* Required")
 
         return sanitize_file_path(dir_path, _dir=True)
 
     def get_output_file(self, output_frame: home.OutputFrame) -> str:
-        file_name = output_frame.file_entry.get()
+        file_name = output_frame.fname_entry.get()
         if file_name == "":
             raise ValidationError("* Required")
 
