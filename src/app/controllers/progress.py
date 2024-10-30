@@ -5,7 +5,7 @@ import time
 from typing import Callable, TypeVar, Literal
 
 from src.app.enums import MeasureSource
-from src.app.views import View
+from src.app.views import View, ResultsView, HomeView
 from src.app.models import Model
 from src.etrm.models import Measure, PermutationsTable
 from src.etrm.connection import ETRMConnection
@@ -57,11 +57,10 @@ class ProgressController:
         self.__bind_controls()
 
     def handle_back(self) -> None:
-        self.root_view.home.show()
+        self.root_view.show(HomeView)
 
     def handle_continue(self) -> None:
-        # self.root_view.results.show()
-        self.root_view.close()
+        self.root_view.show(ResultsView)
 
     def run_process(self, process: Literal["parser", "permqc"]) -> None:
         _proc = None
@@ -198,8 +197,9 @@ class ParserController:
 
     def parse(self) -> None:
         progress_max = len(parser_function.all) * 100
-        if not self.model.home.validate_permutations:
+        if not self.model.measure_source == MeasureSource.ETRM:
             progress_max -= 200
+
         self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
 
         try:
@@ -223,8 +223,9 @@ class ParserController:
             self.parse_parameters(parser)
             self.parse_value_tables(parser)
             self.parse_exclusion_tables(parser)
-            if self.model.home.validate_permutations:
+            if self.model.measure_source == MeasureSource.JSON:
                 self.parse_permutations(parser)
+
             self.parse_characterizations(parser)
             self.log_output(self.model.output_file_path, parser.data, parser.measure)
         except Exception as err:
