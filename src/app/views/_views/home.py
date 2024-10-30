@@ -26,7 +26,7 @@ _DEFAULT_SOURCE_STATE: MeasureSourceState = "local"
 class HomeView(Page):
     key = "home"
 
-    def __init__(self, parent: Frame, root: tk.Tk, **kwargs):
+    def __init__(self, parent: Frame, root: tk.Tk, **kwargs) -> None:
         Page.__init__(self, parent, root, **kwargs)
 
         self._state: HomeViewState = _DEFAULT_PAGE_STATE
@@ -110,7 +110,7 @@ class PermQcContainer(ScrollableFrame):
             fill=tk.BOTH,
             expand=tk.TRUE,
             padx=(10, 10),
-            pady=(10, 10),
+            pady=(10, 0),
         )
 
         self.output_frame = OutputFrame(self.interior)
@@ -120,7 +120,7 @@ class PermQcContainer(ScrollableFrame):
             fill=tk.BOTH,
             expand=tk.TRUE,
             padx=(10, 10),
-            pady=(10, 10),
+            pady=(0, 10),
         )
 
         self.options_frame = OptionsFrame(self.interior)
@@ -135,7 +135,7 @@ class PermQcContainer(ScrollableFrame):
 
 
 class ParserContainer(ScrollableFrame):
-    def __init__(self, parent: tk.Frame, **kwargs):
+    def __init__(self, parent: tk.Frame, **kwargs) -> None:
         ScrollableFrame.__init__(self, parent, scrollbar=True, **kwargs)
 
         self.source_frame = MeasureSourceFrame(
@@ -364,7 +364,7 @@ class JSONSourceFrame(Frame):
 
 
 class ETRMSourceFrame(Frame):
-    def __init__(self, parent: Frame, title: str, subtitle: str, **kw):
+    def __init__(self, parent: Frame, title: str, subtitle: str, **kw) -> None:
         Frame.__init__(self, parent, **kw)
 
         self.measure_label = OptionLabel(
@@ -455,7 +455,12 @@ class ETRMSourceFrame(Frame):
 
 
 class OutputFrame(Frame):
-    def __init__(self, parent: Frame, **kwargs):
+    """Defines the view structure for the output component of the home view.
+
+    Modify this class when updating the output fields.
+    """
+
+    def __init__(self, parent: Frame, **kwargs) -> None:
         Frame.__init__(self, parent, **kwargs)
 
         self.output_label = OptionLabel(self, title="Output")
@@ -526,6 +531,11 @@ class OutputFrame(Frame):
 
 
 class OptionsFrame(Frame):
+    """Defines the options component of the home view.
+
+    Modify this class when updating any parser/permqc options.
+    """
+
     def __init__(self, parent: Frame, **kwargs):
         Frame.__init__(self, parent, **kwargs)
 
