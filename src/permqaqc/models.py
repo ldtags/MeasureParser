@@ -2,6 +2,7 @@ import re
 import os
 import json
 from enum import Enum
+from typing import Iterable
 
 import src.etrm._constants as cnst
 
@@ -137,3 +138,6 @@ class FieldData:
                 entries
             )
         )
+
+    def items(self) -> Iterable[tuple[str, list[DataEntry]]]:
+        return self.data.items()
