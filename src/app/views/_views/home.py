@@ -10,8 +10,8 @@ from src.app.widgets import (
     FileEntry,
     Button,
     Entry,
-    Label,
     ScrollableFrame,
+    ErrorLabel,
 )
 from src.app.components import OptionLabel, OptionCheckBox
 from src.config import app_config
@@ -110,7 +110,7 @@ class PermQcContainer(ScrollableFrame):
             fill=tk.BOTH,
             expand=tk.TRUE,
             padx=(10, 10),
-            pady=(10, 0),
+            pady=(10, 10),
         )
 
         self.output_frame = OutputFrame(self.interior)
@@ -120,7 +120,7 @@ class PermQcContainer(ScrollableFrame):
             fill=tk.BOTH,
             expand=tk.TRUE,
             padx=(10, 10),
-            pady=(0, 10),
+            pady=(10, 10),
         )
 
         self.options_frame = OptionsFrame(self.interior)
@@ -212,10 +212,10 @@ class MeasureSourceFrame(Frame):
             fill=tk.BOTH,
             expand=tk.TRUE,
             padx=(10, 10),
-            pady=(10, 10),
+            pady=(10, 0),
         )
 
-        container.grid_rowconfigure((0, 2, 4, 6), weight=0)
+        container.grid_rowconfigure((0, 2, 4, 6, 8, 9), weight=0)
         container.grid_rowconfigure((1, 3, 5, 7), weight=1)
         container.grid_columnconfigure((0), weight=1)
 
@@ -245,6 +245,10 @@ class MeasureSourceFrame(Frame):
             container, title=etrm_title, subtitle=etrm_subtitle
         )
 
+        # maintains uniform spacing between page components,
+        # placement handled by state manager
+        self._spacer = ErrorLabel(container)
+
         self.set_state(_DEFAULT_SOURCE_STATE)
 
         for cb in self.bindings.get("<MouseWheel>", []):
@@ -261,16 +265,20 @@ class MeasureSourceFrame(Frame):
                     self.etrm_frame.grid_forget()
 
                 self.container.grid_rowconfigure((1, 3), weight=1)
-                self.container.grid_rowconfigure((5, 8), weight=0)
+                self.container.grid_rowconfigure((5, 7), weight=0)
                 self.json_frame.grid(row=2, column=0, sticky=tk.NSEW, padx=(10, 10))
+                self._spacer.grid(row=9, column=0, sticky=tk.NSEW, pady=(2.5, 0))
                 self.json_rb_var.set(1)
                 self.etrm_rb_var.set(0)
             case "api":
                 if self.json_frame.winfo_ismapped():
                     self.json_frame.grid_forget()
 
+                if self._spacer.winfo_ismapped():
+                    self._spacer.grid_forget()
+
                 self.container.grid_rowconfigure((1, 3), weight=0)
-                self.container.grid_rowconfigure((5, 8), weight=1)
+                self.container.grid_rowconfigure((5, 7), weight=1)
                 self.etrm_frame.grid(row=6, column=0, sticky=tk.NSEW, padx=(10, 10))
                 self.json_rb_var.set(0)
                 self.etrm_rb_var.set(1)
@@ -330,17 +338,14 @@ class JSONSourceFrame(Frame):
         self.file_entry = FileEntry(self, file_type="file", types=file_types)
         self.file_entry.grid(column=0, row=2, sticky=tk.NSEW, pady=(5, 0))
 
-        self.file_err_var = tk.StringVar(self, "")
-        self.file_err_label = Label(
-            self, variable=self.file_err_var, text_color="#ff0000"
-        )
+        self.file_err_label = ErrorLabel(self)
         self.file_err_label.grid(column=0, row=3, sticky=tk.NSEW, pady=(2.5, 0))
 
     def print_err(self, err: str) -> None:
-        self.file_err_var.set(err)
+        self.file_err_label.set(err)
 
     def clear_err(self) -> None:
-        self.file_err_var.set("")
+        self.file_err_label.clear()
 
     def disable(self) -> None:
         self.file_entry.disable()
@@ -375,10 +380,7 @@ class ETRMSourceFrame(Frame):
             side=tk.TOP, anchor=tk.NW, fill=tk.X, expand=tk.TRUE, pady=(5, 0)
         )
 
-        self.measure_err_var = tk.StringVar(self, "")
-        self.measure_err_label = Label(
-            self, variable=self.measure_err_var, text_color="#ff0000"
-        )
+        self.measure_err_label = ErrorLabel(self)
         self.measure_err_label.pack(side=tk.TOP, anchor=tk.NW, fill=tk.X, pady=(2.5, 0))
 
         self.key_label = OptionLabel(
@@ -408,32 +410,29 @@ class ETRMSourceFrame(Frame):
             side=tk.TOP, anchor=tk.NW, pady=(1, 0)
         )
 
-        self.api_key_err_var = tk.StringVar(self, "")
-        self.api_key_err_label = Label(
-            self, variable=self.api_key_err_var, text_color="#ff0000"
-        )
+        self.api_key_err_label = ErrorLabel(self)
         self.api_key_err_label.pack(side=tk.TOP, anchor=tk.NW, fill=tk.X, pady=(2.5, 0))
 
     def print_err(self, err: str, entry: Literal["api_key", "measure"]) -> None:
         match entry:
             case "api_key":
-                self.api_key_err_var.set(err)
+                self.api_key_err_label.set(err)
             case "measure":
-                self.measure_err_var.set(err)
+                self.measure_err_label.set(err)
             case _:
                 pass
 
     def clear_err(self, entry: Literal["api_key", "measure"] | None = None) -> None:
         if entry is None:
-            self.api_key_err_var.set("")
-            self.measure_err_var.set("")
+            self.api_key_err_label.clear()
+            self.measure_err_label.clear()
             return
 
         match entry:
             case "api_key":
-                self.api_key_err_var.set("")
+                self.api_key_err_label.clear()
             case "measure":
-                self.measure_err_var.set("")
+                self.measure_err_label.clear()
             case _:
                 pass
 
@@ -462,79 +461,66 @@ class OutputFrame(Frame):
         self.output_label = OptionLabel(self, title="Output")
         self.output_label.pack(side=tk.TOP, anchor=tk.NW, fill=tk.X)
 
-        self.options_frame = self._OutputOptionsFrame(self)
-        self.options_frame.pack(
+        container = Frame(self)
+        container.pack(
             side=tk.TOP,
             anchor=tk.NW,
             fill=tk.BOTH,
-            expand=True,
+            expand=tk.TRUE,
             padx=(10, 10),
-            pady=(10, 0),
+            pady=(10, 0)
         )
 
-        self.file_entry = self.options_frame.fname_entry
-        self.dir_entry = self.options_frame.outdir_entry
+        container.grid_columnconfigure((0), weight=1)
+        container.grid_rowconfigure((0, 1, 2, 3, 4, 5), weight=0)
 
-    class _OutputOptionsFrame(Frame):
-        def __init__(self, parent: Frame, **kwargs):
-            Frame.__init__(self, parent, **kwargs)
+        self.fname_label = OptionLabel(
+            container,
+            title="Output File Name",
+            sub_title="The file name of the parser output file.",
+            level=1,
+        )
+        self.fname_label.grid(row=0, column=0, sticky=tk.NSEW)
 
-            self.grid_columnconfigure((0), weight=1)
-            self.grid_rowconfigure((0, 1, 2, 3, 4, 5), weight=0)
+        self.fname_entry = Entry(container, text="parser_output")
+        self.fname_entry.grid(row=1, column=0, sticky=tk.NSEW, pady=(5, 0))
 
-            self.fname_label = OptionLabel(
-                self,
-                title="Output File Name",
-                sub_title="The file name of the parser output file.",
-                level=1,
-            )
-            self.fname_label.grid(row=0, column=0, sticky=tk.NSEW)
+        self.file_err_label = ErrorLabel(container)
+        self.file_err_label.grid(row=2, column=0, sticky=tk.NSEW, pady=(0, 10))
 
-            self.fname_entry = Entry(self, text="parser_output")
-            self.fname_entry.grid(row=1, column=0, sticky=tk.NSEW, pady=(5, 0))
+        self.outdir_label = OptionLabel(
+            container,
+            title="Output File Location",
+            sub_title="The folder that the parser output file will be"
+            " placed in.",
+            level=1,
+        )
+        self.outdir_label.grid(row=3, column=0, sticky=tk.NSEW)
 
-            self.file_err_var = tk.StringVar(self, " ")
-            self.file_err_label = Label(
-                self, textvariable=self.file_err_var, fg="#ff0000"
-            )
-            self.file_err_label.grid(row=2, column=0, sticky=tk.NSEW, pady=(0, 10))
+        self.outdir_entry = FileEntry(container, text=app_config.output_path)
+        self.outdir_entry.grid(row=4, column=0, sticky=tk.NSEW, pady=(5, 0))
 
-            self.outdir_label = OptionLabel(
-                self,
-                title="Output File Location",
-                sub_title="The folder that the parser output file will be"
-                " placed in.",
-                level=1,
-            )
-            self.outdir_label.grid(row=3, column=0, sticky=tk.NSEW)
-
-            self.outdir_entry = FileEntry(self, text=app_config.output_path)
-            self.outdir_entry.grid(row=4, column=0, sticky=tk.NSEW, pady=(5, 0))
-
-            self.outdir_err_var = tk.StringVar(self, " ")
-            self.outdir_err_label = Label(
-                self, textvariable=self.outdir_err_var, fg="#ff0000"
-            )
-            self.outdir_err_label.grid(row=5, column=0, sticky=tk.NSEW)
+        self.outdir_err_label = ErrorLabel(container)
+        self.outdir_err_label.grid(row=5, column=0, sticky=tk.NSEW)
 
     def print_err(self, err: str, entry: Literal["dir", "file"]) -> None:
         match entry:
             case "dir":
-                self.options_frame.outdir_err_var.set(err)
+                self.outdir_err_label.set(err)
             case "file":
-                self.options_frame.file_err_var.set(err)
+                self.file_err_label.set(err)
             case other:
                 raise tk.TclError(f"Unknown output entry: {other}")
 
     def clear_err(self, entry: Literal["dir", "file"] | None = None) -> None:
         if entry is None:
-            self.options_frame.file_err_var.set("")
-            self.options_frame.outdir_err_var.set("")
+            self.file_err_label.clear()
+            self.outdir_err_label.clear()
         match entry:
             case "dir":
-                self.options_frame.outdir_err_var.set("")
+                self.outdir_err_label.clear()
             case "file":
-                self.options_frame.file_err_var.set("")
+                self.file_err_label.clear()
             case other:
                 raise tk.TclError(f"Unknown output entry: {other}")
 
