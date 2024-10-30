@@ -4,6 +4,7 @@ import sys
 import tkinter as tk
 from typing import Callable, Literal
 
+from src.app.enums import MeasureSource
 from src.app.types import MeasureSourceState
 from src.app.views import View, HomeView, home
 from src.app.models import Model, HomeModel
@@ -318,6 +319,7 @@ class ControlsController(_BaseHomeController):
                     raise
 
                 self.model.measure_file_path = measure_file_path
+                self.root_model.measure_source = MeasureSource.JSON
             case "api":
                 try:
                     measure_id = self.get_measure_id(source_frame)
@@ -335,6 +337,7 @@ class ControlsController(_BaseHomeController):
 
                 self.model.measure_id = measure_id
                 self.model.api_key = api_key
+                self.root_model.measure_source = MeasureSource.ETRM
             case other:
                 raise GUIError(f"Unknown home view state: {other}")
 
@@ -363,6 +366,7 @@ class ControlsController(_BaseHomeController):
                     raise
 
                 self.model.permutations_file_path = perm_file_path
+                self.root_model.measure_source = MeasureSource.JSON
             case "api":
                 try:
                     measure_id = self.get_measure_id(source_frame)
@@ -380,6 +384,7 @@ class ControlsController(_BaseHomeController):
 
                 self.model.measure_id = measure_id
                 self.model.api_key = api_key
+                self.root_model.measure_source = MeasureSource.ETRM
             case other:
                 raise GUIError(f"Unknown home view state: {other}")
 
