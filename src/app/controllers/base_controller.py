@@ -10,6 +10,12 @@ class BaseController(Generic[GenericModel, GenericView]):
     _t: tuple[Type[GenericModel], Type[GenericView]]
 
     def __class_getitem__(cls, key_t: type):
+        """Funky class attribute manipulation to make the type represented
+        by the generic available.
+
+        Yes, it's disgusting. Yes, it limits class attributes. It just works.
+        """
+
         cache = cls.__concrete__
         if c := cache.get(key_t, None):
             return c
