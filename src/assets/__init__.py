@@ -32,18 +32,29 @@ _TK_IMAGES: dict[str, ImageTk.PhotoImage] = {}
 
 
 def get_tkimage(
-    file_name: str, size: tuple[int, int] | None = None
+    file_name: str, size: tuple[int, int] | None = None, rotation: float | None = None
 ) -> ImageTk.PhotoImage:
-    """Returns an image asset that can be used in a tkinter widget."""
+    """Returns an image asset that can be used in a tkinter widget.
+
+    Args:
+        - file_name : file name (including extension) of an image in the assets package.
+        - size : a two-tuple (width, height) that defines the size of the image.
+        - rotation : a float that defines the angle at which the image will be rotated.
+    """
 
     file_path = get_path(file_name)
-    key = f"{file_path}{str(size)}"
+    key = f"{file_path}{str(size)}{str(rotation)}"
     try:
         tk_image = _TK_IMAGES[key]
     except KeyError:
         image = Image.open(file_path)
         if size is not None:
             image = image.resize(size)
+
+        if rotation is not None:
+            image.rotate(rotation)
+
         tk_image = ImageTk.PhotoImage(image)
         _TK_IMAGES[key] = tk_image
+
     return tk_image
