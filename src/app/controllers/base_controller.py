@@ -13,7 +13,7 @@ class BaseController(Generic[GenericModel, GenericView]):
         """Funky class attribute manipulation to make the type represented
         by the generic available.
 
-        Yes, it's disgusting. Yes, it limits class attributes. It just works.
+        Yes, it's disgusting. Yes, it limits class attributes. "It just works".
         """
 
         cache = cls.__concrete__
