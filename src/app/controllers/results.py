@@ -5,7 +5,6 @@ from src.app.views import View, ResultsView
 from src.app.models import Model, ResultsModel
 from src.app.controllers.base_controller import BaseController
 from src.parser import ParserData
-from src.permqaqc import FieldData
 
 
 _BaseResultsController = BaseController[ResultsModel, ResultsView]
@@ -21,24 +20,34 @@ class ResultsController(_BaseResultsController):
         controls.close_btn.set_command(self.root_view.close)
 
     def _load_parser_data(self, data: ParserData) -> None:
-        ...
+        data = self.root_model.progress.parser_data
+        if data is None:
+            raise tk.TclError("Missing required parser data")
 
-    def _load_permqc_data(self, data: FieldData) -> None:
-        ...
+        self.view.show_frame("parser")
+
+    def _load_permqc_data(self) -> None:
+        data = self.root_model.progress.permqc_data
+        if data is None:
+            raise tk.TclError("Missing required permutation QA/QC data")
+
+        permutations = self.root_model.progress.permqc_permutations
+        if permutations is None:
+            raise tk.TclError("Missing required permutation QA/QC permutations")
+
+        self.view.permqc_frame.load_data(permutations.data, data)
+        self.view.show_frame("permqc")
 
     def load_data(self, state: Literal["parser", "permqc"]) -> None:
+        """Handles execution handoff to the specified data loading process.
+
+        This function determines which results frame is shows on the results page.
+        """
+
         match state:
             case "parser":
-                parser_data = self.root_model.progress.parser_data
-                if parser_data is None:
-                    raise tk.TclError("Missing required parser data")
-
-                self._load_parser_data(parser_data)
+                self._load_parser_data()
             case "permqc":
-                permqc_data = self.root_model.progress.permqc_data
-                if permqc_data is None:
-                    raise tk.TclError("Missing required permutation QA/QC data")
-
-                self._load_permqc_data(permqc_data)
+                self._load_permqc_data()
             case other:
-                raise tk.TclError(F"Unknown state: {other}")
+                raise tk.TclError(f"Unknown state: {other}")
