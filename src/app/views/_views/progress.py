@@ -63,8 +63,8 @@ class ControlsFrame(Frame):
             pady=(20, 20),
         )
 
-        self.cont_btn = Button(self, pady=0, padx=30, text="Continue", state="disabled")
+        self.cont_btn = Button(self, pady=0, padx=25, text="Continue", state="disabled")
         self.cont_btn.pack(side=tk.RIGHT, anchor=tk.E, padx=(15, 30), pady=(20, 20))
 
-        self.back_btn = Button(self, pady=0, padx=30, text="Back")
+        self.back_btn = Button(self, pady=0, padx=25, text="Back")
         self.back_btn.pack(side=tk.RIGHT, anchor=tk.E, padx=(30, 15), pady=(20, 20))
