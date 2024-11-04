@@ -53,8 +53,8 @@ _BaseProgressController = BaseController[ProgressModel, ProgressView]
 class ProgressController(_BaseProgressController):
     def __init__(self, model: Model, view: View):
         super().__init__(model, view)
-        self.parser = ParserController(self.model, self.root_view)
-        self.permqc = PermQcController(self.model, self.root_view)
+        self.parser = ParserController(model, view)
+        self.permqc = PermQcController(model, view)
         self.__bind_controls()
 
     def handle_back(self) -> None:
@@ -347,6 +347,7 @@ class PermQcController(_BaseProgressController):
             self.validate_data(qc_tool)
             self.validate_exclusions(qc_tool)
             self.validate_calculations(qc_tool)
+            self.model.permqc_permutations = qc_tool.permutations
             self.model.permqc_data = qc_tool.field_data
         except Exception as err:
             if os.path.exists(self.root_model.home.output_file_path):
