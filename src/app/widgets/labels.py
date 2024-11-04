@@ -31,6 +31,7 @@ class Label(Widget):
         }
         for key, val in kwargs.items():
             kw[key] = val
+
         Widget.__init__(self, parent, "label", kw=kw)
 
         # defaults for optional args that rely on the parent object
@@ -40,14 +41,21 @@ class Label(Widget):
         except TypeError:
             pass
 
-        self.bind("<Configure>", self.__wrap)
-        self.bind("<Button-1>", self.__focus)
+        self.bind("<Configure>", self._wrap)
+        self.bind("<Button-1>", self._focus)
 
-    def __wrap(self, *args):
+    def _wrap(self, *args):
         self.config(wraplength=self.parent.winfo_width())
 
-    def __focus(self, *args):
+    def _focus(self, *args):
         self.focus()
+
+    def configure(self, **kw) -> None:
+        if "text_color" in kw:
+            kw["fg"] = kw["text_color"]
+            del kw["text_color"]
+
+        super().configure(**kw)
 
 
 class ErrorLabel(Label):
