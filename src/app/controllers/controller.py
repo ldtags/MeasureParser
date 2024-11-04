@@ -37,3 +37,4 @@ class Controller:
         self.view.progress.show()
         self.view.progress.update()
         self.progress.run_process(self.view.home.state)
+        self.results.load_data(self.view.home.state)
