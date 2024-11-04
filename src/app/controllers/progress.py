@@ -5,8 +5,9 @@ import time
 from typing import Callable, TypeVar, Literal
 
 from src.app.enums import MeasureSource
-from src.app.views import View, ResultsView, HomeView
-from src.app.models import Model
+from src.app.views import View, ResultsView, HomeView, ProgressView
+from src.app.models import Model, ProgressModel
+from src.app.controllers.base_controller import BaseController
 from src.etrm.models import Measure, PermutationsTable
 from src.etrm.connection import ETRMConnection
 from src.parser import MeasureParser
@@ -46,12 +47,12 @@ parser_function = make_progress_decorator()
 permqc_function = make_progress_decorator()
 
 
-class ProgressController:
+_BaseProgressController = BaseController[ProgressModel, ProgressView]
+
+
+class ProgressController(_BaseProgressController):
     def __init__(self, model: Model, view: View):
-        self.root = view.root
-        self.root_view = view
-        self.view = view.progress
-        self.model = model
+        super().__init__(model, view)
         self.parser = ParserController(self.model, self.root_view)
         self.permqc = PermQcController(self.model, self.root_view)
         self.__bind_controls()
@@ -83,12 +84,9 @@ class ProgressController:
         self.view.controls_frame.cont_btn.set_command(self.handle_continue)
 
 
-class ParserController:
+class ParserController(_BaseProgressController):
     def __init__(self, model: Model, view: View):
-        self.root = view.root
-        self.root_view = view
-        self.view = view.progress
-        self.model = model
+        super().__init__(model, view)
 
     @parser_function("Logging measure details")
     def log_measure_details(self, _logger: MeasureDataLogger) -> None:
@@ -128,7 +126,7 @@ class ParserController:
         if not os.path.exists(out_dir):
             raise RuntimeError(f"Invalid File Path: directory {out_dir} does not exist")
 
-        if os.path.exists(file_path) and not self.model.home.override_file:
+        if os.path.exists(file_path) and not self.root_model.home.override_file:
             raise RuntimeError(
                 f"Invalid File Path: a file named {file_name} already"
                 f" exists at {out_dir}"
@@ -141,8 +139,9 @@ class ParserController:
             self.log_value_table_data(_logger)
             self.log_value_tables(_logger)
             self.log_calculations(_logger)
-            if self.model.home.validate_permutations:
+            if self.root_model.home.measure_source == MeasureSource.JSON:
                 self.log_permutations(_logger)
+
             self.log_characterization_data(_logger)
 
     @parser_function("Validating parameters")
@@ -168,10 +167,10 @@ class ParserController:
             parser.parse_characterization(characterization)
 
     def get_etrm_measure(self) -> Measure:
-        @parser_function(f"Retrieving measure {self.model.measure_id}")
+        @parser_function(f"Retrieving measure {self.root_model.home.measure_id}")
         def get_measure(*args) -> Measure:
-            connection = ETRMConnection(self.model.api_key)
-            measure = connection.get_measure(self.model.measure_id)
+            connection = ETRMConnection(self.root_model.home.api_key)
+            measure = connection.get_measure(self.root_model.home.measure_id)
             return measure
 
         start = time.time()
@@ -183,11 +182,11 @@ class ParserController:
         return measure
 
     def get_json_measure(self) -> Measure:
-        _, file_name = os.path.split(self.model.measure_file_path)
+        _, file_name = os.path.split(self.root_model.home.measure_file_path)
 
         @parser_function(f"Retrieving measure from {file_name}")
         def get_measure(*args) -> Measure:
-            with open(self.model.measure_file_path, "r") as fp:
+            with open(self.root_model.home.measure_file_path, "r") as fp:
                 measure_json = json.load(fp)
             measure = Measure(measure_json, source="json")
             return measure
@@ -197,15 +196,15 @@ class ParserController:
 
     def parse(self) -> None:
         progress_max = len(parser_function.all) * 100
-        if not self.model.measure_source == MeasureSource.ETRM:
+        if not self.root_model.home.measure_source == MeasureSource.ETRM:
             progress_max -= 200
 
         self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
 
         try:
-            if self.model.measure_source == MeasureSource.ETRM:
+            if self.root_model.home.measure_source == MeasureSource.ETRM:
                 measure = self.get_etrm_measure()
-            elif self.model.measure_source == MeasureSource.JSON:
+            elif self.root_model.home.measure_source == MeasureSource.JSON:
                 measure = self.get_json_measure()
             else:
                 self.view.log_frame.add(
@@ -223,14 +222,15 @@ class ParserController:
             self.parse_parameters(parser)
             self.parse_value_tables(parser)
             self.parse_exclusion_tables(parser)
-            if self.model.measure_source == MeasureSource.JSON:
+            if self.root_model.home.measure_source == MeasureSource.JSON:
                 self.parse_permutations(parser)
 
             self.parse_characterizations(parser)
-            self.log_output(self.model.output_file_path, parser.data, parser.measure)
+            self.model.parser_data = parser.data
+            self.log_output(self.root_model.home.output_file_path, parser.data, parser.measure)
         except Exception as err:
-            if os.path.exists(self.model.output_file_path):
-                os.remove(self.model.output_file_path)
+            if os.path.exists(self.root_model.home.output_file_path):
+                os.remove(self.root_model.home.output_file_path)
             self.view.log_frame.add(text=str(err), fg="#ff0000")
         else:
             end = time.time()
@@ -240,12 +240,9 @@ class ParserController:
             self.view.controls_frame.progress_bar.config(maximum=0)
 
 
-class PermQcController:
+class PermQcController(_BaseProgressController):
     def __init__(self, model: Model, view: View):
-        self.root = view.root
-        self.root_view = view
-        self.view = view.progress
-        self.model = model
+        super().__init__(model, view)
 
     @permqc_function("Rearranging columns")
     def rearrange_columns(self, qc_tool: PermutationQAQC) -> None:
@@ -279,11 +276,11 @@ class PermQcController:
         )
 
     def get_etrm_permutations(self) -> PermutationsTable:
-        measure_id = self.model.home.measure_id
+        measure_id = self.root_model.home.measure_id
         if measure_id is None:
             raise RuntimeError("Missing measure id, please restart the application")
 
-        api_key = self.model.home.api_key
+        api_key = self.root_model.home.api_key
         if api_key is None:
             raise RuntimeError("Missing API key, please restart the application")
 
@@ -303,7 +300,7 @@ class PermQcController:
         return permutations
 
     def get_csv_permutations(self) -> PermutationsTable:
-        csv_path = self.model.home.permutations_file_path
+        csv_path = self.root_model.home.permutations_file_path
         if csv_path is None:
             raise RuntimeError("Missing file, please restart the application")
 
@@ -324,8 +321,8 @@ class PermQcController:
         progress_max = len(permqc_function.all) * 100
         self.view.controls_frame.progress_bar.config(maximum=progress_max + 1)
 
-        view_state = self.model.home.view_state
-        source_state = self.model.home.source_states[view_state]
+        view_state = self.root_model.home.view_state
+        source_state = self.root_model.home.source_states[view_state]
         try:
             match source_state:
                 case "api":
@@ -350,9 +347,10 @@ class PermQcController:
             self.validate_data(qc_tool)
             self.validate_exclusions(qc_tool)
             self.validate_calculations(qc_tool)
+            self.model.permqc_data = qc_tool.field_data
         except Exception as err:
-            if os.path.exists(self.model.home.output_file_path):
-                os.remove(self.model.home.output_file_path)
+            if os.path.exists(self.root_model.home.output_file_path):
+                os.remove(self.root_model.home.output_file_path)
             self.view.log_frame.add(text=str(err), fg="#ff0000")
         else:
             end = time.time()

@@ -1,3 +1,4 @@
+from src.app.enums import MeasureSource
 from src.app.types import HomeViewState, MeasureSourceState
 from src.config import app_config
 
@@ -6,6 +7,7 @@ class HomeModel:
     def __init__(self):
         api_key = app_config.api_key
 
+        self.measure_source: MeasureSource | None = None
         self.override_file = app_config.override_file
         self._remember_me = api_key is not None
         self.view_state: HomeViewState = None
